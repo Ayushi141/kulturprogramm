@@ -8,6 +8,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from time import sleep
 
 @dataclass
 class Event(ABC):
@@ -38,7 +39,7 @@ class Venue(ABC):
             )
 
 class Filmkunstkinos(Venue):
-    def scrape(self) -> List[Event]:
+    def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -48,12 +49,14 @@ class Filmkunstkinos(Venue):
             link = article.select_one("h2.movie-small--title a")
             title = link.find(string=True, recursive=False).strip()
 
+            venue = article.select_one("span.meta-theater-logo").get_text(strip=True)
+
             dates = [
                 datetime.fromisoformat(t["datetime"]).replace(tzinfo=ZoneInfo("Europe/Berlin"))
                 for t in article.select("time[datetime]")
             ]
 
-            events.append(Event(title=title, venue=self.name, dates=dates))
+            events.append(Event(title=title, venue=venue, dates=dates))
         
         return events
 
@@ -75,7 +78,9 @@ def save(events: list[Event]) -> None:
 venues = [Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/")]
 
 if __name__ == "__main__":
-    for venue in venues:
-        events =venue.scrape()
-        save(events)
-        print(f"Scraped {len(events)} events from {venue.name}")
+    while True:
+        for venue in venues:
+            events =venue.scrape()
+            save(events)
+            print(f"Scraped {len(events)} events from {venue.name}")
+        sleep(60*60*3)
