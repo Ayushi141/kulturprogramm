@@ -6,6 +6,7 @@ import httpx
 import psycopg
 from datetime import datetime
 from bs4 import BeautifulSoup
+from pathlib import Path
 
 @dataclass
 class Event(ABC):
