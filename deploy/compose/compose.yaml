@@ -1,3 +1,13 @@
 services:
   postgres:
     image: postgres:18
+    environment:
+      POSTGRES_USER: kultur
+      POSTGRES_DB: kultur
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./pg_password:/run/secrets/pg_password:ro
+
+volumes:
+  pgdata:
