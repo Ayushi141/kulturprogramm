@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+import os
 import httpx
 import psycopg
 from datetime import datetime
@@ -56,8 +57,9 @@ class Filmkunstkinos(Venue):
 
 def save(events: list[Event]) -> None:
     rows = [(e.title, e.venue, d) for e in events for d in e.dates]
+    password = Path(os.environ["PGPASSWORD_FILE"]).read_text().strip()
 
-    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+    with psycopg.connect(password=password) as conn:
         conn.cursor().executemany(
             """
             INSERT INTO events (title, venue, starts_at)
