@@ -1,16 +1,24 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 import httpx
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+@dataclass
+class Event(ABC):
+    title: str
+    venue: str
+    dates: list[datetime]
+
 class Venue(ABC):
     def __init__(self, name, website):
         self.name = name
         self.website = website
+        self.events : list[Event] = []
 
     @abstractmethod
-    def scrape(self):
+    def scrape(self) -> list[Event]:
         ...
 
 class Filmkunstkinos(Venue):
@@ -29,7 +37,10 @@ class Filmkunstkinos(Venue):
                 for t in article.select("time[datetime]")
             ]
 
-            print(title, dates)
+            self.events.append(Event(title=title, venue=self.name, dates=dates))
+        
+        print(f"Scraped {len(self.events)} events from {self.name}")
+
 venues = [Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/")]
 
 if __name__ == "__main__":
