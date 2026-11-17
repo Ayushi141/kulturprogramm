@@ -7,6 +7,7 @@ import psycopg
 from datetime import datetime
 from bs4 import BeautifulSoup
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 @dataclass
 class Event(ABC):
@@ -48,7 +49,7 @@ class Filmkunstkinos(Venue):
             title = link.find(string=True, recursive=False).strip()
 
             dates = [
-                datetime.fromisoformat(t["datetime"]).replace(tzinfo=None)
+                datetime.fromisoformat(t["datetime"]).replace(tzinfo=ZoneInfo("Europe/Berlin"))
                 for t in article.select("time[datetime]")
             ]
 
