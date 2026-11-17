@@ -36,7 +36,7 @@ class Venue(ABC):
 
 class Filmkunstkinos(Venue):
     def scrape(self) -> List[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=20)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
