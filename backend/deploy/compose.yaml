@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: kultur
+      POSTGRES_DB: kultur
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - /run/secrets/pg_password:/run/secrets/pg_password:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kultur", "-d", "kultur"]
+      interval: 5s
+      retries: 10
+
+  scraper:
+    build: ../scraper
+    environment:
+      PGHOST: postgres
+      PGUSER: kultur
+      PGDATABASE: kultur
+      PGPASSWORD_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      
+secrets:
+  pg_password:
+    file: /run/secrets/pg_password
+
+volumes:
+  pgdata:

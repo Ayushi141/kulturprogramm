@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import httpx
+import psycopg
 from datetime import datetime
 from bs4 import BeautifulSoup
 
@@ -15,19 +16,31 @@ class Venue(ABC):
     def __init__(self, name, website):
         self.name = name
         self.website = website
-        self.events : list[Event] = []
 
     @abstractmethod
     def scrape(self) -> list[Event]:
         ...
 
+    def save(self, events: list[Event]) -> None:
+        rows = [(e.title, e.venue, d) for e in events for d in e.dates]
+
+        with psycopg.connect("localhost:5432") as conn:
+            conn.cursor().executemany(
+                """
+                INSERT INTO events (title, venue, starts_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                rows,
+            )
+
 class Filmkunstkinos(Venue):
-    def scrape(self):
+    def scrape(self) -> List[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=20)
         response.raise_for_status()
-
         soup = BeautifulSoup(response.text, "html.parser")
 
+        events = []
         for article in soup.select("article.col-group"):
             link = article.select_one("h2.movie-small--title a")
             title = link.find(string=True, recursive=False).strip()
@@ -37,12 +50,28 @@ class Filmkunstkinos(Venue):
                 for t in article.select("time[datetime]")
             ]
 
-            self.events.append(Event(title=title, venue=self.name, dates=dates))
+            events.append(Event(title=title, venue=self.name, dates=dates))
         
-        print(f"Scraped {len(self.events)} events from {self.name}")
+        return events
+
+def save(events: list[Event]) -> None:
+    rows = [(e.title, e.venue, d) for e in events for d in e.dates]
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        conn.cursor().executemany(
+            """
+            INSERT INTO events (title, venue, starts_at)
+            VALUES (%s, %s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            rows,
+        )
+
 
 venues = [Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/")]
 
 if __name__ == "__main__":
     for venue in venues:
-        venue.scrape()
+        events =venue.scrape()
+        save(events)
+        print(f"Scraped {len(events)} events from {venue.name}")
