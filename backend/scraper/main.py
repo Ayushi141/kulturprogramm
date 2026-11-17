@@ -4,17 +4,23 @@ from dataclasses import dataclass
 import os
 import httpx
 import psycopg
+from enum import StrEnum
 from datetime import datetime
 from bs4 import BeautifulSoup
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from time import sleep
 
+class Category(StrEnum):
+    FILM = "film"
+    THEATER = "theater"
+
 @dataclass
 class Event(ABC):
     title: str
     venue: str
-    dates: list[datetime]
+    category: Category
+    starts_at: datetime
 
 class Venue(ABC):
     def __init__(self, name, website):
@@ -25,14 +31,16 @@ class Venue(ABC):
     def scrape(self) -> list[Event]:
         ...
 
-    def save(self, events: list[Event]) -> None:
-        rows = [(e.title, e.venue, d) for e in events for d in e.dates]
 
-        with psycopg.connect("localhost:5432") as conn:
+    def save(self, events: list[Event]) -> None:
+        rows = [(e.title, e.venue, e.category.value, e.starts_at) for e in events]
+        password = Path(os.environ["PGPASSWORD_FILE"]).read_text().strip()
+
+        with psycopg.connect(password=password) as conn:
             conn.cursor().executemany(
                 """
-                INSERT INTO events (title, venue, starts_at)
-                VALUES (%s, %s, %s)
+                INSERT INTO events (title, venue, category, starts_at)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 """,
                 rows,
@@ -51,28 +59,21 @@ class Filmkunstkinos(Venue):
 
             venue = article.select_one("span.meta-theater-logo").get_text(strip=True)
 
-            dates = [
-                datetime.fromisoformat(t["datetime"]).replace(tzinfo=ZoneInfo("Europe/Berlin"))
-                for t in article.select("time[datetime]")
-            ]
-
-            events.append(Event(title=title, venue=venue, dates=dates))
+            for time_element in article.select("time[datetime]"):
+                starts_at = datetime.fromisoformat(time_element["datetime"]).replace(
+                    tzinfo=ZoneInfo("Europe/Berlin")
+                )
+                events.append(
+                    Event(
+                        title=title,
+                        venue=venue,
+                        category=Category.FILM,
+                        starts_at=starts_at,
+                    )
+                )
         
         return events
 
-def save(events: list[Event]) -> None:
-    rows = [(e.title, e.venue, d) for e in events for d in e.dates]
-    password = Path(os.environ["PGPASSWORD_FILE"]).read_text().strip()
-
-    with psycopg.connect(password=password) as conn:
-        conn.cursor().executemany(
-            """
-            INSERT INTO events (title, venue, starts_at)
-            VALUES (%s, %s, %s)
-            ON CONFLICT DO NOTHING
-            """,
-            rows,
-        )
 
 
 venues = [Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/")]
@@ -81,6 +82,6 @@ if __name__ == "__main__":
     while True:
         for venue in venues:
             events =venue.scrape()
-            save(events)
+            venue.save(events)
             print(f"Scraped {len(events)} events from {venue.name}")
         sleep(60*60*3)
