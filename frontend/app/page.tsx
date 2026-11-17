@@ -1,6 +1,11 @@
 import { CultureTable } from "@/components/culture-table";
+import { getUpcomingEvents } from "@/lib/events";
 
-export default function Page() {
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const events = await getUpcomingEvents();
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
@@ -15,7 +20,7 @@ export default function Page() {
         </header>
 
         {/* Table */}
-        <CultureTable />
+        <CultureTable events={events} />
 
         {/* Footer */}
         <footer className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
