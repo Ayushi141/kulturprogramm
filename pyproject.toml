@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.15"
 dependencies = [
+    "bs4>=0.0.2",
     "httpx>=0.28.1",
 ]
 
