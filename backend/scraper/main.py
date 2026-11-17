@@ -41,7 +41,10 @@ class Venue(ABC):
                 """
                 INSERT INTO events (title, venue, category, starts_at)
                 VALUES (%s, %s, %s, %s)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (title, venue, starts_at)
+                DO UPDATE SET
+                    category = EXCLUDED.category,
+                    updated_at = now()
                 """,
                 rows,
             )
@@ -74,9 +77,39 @@ class Filmkunstkinos(Venue):
         
         return events
 
+class DüssSpielhaus(Venue):
+    def scrape(self) -> list[Event]:
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        events = []
+        for article in soup.select("article.teaser"):
+            link = article.select_one("h2.teaser__title a")
+            title = link.get_text(strip=True)
+
+            venue = "Düsseldorfer Schauspielhaus"
+
+            for time_element in article.select("time[datetime]"):
+                starts_at = datetime.fromisoformat(time_element["datetime"]).replace(
+                    tzinfo=ZoneInfo("Europe/Berlin")
+                )
+                events.append(
+                    Event(
+                        title=title,
+                        venue=venue,
+                        category=Category.THEATER,
+                        starts_at=starts_at,
+                    )
+                )
+        
+        return events
 
 
-venues = [Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/")]
+venues = [
+    Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/"),
+    DüssSpielhaus("düsselspielhaus", "https://www.dhaus.de/programm/spielplan/schauspiel")
+]
 
 if __name__ == "__main__":
     while True:

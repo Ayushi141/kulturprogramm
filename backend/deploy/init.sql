@@ -4,5 +4,6 @@ CREATE TABLE events (
     venue     text        NOT NULL,
     category  text        NOT NULL,
     starts_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue, starts_at)
 );
