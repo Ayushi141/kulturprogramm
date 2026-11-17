@@ -22,9 +22,10 @@ export async function getUpcomingEvents(): Promise<CultureEvent[]> {
     id: number;
     title: string;
     venue: string;
+    category: string;
     starts_at: Date;
   }>(
-    `SELECT id, title, venue, starts_at
+    `SELECT id, title, venue, category, starts_at
      FROM events
      WHERE starts_at > NOW()
      ORDER BY starts_at ASC`,
@@ -34,6 +35,7 @@ export async function getUpcomingEvents(): Promise<CultureEvent[]> {
     id: event.id,
     title: event.title,
     venue: event.venue,
+    category: event.category,
     startsAt: event.starts_at.toISOString(),
   }));
 }

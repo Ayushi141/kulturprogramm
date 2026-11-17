@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
-import type { CultureEvent } from "@/lib/events-data";
+import { categoryLabel, type CultureEvent } from "@/lib/events-data";
 
-type SortKey = "title" | "venue" | "startsAt";
+type SortKey = "title" | "category" | "venue" | "startsAt";
 type SortDir = "asc" | "desc";
 
 function formatDateTime(iso: string) {
@@ -22,6 +22,31 @@ export function CultureTable({ events }: { events: CultureEvent[] }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("startsAt");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
+
+  const categories = useMemo(
+    () =>
+      [...new Set(events.map((event) => event.category))].sort((a, b) =>
+        categoryLabel(a).localeCompare(categoryLabel(b)),
+      ),
+    [events],
+  );
+
+  function toggleCategory(category: string) {
+    setActiveCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
+
+  function clearAll() {
+    setSearch("");
+    setActiveCategories(new Set());
+  }
+
+  const hasFilters = search.length > 0 || activeCategories.size > 0;
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
@@ -34,6 +59,7 @@ export function CultureTable({ events }: { events: CultureEvent[] }) {
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return events
+      .filter((event) => activeCategories.size === 0 || activeCategories.has(event.category))
       .filter(
         (event) =>
           !query ||
@@ -42,15 +68,16 @@ export function CultureTable({ events }: { events: CultureEvent[] }) {
       )
       .sort((a, b) => {
         const comparison =
-          sortKey === "startsAt"
-            ? a.startsAt.localeCompare(b.startsAt)
+          sortKey === "category"
+            ? categoryLabel(a.category).localeCompare(categoryLabel(b.category))
             : a[sortKey].localeCompare(b[sortKey]);
         return sortDir === "asc" ? comparison : -comparison;
       });
-  }, [events, search, sortKey, sortDir]);
+  }, [events, search, activeCategories, sortKey, sortDir]);
 
   const columns: { key: SortKey; label: string }[] = [
     { key: "title", label: "Event" },
+    { key: "category", label: "Category" },
     { key: "venue", label: "Venue" },
     { key: "startsAt", label: "Date and time" },
   ];
@@ -77,12 +104,42 @@ export function CultureTable({ events }: { events: CultureEvent[] }) {
         )}
       </div>
 
+      {categories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Category
+          </span>
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => toggleCategory(category)}
+              aria-pressed={activeCategories.has(category)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                activeCategories.has(category)
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-foreground hover:bg-secondary"
+              }`}
+            >
+              {categoryLabel(category)}
+            </button>
+          ))}
+          {hasFilters && (
+            <button
+              onClick={clearAll}
+              className="ml-2 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+
       <p className="text-xs tabular-nums text-muted-foreground">
         {filtered.length} upcoming event{filtered.length !== 1 ? "s" : ""}
       </p>
 
       <div className="-mx-4 overflow-x-auto sm:mx-0">
-        <table className="w-full min-w-[480px] border-collapse text-sm">
+        <table className="w-full min-w-[560px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-foreground/10">
               {columns.map((column) => (
@@ -113,13 +170,14 @@ export function CultureTable({ events }: { events: CultureEvent[] }) {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-16 text-center text-muted-foreground">
-                  {events.length === 0 ? "No upcoming events yet." : "No events match your search."}
+                  {events.length === 0 ? "No upcoming events yet." : "No events match your filters."}
                 </td>
               </tr>
             ) : (
               filtered.map((event) => (
                 <tr key={event.id} className="border-b border-border/50 transition-colors hover:bg-secondary/50">
                   <td className="px-3 py-3.5 font-medium text-foreground">{event.title}</td>
+                  <td className="px-3 py-3.5 text-muted-foreground">{categoryLabel(event.category)}</td>
                   <td className="px-3 py-3.5 text-muted-foreground">{event.venue}</td>
                   <td className="px-3 py-3.5 tabular-nums text-muted-foreground">
                     {formatDateTime(event.startsAt)}
