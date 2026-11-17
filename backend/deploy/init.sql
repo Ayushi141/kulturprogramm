@@ -1,6 +1,7 @@
 CREATE TABLE events (
-    title TEXT NOT NULL,
-    venue TEXT NOT NULL,
-    starts_at TIMESTAMP NOT NULL,
-    PRIMARY KEY (title, venue, starts_at)
+    id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    title     text        NOT NULL,
+    venue     text        NOT NULL,
+    starts_at timestamptz NOT NULL,
+    UNIQUE (title, venue, starts_at)
 );
