@@ -32,8 +32,11 @@ the same variables, for example `PGHOST=127.0.0.1`.
 - Events from 6 hours ago to 8 days ahead are loaded.
 - Database categories `theater`, `oper` and `film` become `theatre`, `opera`
   and `movies`. Other categories, such as `konzert`, are not shown.
-- `ends_at` NULL becomes a missing `end`; the frontend then assumes 2 hours and
-  marks the end as estimated.
+- `ends_at` NULL becomes a missing `end` ("end not announced"). For layout
+  only, the frontend estimates the length per category (`TYPICAL_LENGTH` in
+  `lib/plan.ts`: theatre 150, opera 180, movies 120 minutes). The timeline draws
+  such a bar with an open end: solid colour under the label, then a halftone
+  that fades to nothing, with no right edge (`components/explorer/open-end.ts`).
 - Venues are ordered by city, then name.
 
 The page is rendered on each request (`dynamic` in `app/page.tsx`). If the

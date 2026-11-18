@@ -31,10 +31,11 @@ export type Event = {
   /** ISO 8601 with offset or Z, for example "2026-11-20T19:30:00+01:00". */
   start: string
   /**
-   * ISO 8601. Omit it if the venue publishes no end time; the frontend then
-   * assumes `FALLBACK_MIN` (lib/plan.ts) and marks the end as estimated.
+   * ISO 8601. Null or missing when the venue announced no end. The frontend
+   * then lays the bar out with `TYPICAL_LENGTH` (lib/plan.ts) and shows the
+   * end as not announced.
    */
-  end?: string
+  end?: string | null
   /**
    * Absolute URL of the event page on the venue site, where people buy
    * tickets or read details. The frontend opens it in a new tab.

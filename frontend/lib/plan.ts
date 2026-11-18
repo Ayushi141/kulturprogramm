@@ -9,8 +9,12 @@ import type { Category, Event, Programme, Venue } from './types'
 import type { Dict } from './i18n'
 import { cultureDay, dur, fmt } from './time'
 
-/** Assumed length in minutes when the venue publishes no end time. */
-export const FALLBACK_MIN = 120
+/**
+ * Typical length in minutes per category. Used only for layout (bar width,
+ * lane packing, overlap checks) when the venue announced no end; never shown
+ * as an end time.
+ */
+export const TYPICAL_LENGTH: Record<Category, number> = { theatre: 150, opera: 180, movies: 120 }
 
 export type Item = {
   id: string
@@ -22,8 +26,8 @@ export type Item = {
   /** Start and end, in minutes inside the culture day. */
   s: number
   e: number
-  /** True when the venue published no end time and `e` is `s + FALLBACK_MIN`. */
-  endEstimated: boolean
+  /** False when the venue announced no end; `e` is then `s + TYPICAL_LENGTH[category]`. */
+  endKnown: boolean
 }
 export type Window = [number, number]
 
@@ -36,8 +40,8 @@ export function indexProgramme(p: Programme): Map<string, Item[]> {
     const start = new Date(ev.start), end = ev.end ? new Date(ev.end) : null
     if (!venue || isNaN(+start) || (end && isNaN(+end))) continue
     const { day, min } = cultureDay(start)
-    const e = end ? min + Math.max(15, (+end - +start) / 60000) : min + FALLBACK_MIN
-    const item: Item = { id: ev.id, ev, venue, category: ev.category, day, s: min, e, endEstimated: !end }
+    const e = end ? min + Math.max(15, (+end - +start) / 60000) : min + TYPICAL_LENGTH[ev.category]
+    const item: Item = { id: ev.id, ev, venue, category: ev.category, day, s: min, e, endKnown: !!end }
     if (!byDay.has(day)) byDay.set(day, [])
     byDay.get(day)!.push(item)
   }
@@ -52,14 +56,19 @@ export const byStart = (a: Item, b: Item) => a.s - b.s || a.e - b.e
 export const clashes = (it: Item, plan: Item[]) => plan.filter(p => p.id !== it.id && p.s < it.e && it.s < p.e)
 
 /** False when an overlap of `a` and `b` rests only on an estimated end time. */
-export const surelyOverlap = (a: Item, b: Item) => a.s === b.s || !(a.s < b.s ? a : b).endEstimated
+export const surelyOverlap = (a: Item, b: Item) => a.s === b.s || (a.s < b.s ? a : b).endKnown
 
-/** "21:30", or "~21:30" when the end is estimated. */
-export const endLabel = (it: Item) => (it.endEstimated ? '~' : '') + fmt(it.e)
+/** Text for an unknown end: "from 19:30 · end not announced". */
+const openSpan = (it: Item, t: Dict) => `${t.from} ${fmt(it.s)} · ${t.endNotAnnounced}`
 
-/** "19:30–21:30 · 2h", or "19:30–~21:30 · end time not published". */
-export const spanLabel = (it: Item, t: Dict) =>
-  `${fmt(it.s)}–${endLabel(it)} · ${it.endEstimated ? t.endUnknown : dur(it.e - it.s)}`
+/** "19:30–22:15", or "from 19:30 · end not announced". */
+export const timeRange = (it: Item, t: Dict) => (it.endKnown ? `${fmt(it.s)}–${fmt(it.e)}` : openSpan(it, t))
+
+/** "19:30–22:15 · 2h45", or "from 19:30 · end not announced". */
+export const spanLabel = (it: Item, t: Dict) => (it.endKnown ? `${timeRange(it, t)} · ${dur(it.e - it.s)}` : openSpan(it, t))
+
+/** End of an item as shown to people: "22:15", or "open" when not announced. */
+export const endLabel = (it: Item, t: Dict) => (it.endKnown ? fmt(it.e) : t.open)
 
 /** Adds or removes an ID. */
 export const toggle = (ids: string[], id: string) => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowUpRight, Bookmark, X } from 'lucide-react'
 import type { Venue } from '@/lib/types'
 import { CATEGORIES } from '@/lib/types'
@@ -8,9 +8,16 @@ import { DAY0, DAY1, fmt } from '@/lib/time'
 import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
 import { CAT } from './categories'
+import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 
 /* Geometry (px) */
 const L = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
+/**
+ * The chart is drawn at a logical width of about BASE_W px and scaled up to the
+ * available width, by at most MAX_ZOOM. Wide screens get bigger text and bars
+ * instead of only more space between the hours. Below MIN_W it scrolls sideways.
+ */
+const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
 const INK = '#201f1a', PAPER = '#f7f3e8', CARD = '#fbf8f1', RED = '#df3929'
 const MONO = "'Courier New', monospace"
 const TITLE_FONT = '14.5px Poster, Impact, sans-serif'
@@ -30,17 +37,13 @@ function fitText(s: string, max: number, font: string) {
   while (t.length > 1 && width(t + '…', font) > max) t = t.slice(0, -1)
   return t.trimEnd() + '…'
 }
+/** Event id usable inside an SVG id and url(#…). */
+const safeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_')
 const snap = (t: number) => Math.max(DAY0, Math.min(DAY1, Math.round(t / 30) * 30))
 
-/**
- * Outline of an event bar from x0 to xr. An estimated end gets a soft step
- * instead of a straight edge: down, a little to the right, down again.
- */
-function barPath(x0: number, xr: number, y: number, estimated: boolean) {
-  if (!estimated) return `M${x0},${y}H${xr}V${y + BAR}H${x0}Z`
-  const j = Math.min(6, (xr - x0) / 3), xt = xr - j
-  return `M${x0},${y}H${xt}V${y + BAR * 0.3}C${xt},${y + BAR * 0.5} ${xr},${y + BAR * 0.5} ${xr},${y + BAR * 0.7}V${y + BAR}H${x0}Z`
-}
+type OpenEnd = { xm: number; xe: number; fill: string; dots: string; outline: string }
+/** Everything needed to draw one bar. `open` is set when the end was not announced. */
+type BarGeo = { it: Item; y: number; x0: number; w: number; sw: number; planned: boolean; lpad: number; time: string; labelW: number; avail: number; open?: OpenEnd }
 
 /** "overlaps A · may overlap B", or "" when nothing overlaps. */
 function overlapText(it: Item, clash: Item[], t: Dict) {
@@ -80,10 +83,12 @@ export function relation(it: Item, plan: Item[], planIds: Set<string>, nowMin: n
 
 export function Timeline(p: TimelineProps) {
   const t = useT()
+  // prefix for SVG ids (clip paths); only characters that are safe inside url(#…)
+  const uid = 'x' + useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const box = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
-  const [W, setW] = useState(1100)
+  const [cw, setCw] = useState(1100) // CSS px available for the chart
   const [, setFontsReady] = useState(0)
   const [tip, setTip] = useState<(Float & { body: ReactNode }) | null>(null)
   // `fitted` is set once the popover has been measured and, if needed, moved on screen
@@ -94,7 +99,7 @@ export function Timeline(p: TimelineProps) {
   useLayoutEffect(() => {
     const el = box.current
     if (!el) return
-    const ro = new ResizeObserver(() => setW(Math.max(960, el.clientWidth)))
+    const ro = new ResizeObserver(() => setCw(Math.max(MIN_W, el.clientWidth)))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -122,6 +127,7 @@ export function Timeline(p: TimelineProps) {
     return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close); b?.removeEventListener('scroll', close) }
   }, [pop])
 
+  const Z = Math.min(MAX_ZOOM, Math.max(1, cw / BASE_W)), W = cw / Z // zoom and logical width
   const [A, B] = p.win
   const k = (W - L - R) / (B - A), ko = (W - L - R) / (DAY1 - DAY0)
   const x = (m: number) => L + (Math.max(A, Math.min(B, m)) - A) * k
@@ -157,6 +163,30 @@ export function Timeline(p: TimelineProps) {
   }, [p.items, p.venues, p.win])
   const H = layout.H
 
+  /* Bar geometry. Memoised so hover (which re-renders for the tooltip) does not rebuild the halftone paths. */
+  const popId = pop?.id
+  const bars = useMemo(() => {
+    const geo = new Map<string, BarGeo>()
+    for (const it of layout.inWin) {
+      const y = layout.ys.get(it.id)!, planned = p.planIds.has(it.id), sw = planned || popId === it.id ? 3 : 1.5
+      const x0 = x(it.s) + 1, lpad = it.s < A ? 14 : 7, time = fmt(it.s)
+      const labelW = width(it.ev.title, TITLE_FONT) + 7 + width(time, '10.5px ' + MONO)
+      if (it.endKnown) {
+        const w = Math.max(4, x(it.e) - 1 - x0)
+        geo.set(it.id, { it, y, x0, w, sw, planned, lpad, time, labelW, avail: w - lpad - 8 })
+        continue
+      }
+      // the estimated end is not clamped to the view; the drawing is clipped to the plot area instead
+      const xe = Math.max(x0 + 4, L + (it.e - A) * k - 1), vx1 = W - R
+      const xm = splitPoint(x0, xe, x0 + lpad + labelW + 12)
+      geo.set(it.id, {
+        it, y, x0, w: xe - x0, sw, planned, lpad, time, labelW, avail: xm - x0 - lpad - 12,
+        open: { xm, xe, fill: halftone(xm, xe, y, BAR, L, vx1), dots: edgeDots(xm, xe, y, BAR, sw, L, vx1), outline: openOutline(x0, xm, y, BAR) },
+      })
+    }
+    return geo
+  }, [layout, A, k, W, p.planIds, popId])
+
   /* Whole-day overview: stacked counts per 15 minutes */
   const overview = useMemo(() => {
     const step = 15, cols: { t: number; cnt: Record<string, number> }[] = []
@@ -186,7 +216,8 @@ export function Timeline(p: TimelineProps) {
   }
 
   /* Overview brush: drag draws a new window, a click moves the current one */
-  const localX = (e: React.PointerEvent | React.MouseEvent) => e.clientX - (svg.current?.getBoundingClientRect().left ?? 0)
+  // pointer position in chart units (the SVG is scaled by Z)
+  const localX = (e: React.PointerEvent | React.MouseEvent) => (e.clientX - (svg.current?.getBoundingClientRect().left ?? 0)) / Z
   const onDown = (e: React.PointerEvent) => { drag.current = { p0: localX(e), moved: false }; (e.target as Element).setPointerCapture(e.pointerId); setTip(null); setPop(null) }
   const onMove = (e: React.PointerEvent) => {
     const px = localX(e), d = drag.current
@@ -226,6 +257,17 @@ export function Timeline(p: TimelineProps) {
   const ticks: number[] = []
   for (let m = Math.ceil(A / minor) * minor; m <= B; m += minor) ticks.push(m)
 
+  /* "now" badge on the main axis: sized to its text; hour labels under it are hidden */
+  const nowOnAxis = p.nowMin !== null && p.nowMin > A && p.nowMin < B
+  const nowText = p.nowMin !== null ? `${t.now} ${fmt(p.nowMin)}` : ''
+  const nowW = width(nowText, `bold 11px ${MONO}`) + 12, nowX = nowOnAxis ? x(p.nowMin!) : 0
+  // centred on the now line, but kept inside the chart area
+  const nowLeft = Math.max(L, Math.min(W - R - nowW, nowX - nowW / 2))
+  const AXIS_LABEL_W = 42 // "00:00" at 11.5px bold mono, plus a little air
+  const underNow = (m: number) => nowOnAxis && x(m) + AXIS_LABEL_W / 2 > nowLeft && x(m) - AXIS_LABEL_W / 2 < nowLeft + nowW
+  /* labels at the chart edges start or end there instead of hanging over the divider */
+  const anchorAt = (px: number, x0: number, x1: number) => (px <= x0 + 1 ? 'start' : px >= x1 - 1 ? 'end' : 'middle')
+
   const frame = preview ?? p.win
   const fa = xo(frame[0]), fb = xo(frame[1])
   const frameLabel = `${fmt(frame[0])}–${fmt(frame[1])}`, flw = frameLabel.length * 6.6 + 12
@@ -235,7 +277,11 @@ export function Timeline(p: TimelineProps) {
 
   return (
     <div className="x-chart" ref={box}>
-      <svg ref={svg} width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.timelineLabel}>
+      <svg ref={svg} width={cw} height={H * Z} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.timelineLabel}>
+        <defs>
+          {/* open-end bars may reach past the view; they are clipped to the plot area */}
+          <clipPath id={`${uid}plot`}><rect x={L} y={0} width={W - L - R} height={H} /></clipPath>
+        </defs>
         {/* overview */}
         <g>
           {overview.cols.map(col => {
@@ -251,15 +297,19 @@ export function Timeline(p: TimelineProps) {
           {Array.from({ length: 9 }, (_, i) => DAY0 + i * 180).map(m => (
             <g key={m}>
               <line x1={xo(m)} x2={xo(m)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
-              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor="middle" fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(m)}</text>
+              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(m)}</text>
             </g>
           ))}
           <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{t.wholeDay}</text>
           <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.onAtOnce}</text>
           <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.dragToZoom}</text>
           {p.nowMin !== null && <>
-            <line x1={xo(p.nowMin)} x2={xo(p.nowMin)} y1={OV_Y - 6} y2={OV_Y + OV_H} stroke={RED} strokeWidth={2} />
-            <text x={xo(p.nowMin) + 4} y={OV_Y - 2} fontFamily={MONO} fontSize={10.5} fontWeight={700} fill={RED}>{t.now}</text>
+            {/* the label sits above the window frame (whose top edge is at OV_Y - 8) */}
+            <line x1={xo(p.nowMin)} x2={xo(p.nowMin)} y1={OV_Y - 22} y2={OV_Y + OV_H} stroke={RED} strokeWidth={2} />
+            {(() => {
+              const nx = xo(p.nowMin!), right = nx > W - R - 50
+              return <text x={right ? nx - 4 : nx + 4} y={OV_Y - 13} textAnchor={right ? 'end' : 'start'} fontFamily={MONO} fontSize={10.5} fontWeight={700} fill={RED}>{t.now}</text>
+            })()}
           </>}
           <rect x={L} y={OV_Y - 8} width={Math.max(0, fa - L)} height={OV_H + 8} fill={CARD} opacity={0.72} />
           <rect x={fb} y={OV_Y - 8} width={Math.max(0, W - R - fb)} height={OV_H + 8} fill={CARD} opacity={0.72} />
@@ -289,7 +339,7 @@ export function Timeline(p: TimelineProps) {
             const major = m % labelEvery === 0
             return <g key={m}>
               <line x1={x(m)} x2={x(m)} y1={TOP - 6} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
-              {major && <text x={x(m)} y={TOP - 12} textAnchor="middle" fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(m)}</text>}
+              {major && !underNow(m) && <text x={x(m)} y={TOP - 12} textAnchor={anchorAt(x(m), L, W - R)} fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(m)}</text>}
             </g>
           })}
           <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />
@@ -298,22 +348,37 @@ export function Timeline(p: TimelineProps) {
         {/* bars */}
         <g>
           {layout.inWin.map(it => {
-            const y = layout.ys.get(it.id)!, cat = CAT[it.category], planned = p.planIds.has(it.id), selected = pop?.id === it.id
-            const x0 = x(it.s) + 1, w = Math.max(4, x(it.e) - 1 - x0)
-            // the step only shows when the estimated end is inside the view
-            const d = barPath(x0, x0 + w, y, it.endEstimated && it.e <= B)
-            const lpad = it.s < A ? 14 : 7, avail = w - lpad - 8, time = fmt(it.s)
-            const showTime = width(it.ev.title, TITLE_FONT) + width(time, '10.5px ' + MONO) + 10 <= avail
+            const g = bars.get(it.id)!, { y, x0, w, sw, planned, lpad, time, labelW, avail, open } = g, cat = CAT[it.category]
+            const showTime = labelW <= avail
+            // the › marker sits on the halftone (paper) when the solid part ends inside the view
+            const moreInk = open && open.xm < W - R ? INK : cat.ink
             return (
               <g key={it.id} data-bar="" opacity={opacity(it)} style={{ cursor: 'pointer' }}
                 onMouseEnter={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onMouseMove={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onMouseLeave={() => setTip(null)}
                 onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 230)! }) }}>
-                {planned && <path d={d} transform="translate(4,4)" fill={RED} />}
-                <path d={d} fill={cat.color} stroke={INK} strokeWidth={planned || selected ? 3 : 1.5} />
+                {open ? (
+                  <g clipPath={`url(#${uid}plot)`}>
+                    {planned && <path d={wedge(x0, open.xm, open.xe, y, BAR)} transform="translate(4,4)" fill={RED} />}
+                    {/* hit area: the gaps between dots still belong to the bar */}
+                    <rect x={x0} y={y} width={w} height={BAR} fill="transparent" />
+                    {open.fill && <>
+                      <clipPath id={`${uid}b${safeId(it.id)}`}><rect x={open.xm} y={y} width={open.xe - open.xm} height={BAR} /></clipPath>
+                      <rect x={open.xm} y={y} width={open.xe - open.xm} height={BAR} fill={CARD} />
+                    </>}
+                    {/* the solid part reaches 1 px under the full-size dots, so anti-aliasing shows no seam */}
+                    <rect x={x0} y={y} width={Math.max(0, Math.min(open.xm + 1, open.xe) - x0)} height={BAR} fill={cat.color} />
+                    {open.fill && <path d={open.fill} fill={cat.color} clipPath={`url(#${uid}b${safeId(it.id)})`} />}
+                    <path d={open.outline} fill="none" stroke={INK} strokeWidth={sw} />
+                    {open.dots && <path d={open.dots} fill={INK} />}
+                  </g>
+                ) : <>
+                  {planned && <rect x={x0 + 4} y={y + 4} width={w} height={BAR} fill={RED} />}
+                  <rect x={x0} y={y} width={w} height={BAR} fill={cat.color} stroke={INK} strokeWidth={sw} />
+                </>}
                 {it.s < A && <text x={x0 + 4} y={y + 17} fontFamily={MONO} fontSize={12} fontWeight={700} fill={cat.ink}>‹</text>}
-                {it.e > B && <text x={x0 + w - 4} y={y + 17} textAnchor="end" fontFamily={MONO} fontSize={12} fontWeight={700} fill={cat.ink}>›</text>}
+                {it.e > B && <text x={(open ? W - R : x0 + w) - 4} y={y + 17} textAnchor="end" fontFamily={MONO} fontSize={12} fontWeight={700} fill={moreInk}>›</text>}
                 {avail > 16 && (
                   <text x={x0 + lpad} y={y + 17.5} fontFamily="Poster, Impact, sans-serif" fontSize={14.5} fill={cat.ink} letterSpacing={0.2}>
                     {showTime ? it.ev.title : fitText(it.ev.title, avail, TITLE_FONT)}
@@ -325,14 +390,17 @@ export function Timeline(p: TimelineProps) {
           })}
         </g>
 
-        {/* the planned evening: thick line under each pick; the hollow end dot only for a published end */}
+        {/* the planned evening: thick line under each pick. With an open end it is a wedge
+            that tapers to a point, and there is no end dot. */}
         <g pointerEvents="none">
           {p.plan.filter(s => layout.ys.has(s.id)).map(s => {
-            const yb = layout.ys.get(s.id)! + BAR + 0.5
+            const yb = layout.ys.get(s.id)! + BAR + 0.5, open = bars.get(s.id)?.open
             return <g key={s.id}>
-              <line x1={x(s.s)} x2={x(s.e)} y1={yb} y2={yb} stroke={INK} strokeWidth={5} />
+              {open
+                ? <path d={wedge(x(s.s), open.xm, open.xe, yb - 2.5, 5)} fill={INK} clipPath={`url(#${uid}plot)`} />
+                : <line x1={x(s.s)} x2={x(s.e)} y1={yb} y2={yb} stroke={INK} strokeWidth={5} />}
               <circle cx={x(s.s)} cy={yb} r={4.5} fill={INK} />
-              {!s.endEstimated && <circle cx={x(s.e)} cy={yb} r={4.5} fill={PAPER} stroke={INK} strokeWidth={2} />}
+              {!open && <circle cx={x(s.e)} cy={yb} r={4.5} fill={PAPER} stroke={INK} strokeWidth={2} />}
             </g>
           })}
         </g>
@@ -343,8 +411,8 @@ export function Timeline(p: TimelineProps) {
             <rect x={L} y={TOP - 4} width={x(p.nowMin) - L} height={H - TOP - 10} fill={PAPER} opacity={0.6} />
             {p.nowMin < B && <>
               <line x1={x(p.nowMin)} x2={x(p.nowMin)} y1={TOP - 4} y2={H - 14} stroke={RED} strokeWidth={2} />
-              <rect x={x(p.nowMin) - 32} y={TOP - 27} width={64} height={17} fill={RED} />
-              <text x={x(p.nowMin)} y={TOP - 15} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">{t.now} {fmt(p.nowMin)}</text>
+              <rect x={nowLeft} y={TOP - 27} width={nowW} height={17} fill={RED} />
+              <text x={nowLeft + nowW / 2} y={TOP - 15} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">{nowText}</text>
             </>}
           </g>
         )}

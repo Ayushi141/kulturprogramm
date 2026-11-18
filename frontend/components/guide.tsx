@@ -142,7 +142,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
           <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />
         </section>
       </>}
-      <footer>KULTURPROGRAMM <span>{t.footer}</span></footer>
+      <footer><span className="brand x-footbrand"><span className="burst" aria-hidden="true" />KULTURPROGRAMM</span> <span>{t.footer}</span></footer>
 
       <dialog ref={dialog} aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
         <div className="dialogbody">
