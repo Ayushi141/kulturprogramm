@@ -21,6 +21,13 @@ export function berlin(d: Date): { date: string; min: number } {
   return { date: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }
 }
 
+/** "18.11., 06:12" in Berlin time. */
+export function stamp(d: Date): string {
+  const b = berlin(d), [, m, day] = b.date.split('-')
+  const hh = String(Math.floor(b.min / 60)).padStart(2, '0'), mm = String(b.min % 60).padStart(2, '0')
+  return `${day}.${m}., ${hh}:${mm}`
+}
+
 /** Culture day (YYYY-MM-DD) and minutes inside it (360 to 1799). */
 export function cultureDay(d: Date): { day: string; min: number } {
   const b = berlin(d)

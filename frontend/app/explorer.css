@@ -56,6 +56,7 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 
 /* controls */
 .x-hint{font:12.5px/1.8 var(--mono);margin:0 0 10px;min-height:22px}
+.x-updated{font:11px/1.4 var(--mono);color:#565247;margin:-8px 0 12px}
 .x-hint b{background:var(--ink);color:var(--paper);padding:2px 7px;letter-spacing:.5px}
 
 /* timeline */
@@ -141,3 +142,8 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
   .navwrap .saves b{display:inline}
 }
 
+
+/* Poster cards in DIN A portrait format (1 : √2), like a printed poster. Landscape
+   venue photos are cropped to their centre; film posters are already portrait. */
+.x-group .poster{aspect-ratio:1/1.414}
+.x-group .cat-movies img{object-position:center}

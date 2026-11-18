@@ -11,13 +11,15 @@ import { CAT } from './categories'
 import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 
 /* Geometry (px) */
-const L = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
+const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
 /**
  * The chart is drawn at a logical width of about BASE_W px and scaled up to the
  * available width, by at most MAX_ZOOM. Wide screens get bigger text and bars
  * instead of only more space between the hours. Below MIN_W it scrolls sideways.
  */
 const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
+/** Up to this container width (phones) the chart fits the screen, without the label gutter. */
+const NARROW = 700, VENUE_HEAD = 16
 const INK = '#201f1a', PAPER = '#f7f3e8', CARD = '#fbf8f1', RED = '#df3929'
 const MONO = "'Courier New', monospace"
 const TITLE_FONT = '14.5px Poster, Impact, sans-serif'
@@ -99,6 +101,7 @@ export function Timeline(p: TimelineProps) {
   const svg = useRef<SVGSVGElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const [cw, setCw] = useState(1100) // CSS px available for the chart
+  const [narrow, setNarrow] = useState(false)
   const [, setFontsReady] = useState(0)
   const [tip, setTip] = useState<(Float & { body: ReactNode }) | null>(null)
   // `fitted` is set once the popover has been measured and, if needed, moved on screen
@@ -109,7 +112,11 @@ export function Timeline(p: TimelineProps) {
   useLayoutEffect(() => {
     const el = box.current
     if (!el) return
-    const ro = new ResizeObserver(() => setCw(Math.max(MIN_W, el.clientWidth)))
+    const ro = new ResizeObserver(() => {
+      const n = el.clientWidth <= NARROW
+      setNarrow(n)
+      setCw(n ? el.clientWidth : Math.max(MIN_W, el.clientWidth))
+    })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -137,6 +144,8 @@ export function Timeline(p: TimelineProps) {
     return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close); b?.removeEventListener('scroll', close) }
   }, [pop])
 
+  // On phones there is no gutter: venue names are headings above their lanes instead.
+  const L = narrow ? 12 : GUTTER, head = narrow ? VENUE_HEAD : 0
   const Z = Math.min(MAX_ZOOM, Math.max(1, cw / BASE_W)), W = cw / Z // zoom and logical width
   const [A, B] = p.win
   const k = (W - L - R) / (B - A), ko = (W - L - R) / (DAY1 - DAY0)
@@ -162,15 +171,15 @@ export function Timeline(p: TimelineProps) {
         its.forEach(it => {
           let li = lanes.findIndex(end => end <= it.s)
           if (li < 0) { li = lanes.length; lanes.push(0) }
-          lanes[li] = it.e; ys.set(it.id, y + 7 + li * LANE)
+          lanes[li] = it.e; ys.set(it.id, y + head + 7 + li * LANE)
         })
-        const h = lanes.length * LANE + 8
+        const h = head + lanes.length * LANE + 8
         rows.push({ kind: 'venue', label: v.name, y, h, alt: i % 2 === 1 }); y += h
       })
       y += 6
     }
     return { rows, ys, inWin, H: Math.max(y + 24, TOP + 120) }
-  }, [p.items, p.venues, p.win])
+  }, [p.items, p.venues, p.win, head])
   const H = layout.H
 
   /* Bar geometry. Memoised so hover (which re-renders for the tooltip) does not rebuild the halftone paths. */
@@ -195,7 +204,7 @@ export function Timeline(p: TimelineProps) {
       })
     }
     return geo
-  }, [layout, A, k, W, p.planIds, popId])
+  }, [layout, A, k, W, L, p.planIds, popId])
 
   /* Whole-day overview: stacked counts per 15 minutes */
   const overview = useMemo(() => {
@@ -306,15 +315,17 @@ export function Timeline(p: TimelineProps) {
             })
           })}
           <line x1={L} x2={W - R} y1={OV_Y + OV_H + 0.5} y2={OV_Y + OV_H + 0.5} stroke={INK} strokeWidth={1.5} />
-          {Array.from({ length: 9 }, (_, i) => DAY0 + i * 180).map(m => (
+          {(narrow ? [0, 1, 2, 3, 4].map(i => DAY0 + i * 360) : Array.from({ length: 9 }, (_, i) => DAY0 + i * 180)).map(m => (
             <g key={m}>
               <line x1={xo(m)} x2={xo(m)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
               <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(m)}</text>
             </g>
           ))}
-          <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{t.wholeDay}</text>
-          <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.onAtOnce}</text>
-          <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.dragToZoom}</text>
+          {!narrow && <>
+            <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{t.wholeDay}</text>
+            <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.onAtOnce}</text>
+            <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.dragToZoom}</text>
+          </>}
           {p.nowMin !== null && <>
             {/* the label sits above the window frame (whose top edge is at OV_Y - 8) */}
             <line x1={xo(p.nowMin)} x2={xo(p.nowMin)} y1={OV_Y - 22} y2={OV_Y + OV_H} stroke={RED} strokeWidth={2} />
@@ -340,7 +351,9 @@ export function Timeline(p: TimelineProps) {
               </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
-                <text x={12} y={r.y + 7 + BAR / 2 + 4.5} fontFamily="Arial, Helvetica, sans-serif" fontSize={13} fontWeight={700}>{fitText(r.label, L - 30, 'bold 13px Arial')}</text>
+                {narrow
+                  ? <text x={12} y={r.y + 13} fontFamily="Arial, Helvetica, sans-serif" fontSize={11.5} fontWeight={700}>{fitText(r.label, W - 24, 'bold 11.5px Arial')}</text>
+                  : <text x={12} y={r.y + 7 + BAR / 2 + 4.5} fontFamily="Arial, Helvetica, sans-serif" fontSize={13} fontWeight={700}>{fitText(r.label, L - 30, 'bold 13px Arial')}</text>}
               </g>)}
         </g>
 
@@ -353,7 +366,7 @@ export function Timeline(p: TimelineProps) {
               {major && !underNow(m) && <text x={x(m)} y={TOP - 12} textAnchor={anchorAt(x(m), L, W - R)} fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(m)}</text>}
             </g>
           })}
-          <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />
+          {!narrow && <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />}
         </g>
 
         {/* bars */}

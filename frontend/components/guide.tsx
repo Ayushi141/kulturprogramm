@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, LayoutGrid, MicVocal, X } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
 import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
-import { cultureDay, DAY1, dayLabel, shiftDate, weekday } from '@/lib/time'
+import { cultureDay, DAY1, dayLabel, shiftDate, stamp, weekday } from '@/lib/time'
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
@@ -127,6 +127,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
         <section className="directory" id="guide">
           {programme.demo && <p className="x-demo">{t.demo}</p>}
           <p className="x-hint">{hint}</p>
+          {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
           {view === 'timeline' ? <>
             <Timeline venues={programme.venues} items={visible} overviewItems={pool} win={win} nowMin={nowMin}

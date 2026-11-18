@@ -43,7 +43,7 @@ export type Event = {
   url?: string
   /** Free text, for example "18–49 €". */
   price?: string
-  /** Absolute image URL. If it is missing or fails, a typographic fallback shows. */
+  /** Image URL, absolute or a path on this site (`/img/<key>`, served from the database). If it is missing or fails, a typographic fallback shows. */
   image?: string
   /** Optional subtitle, for example the director or the cast. */
   note?: string
@@ -54,6 +54,8 @@ export type Programme = {
   events: Event[]
   /** ISO 8601 time when the data was produced. */
   generatedAt: string
+  /** ISO 8601 time of the last scraper run (newest `updated_at`), or null when there are no events. */
+  updatedAt?: string | null
   /** True when the data is the built-in demo fixture. The UI then shows a notice. */
   demo?: boolean
 }

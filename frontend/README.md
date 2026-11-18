@@ -38,6 +38,8 @@ the same variables, for example `PGHOST=127.0.0.1`.
   such a bar with an open end: solid colour under the label, then a halftone
   that fades to nothing, with no right edge (`components/explorer/open-end.ts`).
 - Venues are ordered by city, then name.
+- Event images come from the `images` table and are served at `/img/<key>`
+  (`app/img/[key]/route.ts`), so visitors never load images from the venues.
 
 The page is rendered on each request (`dynamic` in `app/page.tsx`). If the
 query fails, the page shows an error. It never falls back to the demo when

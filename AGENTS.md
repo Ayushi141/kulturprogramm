@@ -29,7 +29,7 @@ from that directory, or pass the Compose file explicitly.
 - PostgreSQL uses `postgres:18`; the configured database and user are both
   `kultur`.
 - The scraper image uses `python:3.15-slim`. Its dependencies are `httpx`,
-  `beautifulsoup4`, and `psycopg[binary]` 3, installed unpinned in
+  `beautifulsoup4`, `psycopg[binary]` 3, and `pillow`, installed unpinned in
   `backend/scraper/Dockerfile`.
 - The frontend is a Next.js application (`node:22-alpine` image, built from
   `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
@@ -54,6 +54,14 @@ CREATE TABLE venues (
     city text NOT NULL
 );
 
+CREATE TABLE images (
+    key          text PRIMARY KEY,  -- sha256 of the image bytes (first 32 hex digits)
+    source_url   text        NOT NULL,
+    content_type text        NOT NULL,
+    data         bytea       NOT NULL,
+    fetched_at   timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
@@ -62,6 +70,7 @@ CREATE TABLE events (
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,
+    image_key  text REFERENCES images (key),
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
@@ -69,14 +78,15 @@ CREATE TABLE events (
 
 There is no category `CHECK` constraint in the current schema. `init.sql` runs
 when PostgreSQL initializes an empty data volume; changing it does not update
-an existing database. Apply a separate migration to an existing database when
-changing its schema.
+an existing database. To apply a schema change, recreate the database (see
+`docker compose down -v` below) or migrate the existing one by hand.
 
 Each row represents one event at one start time. `ends_at` is NULL when the
 source lists no end time. The unique key lets the scraper update an existing
 event with the same title, venue, and start time. `save()` first upserts the
-events' venues, then updates `category`, `ends_at`, `url`, and `updated_at` on
-event conflict. It does not remove
+events' venues and new images, then updates `category`, `ends_at`, `url`,
+`image_key` (kept when the new lookup found none), and `updated_at` on event
+conflict. It does not remove
 events that disappear from a venue's program, so cancelled or expired rows can
 remain in the database.
 
@@ -110,12 +120,22 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   `venues` row, like the frontend's `Venue`. Build its `id` as
   `f"{self.name}-{slugify(name)}"`.
 - `Event` is a dataclass with `title`, `venue`, `category`, an aware
-  `starts_at`, an optional aware `ends_at`, and an optional absolute `url`.
+  `starts_at`, an optional aware `ends_at`, an optional absolute `url`, and
+  optional `image_url` (set by `scrape()` when the program page shows one) and
+  `image_key` (set by `add_images()`).
 - `Source` stores a source key and URL and defines the abstract `scrape()`
   method.
 - Each source's `scrape()` fetches and parses events. `Source.save()` upserts
-  the events' venues, then the events.
-- The run loop scrapes each source in `sources`, saves its results, and sleeps
+  the events' venues, new images, then the events.
+- Images: `Source.scrape_image(event)` returns an image URL or `None`; the
+  default returns `event.image_url`, else the `og:image` of `event.url`.
+  `Source.add_images(events)` calls it once per title and stores the image's
+  original bytes (no resizing or re-encoding; Pillow only checks the format),
+  keyed by a hash of the bytes. It never raises: a failure is logged in
+  one line and the event keeps no image. Images already stored for an event
+  page are reused, so a run only fetches pages of new productions. The
+  frontend serves images at `/img/<key>` from the database.
+- The run loop scrapes each source in `sources`, adds images, saves, and sleeps
   for one day. If a source raises, the loop prints the traceback and continues
   with the next source, so one failing source does not stop the others.
 
@@ -125,7 +145,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - Use `%s` placeholders in SQL. Do not interpolate values into SQL strings.
 - Set an HTTP timeout; the current scrapers use `timeout=60`.
 - Let parse errors surface instead of silently dropping malformed records;
-  the run loop logs them per source.
+  the run loop logs them per source. Images are the exception: they are
+  optional, so image errors never stop an event from being saved.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
 
@@ -186,10 +207,17 @@ that a venue's live page has not changed.
 - Start: the date in `time.s-bko-activity__datetime[datetime]` and the last
   text piece from that element, parsed with
   `strptime(..., "%Y-%m-%d %H.%M Uhr")`; the parser attaches Berlin time.
-- Venue: fixed `Schauspiel Köln` in `Köln`; the calendar names no stage.
-- End: always `None`; the calendar gives no end or length. Production pages
-  list stage and length (for example, `Schauspielhaus 1 h 45 min`), but are
-  not fetched.
+- The calendar names no stage or length, so `production(url)` fetches each
+  production page once per run and reads:
+  - Venue: `.field--name-stages` (`Schauspielhaus`, `Kleines Haus`,
+    `Erfrischungsraum`, `Offenbachplatz`, `Kolumba`) in `Köln`. A page listing
+    several stages (`Erfrischungsraum & Kleines Haus`) or none uses the general
+    `VENUE` `Schauspiel Köln`.
+  - End: start plus `.field--name-duration` (`1 h 45 min`, `5 h`); `None` when
+    missing (about a third of the productions). Unknown formats are logged.
+  - Image: `og:image`, passed on as `image_url`.
+- A production page that fails to load is logged; its events are still saved
+  with the general venue and no end or image.
 - Label: `.field--name-category`, or an empty string if missing. Labels in
   `EXCLUDED_LABELS` (`Führung`, `Workshop`) are skipped. `Schulvorstellung`
   is not filtered.
