@@ -78,10 +78,12 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   const ahead = visible.filter(i => upcoming(i, nowMin) || planIds.has(i.id))
   const started = visible.length - ahead.length
   const countOf = (d: string) => (byDay.get(d) ?? []).filter(i => inCat(i) && upcoming(i, d === now?.day ? now.min : null)).length
-  // "In focus": the next performance of a featured title, from the selected day on
+  // "In focus" shows whatever day or categories are selected: a performance on the
+  // selected day if there is one, otherwise the next upcoming one
   const featured = new Set(programme.featured ?? [])
-  const focus = featured.size ? days.filter(d => d >= day).flatMap(d => (byDay.get(d) ?? [])
-    .filter(i => featured.has(i.ev.title) && inCat(i) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart))[0] : undefined
+  const focusAll = featured.size ? days.flatMap(d => (byDay.get(d) ?? [])
+    .filter(i => featured.has(i.ev.title) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
+  const focus = focusAll.find(i => i.day === day) ?? focusAll[0]
   const suggestion = ahead.filter(i => i.s >= EVENING[0]).sort((a, b) => a.s - b.s)[0] ?? ahead[0]
 
   const onToggle = (id: string) => setPlans(ps => ({ ...ps, [day]: toggle(plan.map(i => i.id), id) }))
@@ -113,7 +115,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
                   <Picture image={focus.ev.image} category={focus.category} key={focus.id} />
                   <span className="featuretop">{t.inFocus} / {t.cat[focus.category].tag}</span>
                   <span className="featurecap">
-                    <small>{focus.venue.name} · {t.dateline(t.wdl[weekday(focus.day)].toUpperCase(), dayLabel(focus.day))}, {fmt(focus.s)}</small>
+                    <small>{t.dateline(t.wdl[weekday(focus.day)].toUpperCase(), dayLabel(focus.day))}, {fmt(focus.s)} · {focus.venue.name}</small>
                     <strong>{focus.ev.title}</strong>
                     <ArrowUpRight size={22} />
                   </span>

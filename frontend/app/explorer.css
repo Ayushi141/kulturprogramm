@@ -22,15 +22,17 @@ footer .x-footbrand{font:20px/.95 var(--display);letter-spacing:-1px;transform:n
 footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 
 /* hero: the headline is the answer for the selected day */
-.x-hero{padding:24px 0 14px}
+.x-hero{padding:24px 0}
 .x-hero h1{font-size:clamp(52px,5.6vw,92px);line-height:.94;margin:14px 0 18px}
 /* "In focus" card beside the headline (styles .feature* in globals.css) */
-/* the card is exactly as tall as the headline (grid stretch), so it costs no extra height */
-.x-herorow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:28px;align-items:stretch}
+/* the card is exactly as tall as the headline (grid stretch), so it costs no extra height;
+   its width follows the headline size (both scale with vw), keeping it about 2.4 : 1 */
+.x-herorow{display:grid;grid-template-columns:minmax(0,1fr) clamp(240px,25vw,400px);gap:28px;align-items:stretch}
 .x-herorow:not(:has(.x-focus)){display:block}
 .x-focus{display:block;width:100%;min-height:0;margin:14px 8px 18px 0;padding:0;font:inherit}
 .x-focus .featurecap{inset:auto 15px 10px}
-.x-focus .featurecap small{font:700 11px var(--mono);letter-spacing:1px;margin-bottom:4px}
+/* one line, date first: a narrow card cuts the venue, never the date */
+.x-focus .featurecap small{font:700 11px var(--mono);letter-spacing:1px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 .x-focus .featurecap strong{text-align:left;overflow-wrap:anywhere}
 @media(max-width:900px){.x-herorow{grid-template-columns:minmax(0,1fr);gap:0}.x-focus{transform:none;height:130px;margin:0 6px 18px 0}}
 
