@@ -24,7 +24,7 @@ export function getPool(): Pool | null {
  *
  * - If `PGPASSWORD_FILE` is set (as in the Compose setup), the function reads
  *   the events from PostgreSQL: everything that started in the last 6 hours or
- *   starts in the next 8 days.
+ *   starts in the next 183 days (the day strip shows 7, "later" the rest).
  * - Otherwise it returns the demo programme.
  *
  * If the database query fails, the function throws an error. It does not fall
@@ -42,7 +42,7 @@ export async function getProgramme(): Promise<Programme> {
       `SELECT id, title, category, venue_id, starts_at, ends_at, url, image_key
        FROM events
        WHERE starts_at > now() - interval '6 hours'
-         AND starts_at < now() + interval '8 days'
+         AND starts_at < now() + interval '183 days'
        ORDER BY starts_at`,
     ),
     // every run sets updated_at on the events it saves, so the newest one is the last run

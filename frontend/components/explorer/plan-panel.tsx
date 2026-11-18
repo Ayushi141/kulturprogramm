@@ -55,3 +55,28 @@ export function PlanPanel({ day, plan, suggestion, onToggle, onClear }: Props) {
     </section>
   )
 }
+
+/** Saved performances after the seven days, by evening. Each one keeps its own date. */
+export function LaterPanel({ items, onToggle }: { items: Item[]; onToggle: (id: string) => void }) {
+  const t = useT()
+  const byDay = new Map<string, Item[]>()
+  items.forEach(it => byDay.set(it.day, [...(byDay.get(it.day) ?? []), it]))
+  return (
+    <section className="x-plan" id="my-evening">
+      <h2>{t.laterPanel}<span className="period">.</span></h2>
+      <p className="x-sum">{items.length ? t.laterSum(items.length, byDay.size) : t.empty}</p>
+      {!items.length && <p className="x-emptyplan">{t.laterEmpty}</p>}
+      <div className="x-steps">
+        {[...byDay].flatMap(([d, its]) => its.map(s => (
+          <div className="x-step" key={s.id}>
+            <small>{t.wd[weekday(d)]} {dayLabel(d)} · {timeRange(s, t)}</small>
+            <h3>{s.ev.title}</h3>
+            <p><i style={{ background: CAT[s.category].color }} />{s.venue.name} · {s.venue.city}</p>
+            {s.ev.url && <a className="x-ticket" href={s.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets} <ArrowUpRight size={14} /></a>}
+            <button className="x-remove" onClick={() => onToggle(s.id)}>{t.removeShort}</button>
+          </div>
+        )))}
+      </div>
+    </section>
+  )
+}

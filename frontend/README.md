@@ -29,7 +29,7 @@ the `venues` and `events` tables from PostgreSQL. The Compose file in
 `PGDATABASE`, which `pg` reads itself. To use the database with `pnpm dev`, set
 the same variables, for example `PGHOST=127.0.0.1`.
 
-- Events from 6 hours ago to 8 days ahead are loaded.
+- Events from 6 hours ago to 183 days ahead are loaded. The day strip shows the first 7 days; the "later" button shows the rest, one line per production.
 - Database categories `theater`, `oper` and `film` become `theatre`, `opera`
   and `movies`. Other categories, such as `konzert`, are not shown.
 - `ends_at` NULL becomes a missing `end` ("end not announced"). For layout

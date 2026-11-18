@@ -9,6 +9,7 @@ import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
 import { CAT } from './categories'
 import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
+import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 
 /* Geometry (px) */
 const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
@@ -17,40 +18,13 @@ const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
  * available width, by at most MAX_ZOOM. Wide screens get bigger text and bars
  * instead of only more space between the hours. Below MIN_W it scrolls sideways.
  */
-const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
+export const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
 /** Up to this container width (phones) the chart fits the screen, without the label gutter. */
-const NARROW = 700, VENUE_HEAD = 16
+export const NARROW = 700
+const VENUE_HEAD = 18
 const INK = '#201f1a', PAPER = '#f7f3e8', CARD = '#fbf8f1', RED = '#df3929'
-const MONO = "'Courier New', monospace"
-const TITLE_FONT = '14.5px Poster, Impact, sans-serif'
-
-/* Text fitting with canvas measurement (SVG has no text-overflow). */
-let ctx: CanvasRenderingContext2D | null = null
-function width(s: string, font: string) {
-  if (typeof document === 'undefined') return s.length * 7
-  ctx ??= document.createElement('canvas').getContext('2d')
-  if (!ctx) return s.length * 7
-  ctx.font = font
-  return ctx.measureText(s).width
-}
-function fitText(s: string, max: number, font: string) {
-  if (width(s, font) <= max) return s
-  let t = s
-  while (t.length > 1 && width(t + '…', font) > max) t = t.slice(0, -1)
-  return t.trimEnd() + '…'
-}
 /** Event id usable inside an SVG id and url(#…). */
 const safeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_')
-/** Splits text into lines no wider than `max` px. */
-function wrapText(s: string, max: number, font: string) {
-  const lines: string[] = []
-  let line = ''
-  for (const word of s.split(' ')) {
-    const next = line ? line + ' ' + word : word
-    if (line && width(next, font) > max) { lines.push(line); line = word } else line = next
-  }
-  return line ? [...lines, line] : lines
-}
 const snap = (t: number) => Math.max(DAY0, Math.min(DAY1, Math.round(t / 30) * 30))
 
 type OpenEnd = { xm: number; xe: number; fill: string; dots: string; outline: string }
@@ -189,7 +163,7 @@ export function Timeline(p: TimelineProps) {
     for (const it of layout.inWin) {
       const y = layout.ys.get(it.id)!, planned = p.planIds.has(it.id), sw = planned || popId === it.id ? 3 : 1.5
       const x0 = x(it.s) + 1, lpad = it.s < A ? 14 : 7, time = fmt(it.s)
-      const labelW = width(it.ev.title, TITLE_FONT) + 7 + width(time, '10.5px ' + MONO)
+      const labelW = width(it.ev.title, TITLE_FONT) + 7 + width(time, MARK_FONT)
       if (it.endKnown) {
         const w = Math.max(4, x(it.e) - 1 - x0)
         geo.set(it.id, { it, y, x0, w, sw, planned, lpad, time, labelW, avail: w - lpad - 8 })
@@ -281,7 +255,7 @@ export function Timeline(p: TimelineProps) {
   /* "now" badge on the main axis: sized to its text; hour labels under it are hidden */
   const nowOnAxis = p.nowMin !== null && p.nowMin > A && p.nowMin < B
   const nowText = p.nowMin !== null ? `${t.now} ${fmt(p.nowMin)}` : ''
-  const nowW = width(nowText, `bold 11px ${MONO}`) + 12, nowX = nowOnAxis ? x(p.nowMin!) : 0
+  const nowW = width(nowText, LABEL_FONT) + 12, nowX = nowOnAxis ? x(p.nowMin!) : 0
   // centred on the now line, but kept inside the chart area
   const nowLeft = Math.max(L, Math.min(W - R - nowW, nowX - nowW / 2))
   const AXIS_LABEL_W = 42 // "00:00" at 11.5px bold mono, plus a little air
@@ -318,20 +292,20 @@ export function Timeline(p: TimelineProps) {
           {(narrow ? [0, 1, 2, 3, 4].map(i => DAY0 + i * 360) : Array.from({ length: 9 }, (_, i) => DAY0 + i * 180)).map(m => (
             <g key={m}>
               <line x1={xo(m)} x2={xo(m)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
-              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(m)}</text>
+              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} {...T.mark} fill="#565247">{fmt(m)}</text>
             </g>
           ))}
           {!narrow && <>
-            <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{t.wholeDay}</text>
-            <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.onAtOnce}</text>
-            <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.dragToZoom}</text>
+            <text x={12} y={OV_Y + 14} {...T.label} letterSpacing={TRACK}>{t.wholeDay}</text>
+            <text x={12} y={OV_Y + 29} {...T.mark} fill="#565247">{t.onAtOnce}</text>
+            <text x={12} y={OV_Y + 43} {...T.mark} fill="#565247">{t.dragToZoom}</text>
           </>}
           {p.nowMin !== null && <>
             {/* the label sits above the window frame (whose top edge is at OV_Y - 8) */}
             <line x1={xo(p.nowMin)} x2={xo(p.nowMin)} y1={OV_Y - 22} y2={OV_Y + OV_H} stroke={RED} strokeWidth={2} />
             {(() => {
               const nx = xo(p.nowMin!), right = nx > W - R - 50
-              return <text x={right ? nx - 4 : nx + 4} y={OV_Y - 13} textAnchor={right ? 'end' : 'start'} fontFamily={MONO} fontSize={10.5} fontWeight={700} fill={RED}>{t.now}</text>
+              return <text x={right ? nx - 4 : nx + 4} y={OV_Y - 13} textAnchor={right ? 'end' : 'start'} {...T.label} fill={RED}>{t.now}</text>
             })()}
           </>}
           <rect x={L} y={OV_Y - 8} width={Math.max(0, fa - L)} height={OV_H + 8} fill={CARD} opacity={0.72} />
@@ -339,7 +313,7 @@ export function Timeline(p: TimelineProps) {
           <rect x={fa} y={OV_Y - 8} width={fb - fa} height={OV_H + 8} fill="none" stroke={RED} strokeWidth={2.5} />
           <path d={`M${fa},${OV_Y + OV_H} L${L},${TOP - 30} M${fb},${OV_Y + OV_H} L${W - R},${TOP - 30}`} stroke={RED} strokeWidth={1} opacity={0.55} fill="none" />
           <rect x={flx - flw / 2} y={OV_Y + OV_H + 21} width={flw} height={17} fill={RED} />
-          <text x={flx} y={OV_Y + OV_H + 33} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">{frameLabel}</text>
+          <text x={flx} y={OV_Y + OV_H + 33} textAnchor="middle" {...T.label} fill="#fff">{frameLabel}</text>
         </g>
 
         {/* rows */}
@@ -347,13 +321,13 @@ export function Timeline(p: TimelineProps) {
           {layout.rows.map((r, i) => r.kind === 'city'
             ? <g key={i}>
                 <line x1={12} x2={W - R} y1={r.y + 24} y2={r.y + 24} stroke={INK} strokeWidth={1.5} />
-                <text x={12} y={r.y + 18} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{r.label.toUpperCase()}</text>
+                <text x={12} y={r.y + 18} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow
-                  ? <text x={12} y={r.y + 13} fontFamily="Arial, Helvetica, sans-serif" fontSize={11.5} fontWeight={700}>{fitText(r.label, W - 24, 'bold 11.5px Arial')}</text>
-                  : <text x={12} y={r.y + 7 + BAR / 2 + 4.5} fontFamily="Arial, Helvetica, sans-serif" fontSize={13} fontWeight={700}>{fitText(r.label, L - 30, 'bold 13px Arial')}</text>}
+                  ? <text x={12} y={r.y + 14} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+                  : <text x={12} y={r.y + 7 + BAR / 2 + 4.5} {...T.ui}>{fitText(r.label, L - 30, UI_FONT)}</text>}
               </g>)}
         </g>
 
@@ -363,7 +337,7 @@ export function Timeline(p: TimelineProps) {
             const major = m % labelEvery === 0
             return <g key={m}>
               <line x1={x(m)} x2={x(m)} y1={TOP - 6} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
-              {major && !underNow(m) && <text x={x(m)} y={TOP - 12} textAnchor={anchorAt(x(m), L, W - R)} fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(m)}</text>}
+              {major && !underNow(m) && <text x={x(m)} y={TOP - 12} textAnchor={anchorAt(x(m), L, W - R)} {...T.label}>{fmt(m)}</text>}
             </g>
           })}
           {!narrow && <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />}
@@ -401,12 +375,12 @@ export function Timeline(p: TimelineProps) {
                   {planned && <rect x={x0 + 4} y={y + 4} width={w} height={BAR} fill={RED} />}
                   <rect x={x0} y={y} width={w} height={BAR} fill={cat.color} stroke={INK} strokeWidth={sw} />
                 </>}
-                {it.s < A && <text x={x0 + 4} y={y + 17} fontFamily={MONO} fontSize={12} fontWeight={700} fill={cat.ink}>‹</text>}
-                {it.e > B && <text x={(open ? W - R : x0 + w) - 4} y={y + 17} textAnchor="end" fontFamily={MONO} fontSize={12} fontWeight={700} fill={moreInk}>›</text>}
+                {it.s < A && <text x={x0 + 4} y={y + 17} {...T.label} fill={cat.ink}>‹</text>}
+                {it.e > B && <text x={(open ? W - R : x0 + w) - 4} y={y + 17} textAnchor="end" {...T.label} fill={moreInk}>›</text>}
                 {avail > 16 && (
-                  <text x={x0 + lpad} y={y + 17.5} fontFamily="Poster, Impact, sans-serif" fontSize={14.5} fill={cat.ink} letterSpacing={0.2}>
+                  <text x={x0 + lpad} y={y + 17.5} {...T.title} fill={cat.ink}>
                     {showTime ? it.ev.title : fitText(it.ev.title, avail, TITLE_FONT)}
-                    {showTime && <tspan fontFamily={MONO} fontSize={10.5} dx={7} opacity={0.85}>{time}</tspan>}
+                    {showTime && <tspan {...T.mark} dx={7} opacity={0.85}>{time}</tspan>}
                   </text>
                 )}
               </g>
@@ -436,15 +410,15 @@ export function Timeline(p: TimelineProps) {
             {p.nowMin < B && <>
               <line x1={x(p.nowMin)} x2={x(p.nowMin)} y1={TOP - 4} y2={H - 14} stroke={RED} strokeWidth={2} />
               <rect x={nowLeft} y={TOP - 27} width={nowW} height={17} fill={RED} />
-              <text x={nowLeft + nowW / 2} y={TOP - 15} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">{nowText}</text>
+              <text x={nowLeft + nowW / 2} y={TOP - 15} textAnchor="middle" {...T.label} fill="#fff">{nowText}</text>
             </>}
           </g>
         )}
 
         {/* nothing in view: centred in the chart area, wrapped to fit, above the past-time overlay */}
         {!layout.rows.length && (
-          <text x={L + (W - L - R) / 2} y={TOP + 60} textAnchor="middle" fontFamily={MONO} fontSize={13} fill="#565247">
-            {wrapText(t.nothingInView, W - L - R - 40, `13px ${MONO}`).map((line, i) => <tspan key={i} x={L + (W - L - R) / 2} dy={i ? 19 : 0}>{line}</tspan>)}
+          <text x={L + (W - L - R) / 2} y={TOP + 60} textAnchor="middle" {...T.text} fill="#565247">
+            {wrapText(t.nothingInView, W - L - R - 40, TEXT_FONT).map((line, i) => <tspan key={i} x={L + (W - L - R) / 2} dy={i ? 19 : 0}>{line}</tspan>)}
           </text>
         )}
 

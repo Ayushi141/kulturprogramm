@@ -1,6 +1,7 @@
 /**
- * Demo fixture. Generates 7 days of plausible programme from weekly venue
- * rules, starting today. Times, prices and most titles are invented; event
+ * Demo fixture. Generates half a year of plausible programme from weekly
+ * venue rules, starting today: cinemas two weeks ahead, stage productions in
+ * runs of a few weeks (RUNS). Times, prices and most titles are invented; event
  * links point to the venue home pages.
  * Used by `getProgramme()` when no database is configured.
  */
@@ -31,6 +32,18 @@ const FILMS: [string, number][] = [
 const CLASSICS = ['Metropolis (Stummfilm + Live-Klavier)', 'Der Himmel über Berlin', 'Nosferatu (Stummfilm + Live-Klavier)', 'M — Eine Stadt sucht einen Mörder']
 const IMAGES: Partial<Record<Category, string>> = { theatre: '/images/theatre.webp', movies: '/images/cinema.webp' }
 
+/** Run of each stage production in weeks from today [first, last]. Titles not listed run all season. */
+const RUNS: Record<string, [number, number]> = {
+  'Der Hobbit': [0, 16], 'Der Hobbit · Familienvorstellung': [0, 8], 'Die Physiker · Kleines Haus': [0, 10],
+  'Stadt ohne Autos (Performance)': [0, 6], 'Gravity Lines (Tanz)': [0, 4], 'Ballett am Rhein: b.52': [10, 20],
+  'Don Giovanni': [8, 18], 'Die Zauberflöte': [6, 20], 'La Bohème': [0, 9], 'Tosca': [0, 12],
+  'Carmen': [4, 26], 'Die Fledermaus': [4, 12], 'Der Rosenkavalier': [12, 26], 'Hänsel und Gretel': [0, 6],
+}
+/** Cinemas publish about two weeks ahead. */
+const CINEMA_DAYS = 14
+/** Days of demo programme: half a year, as getProgramme() loads from the database. */
+const HORIZON = 183
+
 /** "01:30" → 1530 (before 06:00 counts as after midnight). */
 const tm = (s: string) => { let [h, m] = s.split(':').map(Number); if (h < 6) h += 24; return h * 60 + m }
 
@@ -38,6 +51,8 @@ function dayProgramme(day: string, i: number): Event[] {
   const out: Event[] = [], dw = weekday(day), is = (...d: number[]) => d.includes(dw)
   /** `e` is an end time, a length in minutes, or null when the venue publishes no end. */
   const add = (venueId: string, category: Category, title: string, s: string, e: string | number | null, price: string) => {
+    const run = RUNS[title], week = Math.floor(i / 7)
+    if (category === 'movies' ? i >= CINEMA_DAYS : run && (week < run[0] || week > run[1])) return
     const sm = tm(s), em = e === null ? null : typeof e === 'number' ? sm + e : tm(e)
     out.push({
       id: `demo-${day}-${out.length}`, title, category, venueId, price,
@@ -96,6 +111,6 @@ function dayProgramme(day: string, i: number): Event[] {
 
 export function demoProgramme(now = new Date()): Programme {
   const today = cultureDay(now).day
-  const events = Array.from({ length: 7 }, (_, i) => dayProgramme(shiftDate(today, i), i)).flat()
+  const events = Array.from({ length: HORIZON }, (_, i) => dayProgramme(shiftDate(today, i), i)).flat()
   return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['Der Hobbit'], demo: true }
 }

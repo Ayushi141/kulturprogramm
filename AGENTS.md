@@ -33,10 +33,14 @@ from that directory, or pass the Compose file explicitly.
   `backend/scraper/Dockerfile`.
 - The frontend is a Next.js application (`node:22-alpine` image, built from
   `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
-  reads `venues` and events from 6 hours ago to 8 days ahead, and maps
+  reads `venues` and events from 6 hours ago to 183 days ahead, and maps
   categories `theater`, `oper`, `film` to the frontend's `theatre`, `opera`,
   `movies`; other categories are not shown. Without `PGPASSWORD_FILE` it shows
   a demo programme. The data contract is `frontend/lib/types.ts`.
+- The day strip shows 7 days plus a "later" button for days 8–183: one line
+  per production with one square per performance (`season-timeline.tsx`) or
+  one card per production (`SeasonPoster`). Picks are saved under the day of
+  each performance.
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
@@ -95,6 +99,31 @@ events' venues and new images, then updates `category`, `ends_at`, `url`,
 conflict. It does not remove
 events that disappear from a venue's program, so cancelled or expired rows can
 remain in the database.
+
+## Frontend typography
+
+All text styles are in the "Type system" block at the end of
+`frontend/app/explorer.css`; the timeline SVG uses the same styles through `T`
+in `frontend/components/explorer/timeline.tsx`. Use one of these seven styles
+instead of adding new sizes or weights:
+
+| Style | Font | Use |
+|---|---|---|
+| label | mono 700 11, tracked `.08em` | tags, badges, kickers, axis times |
+| mark | mono 400 11 | small timeline marks only (overview ticks, times in bars) |
+| text | mono 400 12 | every sentence and meta line |
+| ui | Arial 700 13 | buttons, controls, venue names |
+| title-s | Poster 15 | timeline bar titles |
+| title-m | Poster 22 | card, step and tooltip titles |
+| title-l | Poster 32 | section headings |
+
+- Sizes are written as `calc(N * var(--zs))`. `--zs` scales from 1px to 1.5px
+  with the page, like the timeline's zoom `Z`, so chart and page text match.
+- Secondary text is grey (`#565247`), never smaller or lighter.
+- Exceptions with fixed sizes: the logo, the hero headline, the view toggle
+  (Poster 18px, 15px on phones), the day-card dates (Poster 24px), and the
+  small day-card and "In focus" lines (mono 11px), and the hint, "Stand" and
+  zoom-hint lines around the chart (mono 12px). `globals.css` holds v0 template leftovers; do not set fonts there.
 
 ## Configuration and secrets
 

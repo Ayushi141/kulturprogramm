@@ -72,3 +72,18 @@ export const endLabel = (it: Item, t: Dict) => (it.endKnown ? fmt(it.e) : t.open
 
 /** Adds or removes an ID. */
 export const toggle = (ids: string[], id: string) => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
+
+/** All performances of one title at one venue. */
+export type Production = { key: string; title: string; venue: Venue; category: Category; dates: Item[] }
+
+/** Groups performances into productions (same title at the same venue), dates in time order. */
+export function productions(items: Item[]): Production[] {
+  const map = new Map<string, Production>()
+  for (const it of items) {
+    const key = it.venue.id + '|' + it.ev.title
+    if (!map.has(key)) map.set(key, { key, title: it.ev.title, venue: it.venue, category: it.category, dates: [] })
+    map.get(key)!.dates.push(it)
+  }
+  for (const p of map.values()) p.dates.sort((a, b) => a.day.localeCompare(b.day) || a.s - b.s)
+  return [...map.values()]
+}
