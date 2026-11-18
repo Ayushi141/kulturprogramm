@@ -5,6 +5,8 @@ import type { Venue } from '@/lib/types'
 import { CATEGORIES } from '@/lib/types'
 import { clashes, spanLabel, surelyOverlap, upcoming, type Item, type Window } from '@/lib/plan'
 import { DAY0, DAY1, fmt } from '@/lib/time'
+import type { Dict } from '@/lib/i18n'
+import { useT } from '../i18n'
 import { CAT } from './categories'
 
 /* Geometry (px) */
@@ -41,10 +43,10 @@ function barPath(x0: number, xr: number, y: number, estimated: boolean) {
 }
 
 /** "overlaps A · may overlap B", or "" when nothing overlaps. */
-function overlapText(it: Item, clash: Item[]) {
+function overlapText(it: Item, clash: Item[], t: Dict) {
   const names = (xs: Item[]) => xs.map(c => c.ev.title).join(', ')
   const sure = clash.filter(c => surelyOverlap(it, c)), maybe = clash.filter(c => !surelyOverlap(it, c))
-  return [sure.length ? `overlaps ${names(sure)}` : '', maybe.length ? `may overlap ${names(maybe)}` : ''].filter(Boolean).join(' · ')
+  return [sure.length ? t.overlaps(names(sure)) : '', maybe.length ? t.mayOverlap(names(maybe)) : ''].filter(Boolean).join(' · ')
 }
 
 type Row = { kind: 'city' | 'venue'; label: string; y: number; h: number; alt: boolean }
@@ -68,15 +70,16 @@ export type TimelineProps = {
 }
 
 /** One line that says how an item relates to the picks of its day, or null if there is nothing to say. */
-export function relation(it: Item, plan: Item[], planIds: Set<string>, nowMin: number | null): { text: string; strong: boolean } | null {
-  const overlap = overlapText(it, clashes(it, plan))
-  if (planIds.has(it.id)) return { text: overlap ? `In your evening · ${overlap}` : 'In your evening', strong: true }
-  if (!upcoming(it, nowMin)) return { text: 'Already started', strong: false }
-  if (overlap) return { text: `${overlap[0].toUpperCase()}${overlap.slice(1)} in your evening`, strong: false }
+export function relation(it: Item, plan: Item[], planIds: Set<string>, nowMin: number | null, t: Dict): { text: string; strong: boolean } | null {
+  const overlap = overlapText(it, clashes(it, plan), t)
+  if (planIds.has(it.id)) return { text: overlap ? `${t.inYourEvening} · ${overlap}` : t.inYourEvening, strong: true }
+  if (!upcoming(it, nowMin)) return { text: t.alreadyStarted, strong: false }
+  if (overlap) return { text: t.clashWithPlan(overlap), strong: false }
   return null
 }
 
 export function Timeline(p: TimelineProps) {
+  const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
@@ -112,8 +115,8 @@ export function Timeline(p: TimelineProps) {
 
   const [A, B] = p.win
   const k = (W - L - R) / (B - A), ko = (W - L - R) / (DAY1 - DAY0)
-  const x = (t: number) => L + (Math.max(A, Math.min(B, t)) - A) * k
-  const xo = (t: number) => L + (Math.max(DAY0, Math.min(DAY1, t)) - DAY0) * ko
+  const x = (m: number) => L + (Math.max(A, Math.min(B, m)) - A) * k
+  const xo = (m: number) => L + (Math.max(DAY0, Math.min(DAY1, m)) - DAY0) * ko
   const fromXo = (px: number) => DAY0 + (px - L) / ko
 
   /* Rows: venues grouped by city, overlapping items packed into lanes */
@@ -165,10 +168,10 @@ export function Timeline(p: TimelineProps) {
     y: cy > window.innerHeight - h - 20 ? cy - h - 12 : cy + 14,
   })
   const itemSummary = (it: Item) => {
-    const r = relation(it, p.plan, p.planIds, p.nowMin)
+    const r = relation(it, p.plan, p.planIds, p.nowMin, t)
     return <>
       <div className="x-tt">{it.ev.title}</div>
-      <div className="x-tm">{CAT[it.category].label} · {spanLabel(it)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+      <div className="x-tm">{t.cat[it.category].label} · {spanLabel(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
         {r && <><br /><span className={r.strong ? 'x-hl' : undefined}>{r.text}</span></>}</div>
     </>
   }
@@ -187,11 +190,11 @@ export function Timeline(p: TimelineProps) {
       }
       return
     }
-    const t = Math.floor(fromXo(px) / 15) * 15
-    if (t < DAY0 || t >= DAY1) return
-    const on = p.overviewItems.filter(it => it.s <= t && it.e > t)
-    const by = CATEGORIES.map(c => [c, on.filter(i => i.category === c).length] as const).filter(r => r[1])
-    setTip({ ...near(e.clientX, e.clientY, 340, 90)!, body: <><div className="x-tt">{fmt(t)}</div><div className="x-tm">{on.length} running{by.length ? ': ' + by.map(([c, n]) => `${n} ${CAT[c].label.toLowerCase()}`).join(', ') : ''}<br /><span className="x-hl">click to move the view here · drag to zoom to a range</span></div></> })
+    const at = Math.floor(fromXo(px) / 15) * 15
+    if (at < DAY0 || at >= DAY1) return
+    const on = p.overviewItems.filter(it => it.s <= at && it.e > at)
+    const by = CATEGORIES.map(c => [t.cat[c].label, on.filter(i => i.category === c).length] as [string, number]).filter(r => r[1])
+    setTip({ ...near(e.clientX, e.clientY, 340, 90)!, body: <><div className="x-tt">{fmt(at)}</div><div className="x-tm">{t.running(on.length, by)}<br /><span className="x-hl">{t.stripHint}</span></div></> })
   }
   const onUp = (e: React.PointerEvent) => {
     const d = drag.current
@@ -212,7 +215,7 @@ export function Timeline(p: TimelineProps) {
   const labelEvery = pxPerH >= 46 ? 60 : pxPerH >= 23 ? 120 : 180
   const minor = pxPerH >= 90 ? 30 : 60
   const ticks: number[] = []
-  for (let t = Math.ceil(A / minor) * minor; t <= B; t += minor) ticks.push(t)
+  for (let m = Math.ceil(A / minor) * minor; m <= B; m += minor) ticks.push(m)
 
   const frame = preview ?? p.win
   const fa = xo(frame[0]), fb = xo(frame[1])
@@ -223,7 +226,7 @@ export function Timeline(p: TimelineProps) {
 
   return (
     <div className="x-chart" ref={box}>
-      <svg ref={svg} width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Timeline of events by venue">
+      <svg ref={svg} width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.timelineLabel}>
         {/* overview */}
         <g>
           {overview.cols.map(col => {
@@ -236,18 +239,18 @@ export function Timeline(p: TimelineProps) {
             })
           })}
           <line x1={L} x2={W - R} y1={OV_Y + OV_H + 0.5} y2={OV_Y + OV_H + 0.5} stroke={INK} strokeWidth={1.5} />
-          {Array.from({ length: 9 }, (_, i) => DAY0 + i * 180).map(t => (
-            <g key={t}>
-              <line x1={xo(t)} x2={xo(t)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
-              <text x={xo(t)} y={OV_Y + OV_H + 16} textAnchor="middle" fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(t)}</text>
+          {Array.from({ length: 9 }, (_, i) => DAY0 + i * 180).map(m => (
+            <g key={m}>
+              <line x1={xo(m)} x2={xo(m)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
+              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor="middle" fontFamily={MONO} fontSize={10.5} fill="#565247">{fmt(m)}</text>
             </g>
           ))}
-          <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>WHOLE DAY</text>
-          <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">things on at once</text>
-          <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">drag to zoom</text>
+          <text x={12} y={OV_Y + 14} fontFamily={MONO} fontSize={11} fontWeight={700} letterSpacing={1}>{t.wholeDay}</text>
+          <text x={12} y={OV_Y + 29} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.onAtOnce}</text>
+          <text x={12} y={OV_Y + 43} fontFamily={MONO} fontSize={10.5} fill="#565247">{t.dragToZoom}</text>
           {p.nowMin !== null && <>
             <line x1={xo(p.nowMin)} x2={xo(p.nowMin)} y1={OV_Y - 6} y2={OV_Y + OV_H} stroke={RED} strokeWidth={2} />
-            <text x={xo(p.nowMin) + 4} y={OV_Y - 2} fontFamily={MONO} fontSize={10.5} fontWeight={700} fill={RED}>now</text>
+            <text x={xo(p.nowMin) + 4} y={OV_Y - 2} fontFamily={MONO} fontSize={10.5} fontWeight={700} fill={RED}>{t.now}</text>
           </>}
           <rect x={L} y={OV_Y - 8} width={Math.max(0, fa - L)} height={OV_H + 8} fill={CARD} opacity={0.72} />
           <rect x={fb} y={OV_Y - 8} width={Math.max(0, W - R - fb)} height={OV_H + 8} fill={CARD} opacity={0.72} />
@@ -268,16 +271,16 @@ export function Timeline(p: TimelineProps) {
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 <text x={12} y={r.y + 7 + BAR / 2 + 4.5} fontFamily="Arial, Helvetica, sans-serif" fontSize={13} fontWeight={700}>{fitText(r.label, L - 30, 'bold 13px Arial')}</text>
               </g>)}
-          {!layout.rows.length && <text x={W / 2} y={TOP + 60} textAnchor="middle" fontFamily={MONO} fontSize={13} fill="#565247">Nothing on in this part of the day — move the view on the whole-day strip above.</text>}
+          {!layout.rows.length && <text x={W / 2} y={TOP + 60} textAnchor="middle" fontFamily={MONO} fontSize={13} fill="#565247">{t.nothingInView}</text>}
         </g>
 
         {/* main axis */}
         <g>
-          {ticks.map(t => {
-            const major = t % labelEvery === 0
-            return <g key={t}>
-              <line x1={x(t)} x2={x(t)} y1={TOP - 6} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
-              {major && <text x={x(t)} y={TOP - 12} textAnchor="middle" fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(t)}</text>}
+          {ticks.map(m => {
+            const major = m % labelEvery === 0
+            return <g key={m}>
+              <line x1={x(m)} x2={x(m)} y1={TOP - 6} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
+              {major && <text x={x(m)} y={TOP - 12} textAnchor="middle" fontFamily={MONO} fontSize={11.5} fontWeight={700}>{fmt(m)}</text>}
             </g>
           })}
           <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />
@@ -332,7 +335,7 @@ export function Timeline(p: TimelineProps) {
             {p.nowMin < B && <>
               <line x1={x(p.nowMin)} x2={x(p.nowMin)} y1={TOP - 4} y2={H - 14} stroke={RED} strokeWidth={2} />
               <rect x={x(p.nowMin) - 32} y={TOP - 27} width={64} height={17} fill={RED} />
-              <text x={x(p.nowMin)} y={TOP - 15} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">now {fmt(p.nowMin)}</text>
+              <text x={x(p.nowMin)} y={TOP - 15} textAnchor="middle" fontFamily={MONO} fontSize={11} fontWeight={700} fill="#fff">{t.now} {fmt(p.nowMin)}</text>
             </>}
           </g>
         )}
@@ -345,13 +348,13 @@ export function Timeline(p: TimelineProps) {
       {tip && !pop && <div className="x-tip" style={{ left: tip.x, top: tip.y }}>{tip.body}</div>}
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
-          <button className="x-popclose" aria-label="Close" onClick={() => setPop(null)}><X size={15} /></button>
+          <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
           {itemSummary(popItem)}
           <div className="x-popbtns">
             <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>
-              <Bookmark size={15} fill={p.planIds.has(popItem.id) ? 'currentColor' : 'none'} />{p.planIds.has(popItem.id) ? 'Remove' : 'Add to my evening'}
+              <Bookmark size={15} fill={p.planIds.has(popItem.id) ? 'currentColor' : 'none'} />{p.planIds.has(popItem.id) ? t.removeShort : t.add}
             </button>
-            {popItem.ev.url && <a href={popItem.ev.url} target="_blank" rel="noopener noreferrer">Tickets &amp; details<ArrowUpRight size={15} /></a>}
+            {popItem.ev.url && <a href={popItem.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
           </div>
         </div>
       )}

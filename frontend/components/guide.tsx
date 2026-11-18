@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, LayoutGrid, MicVocal, X } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
 import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
-import { cultureDay, DAY1, dayLabel, shiftDate, WDL, weekday } from '@/lib/time'
+import { cultureDay, DAY1, dayLabel, shiftDate, weekday } from '@/lib/time'
+import { DICTS, type Lang } from '@/lib/i18n'
+import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
 import { Picture } from './picture'
 import { CAT } from './explorer/categories'
@@ -16,10 +18,15 @@ type View = 'timeline' | 'poster'
 type Now = { day: string; min: number }
 
 const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, movies: Clapperboard }
-const STORE = 'offscript.plans.v1'
+const STORE = 'kulturprogramm.plans.v1'
 const EVENING: Window = [17 * 60, 25 * 60]
 
-export default function Guide({ programme }: { programme: Programme }) {
+export default function Guide({ programme, lang }: { programme: Programme; lang: Lang }) {
+  return <LangProvider lang={lang}><GuideBody programme={programme} lang={lang} /></LangProvider>
+}
+
+function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
+  const t = DICTS[lang]
   const byDay = useMemo(() => indexProgramme(programme), [programme])
   const itemById = useMemo(() => new Map([...byDay.values()].flat().map(i => [i.id, i])), [byDay])
 
@@ -83,20 +90,19 @@ export default function Guide({ programme }: { programme: Programme }) {
 
   let hint: React.ReactNode = null
   if (now && day) {
-    hint = <>{plan.length > 0 && <><b>{plan.length} IN YOUR EVENING</b> </>}{view === 'timeline' ? 'Tap an event for details, tickets or to add it to your evening.' : 'Bookmark an event to add it to your evening.'}</>
+    hint = <>{plan.length > 0 && <><b>{t.inEvening(plan.length)}</b> </>}{view === 'timeline' ? t.hintTimeline : t.hintPoster}</>
   }
-  const rel = detail && detail.day === day ? relation(detail, plan, planIds, nowMin) : null
+  const rel = detail && detail.day === day ? relation(detail, plan, planIds, nowMin, t) : null
 
   return (
     <main id="top">
       <Masthead count={pickCount} showPicks={showPicks} />
-      {!now || !day ? <p className="x-wrap x-empty">Loading the programme…</p> : <>
+      {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
           <div className="x-wrap">
-            <small className="issue">THEATRE <span>/</span> OPERA <span>/</span> MOVIES <span>·</span> NRW</small>
-            <h1>{nowMin !== null ? 'TODAY' : WDL[weekday(day)].toUpperCase()} {dayLabel(day)}<br />
-              <em>{ahead.length ? `${ahead.length} ${nowMin !== null ? 'STILL TO COME' : 'THINGS ON'}.` : 'NOTHING ON.'}</em></h1>
+            <h1>{nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase()} {dayLabel(day)}<br />
+              <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>
             <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(inCat)} />
           </div>
         </section>
@@ -104,55 +110,55 @@ export default function Guide({ programme }: { programme: Programme }) {
         {/* sticky control bar: stays in reach while you scroll the programme */}
         <div className="x-band">
           <div className="x-wrap x-bandrow">
-            <div className="filters x-cats" aria-label="Categories (choose one or more)">
+            <div className="filters x-cats" aria-label={t.categoriesGroup}>
               {CATEGORIES.map(c => {
                 const Icon = ICONS[c]
-                return <button key={c} aria-pressed={cats.has(c)} onClick={() => flipCat(c)}><i className="x-sw" style={{ background: CAT[c].color }} /><Icon size={15} />{CAT[c].label}</button>
+                return <button key={c} aria-pressed={cats.has(c)} onClick={() => flipCat(c)}><i className="x-sw" style={{ background: CAT[c].color }} /><Icon size={15} />{t.cat[c].label}</button>
               })}
             </div>
             <i className="x-star" aria-hidden="true" />
-            <div className="x-views" role="group" aria-label="View">
-              <button aria-pressed={view === 'timeline'} onClick={() => setView('timeline')}><ChartGantt size={16} />Timeline</button>
-              <button aria-pressed={view === 'poster'} onClick={() => setView('poster')}><LayoutGrid size={16} />Poster</button>
+            <div className="x-views" role="group" aria-label={t.viewGroup}>
+              <button aria-pressed={view === 'timeline'} onClick={() => setView('timeline')}><ChartGantt size={16} />{t.timeline}</button>
+              <button aria-pressed={view === 'poster'} onClick={() => setView('poster')}><LayoutGrid size={16} />{t.poster}</button>
             </div>
           </div>
         </div>
 
         <section className="directory" id="guide">
-          {programme.demo && <p className="x-demo">DEMO PROGRAMME — invented times and titles; links go to venue home pages. Connect your backend in <code>lib/get-programme.ts</code>.</p>}
+          {programme.demo && <p className="x-demo">{t.demo}</p>}
           <p className="x-hint">{hint}</p>
 
           {view === 'timeline' ? <>
             <Timeline venues={programme.venues} items={visible} overviewItems={pool} win={win} nowMin={nowMin}
               plan={plan} planIds={planIds} onToggle={onToggle} onWindow={setWin} />
             <div className="x-key">
-              <span><i className="x-k-path" />your evening</span>
-              <span>drag on the whole-day strip to zoom · click it to move the view</span>
+              <span><i className="x-k-path" />{t.keyEvening}</span>
+              <span>{t.keyZoom}</span>
             </div>
           </> : (
             <PosterView items={ahead} started={started} plan={plan} planIds={planIds} onToggle={onToggle} onOpen={setDetail}
-              onTimeline={() => setView('timeline')} emptyText="Nothing left on this day for these categories. Try another day." />
+              onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
           <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />
         </section>
       </>}
-      <footer>OFFSCRIPT® <span>kulturprogramm.eu · Programme &amp; images from the linked venues.</span></footer>
+      <footer>KULTURPROGRAMM <span>{t.footer}</span></footer>
 
-      <dialog ref={dialog} aria-label={detail?.ev.title || 'Programme details'} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
+      <dialog ref={dialog} aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
         <div className="dialogbody">
-          <button className="dismiss" onClick={() => setDetail(null)} aria-label="Close"><X size={18} /></button>
+          <button className="dismiss" onClick={() => setDetail(null)} aria-label={t.close}><X size={18} /></button>
           {detail && <>
             <div className="detailphoto"><Picture image={detail.ev.image} category={detail.category} key={detail.id} /></div>
-            <small>{CAT[detail.category].tag} / {WDL[weekday(detail.day)].toUpperCase()} {dayLabel(detail.day)}</small>
+            <small>{t.cat[detail.category].tag} / {t.wdl[weekday(detail.day)].toUpperCase()} {dayLabel(detail.day)}</small>
             <h2>{detail.ev.title}</h2>
-            <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
+            <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail, t)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
             {detail.ev.note && <p>{detail.ev.note}</p>}
             {rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
             <div className="x-dialogbtns">
-              {detail.ev.url && <a className="visit" href={detail.ev.url} target="_blank" rel="noopener noreferrer">Tickets &amp; details <ArrowUpRight size={18} /></a>}
+              {detail.ev.url && <a className="visit" href={detail.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets} <ArrowUpRight size={18} /></a>}
               {detail.day === day && <button className="visit x-outline" onClick={() => { onToggle(detail.id); setDetail(null) }}>
-                <Bookmark size={16} fill={planIds.has(detail.id) ? 'currentColor' : 'none'} />{planIds.has(detail.id) ? 'Remove from my evening' : 'Add to my evening'}</button>}
+                <Bookmark size={16} fill={planIds.has(detail.id) ? 'currentColor' : 'none'} />{planIds.has(detail.id) ? t.remove : t.add}</button>}
             </div>
           </>}
         </div>

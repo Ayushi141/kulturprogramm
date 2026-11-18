@@ -1,4 +1,4 @@
-# Offscript — kulturprogramm.eu
+# Kulturprogramm — kulturprogramm.eu
 
 Theatre, opera and movies in NRW on one timeline.
 Pick a day, add events to your evening, open the venue page for tickets.
@@ -40,6 +40,13 @@ The page is rendered on each request (`dynamic` in `app/page.tsx`). If the
 query fails, the page shows an error. It never falls back to the demo when
 `PGPASSWORD_FILE` is set.
 
+## Languages
+
+German is the default at `/`; English is at `/en`. The DE | EN switch in the header
+keeps the current view. Client components get their texts with `useT()` from
+`components/i18n.tsx`. Add a text to both `en` and `de` in `lib/i18n.ts`; the `Dict`
+type makes a missing German text a type error.
+
 ## Concepts
 
 - **Culture day.** A day runs from 06:00 to 06:00. An event that starts at 23:30 belongs to the evening on which it starts.
@@ -51,12 +58,14 @@ query fails, the page shows an error. It never falls back to the demo when
 
 | Path | Contents |
 |---|---|
-| `app/page.tsx` | Gets the programme on the server and renders the page. |
+| `app/(de)/page.tsx`, `app/(en)/en/page.tsx` | German page at `/`, English page at `/en`. Each gets the programme on the server. |
+| `app/(de)/layout.tsx`, `app/(en)/en/layout.tsx` | One root layout per language, so `<html lang>` is right. Both use `components/root-layout.tsx`. |
+| `lib/i18n.ts` | All interface texts, German (default) and English. Programme data is not translated. |
 | `lib/types.ts` | Data contract between backend and frontend. |
 | `lib/get-programme.ts` | The only place that gets data. |
 | `lib/plan.ts` | Planning logic: index by day, upcoming, overlaps, add/remove. No UI code. |
 | `lib/time.ts` | Berlin time zone and culture-day helpers. |
-| `lib/demo-programme.ts` | Demo data. Delete it when your backend is connected (and remove its import in `get-programme.ts`). |
+| `lib/demo-programme.ts` | Demo data, used when no database is configured. |
 | `components/guide.tsx` | Page: header, headline, day strip, control bar, views, plan panel, details dialog. |
 | `components/explorer/*` | Timeline, poster view, day strip, plan panel, category colours. |
 | `app/explorer.css` | Styles for the explorer. Uses the tokens in `app/globals.css`. |

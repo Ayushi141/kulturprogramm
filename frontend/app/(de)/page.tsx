@@ -5,6 +5,5 @@ import { getProgramme } from '@/lib/get-programme'
 export const dynamic = 'force-dynamic'
 
 export default async function Page() {
-  const programme = await getProgramme()
-  return <Guide programme={programme} />
+  return <Guide programme={await getProgramme()} lang="de" />
 }

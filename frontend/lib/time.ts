@@ -61,5 +61,3 @@ export const fmt = (t: number) => { t = Math.round(t); return `${pad(Math.floor(
 export const dur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h` : '') + (m % 60 ? pad(m % 60) + (m < 60 ? ' min' : '') : '')
 /** "2026-11-20" → "20.11." */
 export const dayLabel = (ymd: string) => `${ymd.slice(8, 10)}.${ymd.slice(5, 7)}.`
-export const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-export const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

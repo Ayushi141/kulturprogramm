@@ -1,16 +1,21 @@
 /* Explorer: day strip, poster/timeline views, plan panel.
    Uses the tokens from globals.css (--paper, --ink, --red, --blue, --mono, --display). */
 
-/* header: wordmark + domain stamp */
+/* header: wordmark + category stamp, language switch */
 .x-brand{display:flex;align-items:center;gap:14px;text-decoration:none}
-.x-domain{font:700 11px/1 var(--mono);letter-spacing:.5px;border:1px solid var(--ink);background:var(--paper);padding:4px 8px;transform:rotate(1.5deg);white-space:nowrap}
+.x-stamp{white-space:nowrap;background:var(--paper)}
+.x-navtools{display:flex;align-items:center;gap:14px}
+.x-lang{display:flex;border:1px solid var(--ink);font:700 11px/1 var(--mono)}
+.x-lang a{padding:6px 7px;text-decoration:none}
+.x-lang a+a{border-left:1px solid var(--ink)}
+.x-lang a[aria-current]{background:var(--ink);color:var(--paper)}
 .x-wrap{width:min(92%,1500px);margin:auto}
 .navwrap .saves{display:flex;align-items:center;gap:8px;white-space:nowrap}
+footer{gap:16px}
 
 /* hero: the headline is the answer for the selected day */
 .x-hero{padding:24px 0 14px}
 .x-hero h1{font-size:clamp(52px,5.6vw,92px);line-height:.94;margin:14px 0 18px}
-.x-hero .issue span{color:var(--red);padding:0 3px}
 
 /* sticky control bar (the old marquee band, now with a job) */
 .x-band{position:sticky;top:0;z-index:6;background:var(--blue);border-block:2px solid var(--ink)}
@@ -110,7 +115,8 @@
 @media(max-width:700px){
   .navwrap{height:auto;padding:10px 0}
   .x-brand{flex-direction:column;align-items:flex-start;gap:5px}
-  .x-domain{font-size:9px;padding:3px 6px}
+  .x-stamp{font-size:8px;letter-spacing:.4px}
+  .x-navtools{gap:8px}
   .x-hero h1{font-size:clamp(40px,12vw,64px)}
   .x-views button{font-size:15px;padding:7px 10px}
   .x-days{grid-template-columns:repeat(7,112px)}
@@ -123,3 +129,9 @@
   .x-leg{min-width:100%;flex-direction:row;gap:8px;padding:6px 0}
   .x-step{max-width:none;width:100%}
 }
+/* narrow phones: "My evening" shows icon and count only */
+@media(max-width:480px){
+  .x-saves-label{display:none}
+  .navwrap .saves b{display:inline}
+}
+

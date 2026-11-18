@@ -37,6 +37,8 @@ from that directory, or pass the Compose file explicitly.
   categories `theater`, `oper`, `film` to the frontend's `theatre`, `opera`,
   `movies`; other categories are not shown. Without `PGPASSWORD_FILE` it shows
   a demo programme. The data contract is `frontend/lib/types.ts`.
+- Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
+  English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
   `/run/secrets/pg_password`. That path is outside the repository and must
   exist on the host before starting the services.

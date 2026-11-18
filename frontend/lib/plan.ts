@@ -6,6 +6,7 @@
  *   plan     = the items you picked for a day, in time order
  */
 import type { Category, Event, Programme, Venue } from './types'
+import type { Dict } from './i18n'
 import { cultureDay, dur, fmt } from './time'
 
 /** Assumed length in minutes when the venue publishes no end time. */
@@ -57,8 +58,8 @@ export const surelyOverlap = (a: Item, b: Item) => a.s === b.s || !(a.s < b.s ? 
 export const endLabel = (it: Item) => (it.endEstimated ? '~' : '') + fmt(it.e)
 
 /** "19:30–21:30 · 2h", or "19:30–~21:30 · end time not published". */
-export const spanLabel = (it: Item) =>
-  `${fmt(it.s)}–${endLabel(it)} · ${it.endEstimated ? 'end time not published' : dur(it.e - it.s)}`
+export const spanLabel = (it: Item, t: Dict) =>
+  `${fmt(it.s)}–${endLabel(it)} · ${it.endEstimated ? t.endUnknown : dur(it.e - it.s)}`
 
 /** Adds or removes an ID. */
 export const toggle = (ids: string[], id: string) => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
