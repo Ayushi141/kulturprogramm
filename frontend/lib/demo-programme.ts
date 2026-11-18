@@ -97,5 +97,5 @@ function dayProgramme(day: string, i: number): Event[] {
 export function demoProgramme(now = new Date()): Programme {
   const today = cultureDay(now).day
   const events = Array.from({ length: 7 }, (_, i) => dayProgramme(shiftDate(today, i), i)).flat()
-  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), demo: true }
+  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['Der Hobbit'], demo: true }
 }

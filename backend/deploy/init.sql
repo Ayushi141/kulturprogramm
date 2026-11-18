@@ -26,3 +26,12 @@ CREATE TABLE events (
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
+
+-- Productions shown in the "In focus" card, by event title. The card shows the
+-- next performance of one of them; `until` (inclusive) ends the feature, NULL
+-- keeps it until the row is deleted. The scraper never touches this table.
+CREATE TABLE featured (
+    title    text PRIMARY KEY,
+    until    date,
+    added_at timestamptz NOT NULL DEFAULT now()
+);

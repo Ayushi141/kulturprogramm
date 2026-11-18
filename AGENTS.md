@@ -74,6 +74,12 @@ CREATE TABLE events (
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
+
+CREATE TABLE featured (
+    title    text PRIMARY KEY,  -- event title shown in the "In focus" card
+    until    date,              -- last day (inclusive); NULL = until deleted
+    added_at timestamptz NOT NULL DEFAULT now()
+);
 ```
 
 There is no category `CHECK` constraint in the current schema. `init.sql` runs
@@ -258,6 +264,14 @@ Delete all rows while keeping the table:
 
 ```sql
 TRUNCATE events;
+```
+
+Feature a production in the "In focus" card (title as in `events`; the card
+shows its next performance, from the selected day on):
+
+```sql
+INSERT INTO featured (title, until) VALUES ('Der Hobbit', '2026-11-30');
+DELETE FROM featured WHERE title = 'Der Hobbit';
 ```
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.

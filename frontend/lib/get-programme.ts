@@ -34,7 +34,7 @@ export async function getProgramme(): Promise<Programme> {
   const db = getPool()
   if (!db) return demoProgramme()
 
-  const [venues, events, updated] = await Promise.all([
+  const [venues, events, updated, featured] = await Promise.all([
     // Cities appear in the order of their first venue. Alphabetical happens to
     // be north to south for Duisburg, Düsseldorf and Köln.
     db.query<Venue>('SELECT id, name, city FROM venues ORDER BY city, name'),
@@ -47,6 +47,10 @@ export async function getProgramme(): Promise<Programme> {
     ),
     // every run sets updated_at on the events it saves, so the newest one is the last run
     db.query<{ max: Date | null }>('SELECT max(updated_at) FROM events'),
+    db.query<{ title: string }>(
+      `SELECT title FROM featured
+       WHERE until IS NULL OR until >= (now() AT TIME ZONE 'Europe/Berlin')::date`,
+    ),
   ])
 
   return {
@@ -67,5 +71,6 @@ export async function getProgramme(): Promise<Programme> {
     }),
     generatedAt: new Date().toISOString(),
     updatedAt: updated.rows[0].max?.toISOString() ?? null,
+    featured: featured.rows.map(r => r.title),
   }
 }

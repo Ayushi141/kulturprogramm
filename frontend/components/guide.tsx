@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, LayoutGrid, MicVocal, X } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
 import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
-import { cultureDay, DAY1, dayLabel, shiftDate, stamp, weekday } from '@/lib/time'
+import { cultureDay, DAY1, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time'
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
@@ -78,6 +78,10 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   const ahead = visible.filter(i => upcoming(i, nowMin) || planIds.has(i.id))
   const started = visible.length - ahead.length
   const countOf = (d: string) => (byDay.get(d) ?? []).filter(i => inCat(i) && upcoming(i, d === now?.day ? now.min : null)).length
+  // "In focus": the next performance of a featured title, from the selected day on
+  const featured = new Set(programme.featured ?? [])
+  const focus = featured.size ? days.filter(d => d >= day).flatMap(d => (byDay.get(d) ?? [])
+    .filter(i => featured.has(i.ev.title) && inCat(i) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart))[0] : undefined
   const suggestion = ahead.filter(i => i.s >= EVENING[0]).sort((a, b) => a.s - b.s)[0] ?? ahead[0]
 
   const onToggle = (id: string) => setPlans(ps => ({ ...ps, [day]: toggle(plan.map(i => i.id), id) }))
@@ -101,8 +105,21 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
           <div className="x-wrap">
-            <h1>{t.dateline(nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase(), dayLabel(day))}<br />
-              <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>
+            <div className="x-herorow">
+              <h1>{t.dateline(nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase(), dayLabel(day))}<br />
+                <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>
+              {focus && (
+                <button className="feature x-focus" onClick={() => setDetail(focus)} aria-label={t.detailsFor(focus.ev.title)}>
+                  <Picture image={focus.ev.image} category={focus.category} key={focus.id} />
+                  <span className="featuretop">{t.inFocus} / {t.cat[focus.category].tag}</span>
+                  <span className="featurecap">
+                    <small>{focus.venue.name} · {t.dateline(t.wdl[weekday(focus.day)].toUpperCase(), dayLabel(focus.day))}, {fmt(focus.s)}</small>
+                    <strong>{focus.ev.title}</strong>
+                    <ArrowUpRight size={22} />
+                  </span>
+                </button>
+              )}
+            </div>
             <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(inCat)} />
           </div>
         </section>

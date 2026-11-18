@@ -56,6 +56,8 @@ export type Programme = {
   generatedAt: string
   /** ISO 8601 time of the last scraper run (newest `updated_at`), or null when there are no events. */
   updatedAt?: string | null
+  /** Titles picked for the "In focus" card (table `featured`). The card shows the next performance of one of them. */
+  featured?: string[]
   /** True when the data is the built-in demo fixture. The UI then shows a notice. */
   demo?: boolean
 }
