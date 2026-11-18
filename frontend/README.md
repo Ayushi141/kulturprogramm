@@ -21,23 +21,24 @@ pnpm start        # serves the built site on port 3000
 
 Without configuration, the site shows a demo programme. A yellow notice on the page tells you this.
 
-## Connect your backend
+## Database
 
-1. Copy `.env.example` to `.env.local`.
-2. Set `PROGRAMME_URL` to the URL of your programme API.
-3. Restart the server.
+When `PGPASSWORD_FILE` is set, `getProgramme()` in `lib/get-programme.ts` reads
+the `venues` and `events` tables from PostgreSQL. The Compose file in
+`backend/deploy/` sets it, together with `PGHOST`, `PGPORT`, `PGUSER` and
+`PGDATABASE`, which `pg` reads itself. To use the database with `pnpm dev`, set
+the same variables, for example `PGHOST=127.0.0.1`.
 
-The API must return one JSON object in the shape of `Programme` in `lib/types.ts`:
+- Events from 6 hours ago to 8 days ahead are loaded.
+- Database categories `theater`, `oper` and `film` become `theatre`, `opera`
+  and `movies`. Other categories, such as `konzert`, are not shown.
+- `ends_at` NULL becomes a missing `end`; the frontend then assumes 2 hours and
+  marks the end as estimated.
+- Venues are ordered by city, then name.
 
-- `venues`: `id`, `name`, `city`. The timeline groups rows by city, in the order of the venues.
-- `events`: `id`, `title`, `category` (`theatre`, `opera` or `movies`), `venueId`, `start`, `end`, and optionally `url`, `price`, `image`, `note`.
-  - Use one event per session. A film that shows three times is three events.
-  - `start` and `end` are ISO 8601 times with an offset or `Z`.
-  - Keep `id` stable across scraper runs. Saved evenings refer to it.
-- Send at least the next 7 days, plus events that started in the last 6 hours.
-
-The page refreshes the data every 15 minutes (`revalidate` in `app/page.tsx`).
-If the API fails, Next.js keeps the last good page. The site never falls back to the demo when `PROGRAMME_URL` is set.
+The page is rendered on each request (`dynamic` in `app/page.tsx`). If the
+query fails, the page shows an error. It never falls back to the demo when
+`PGPASSWORD_FILE` is set.
 
 ## Concepts
 

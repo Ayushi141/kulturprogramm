@@ -2,7 +2,7 @@
  * Demo fixture. Generates 7 days of plausible programme from weekly venue
  * rules, starting today. Times, prices and most titles are invented; event
  * links point to the venue home pages.
- * Remove this file once `getProgramme()` returns your backend data.
+ * Used by `getProgramme()` when no database is configured.
  */
 import type { Category, Event, Programme, Venue } from './types'
 import { cultureDay, fromCultureDay, shiftDate, weekday } from './time'
@@ -36,11 +36,12 @@ const tm = (s: string) => { let [h, m] = s.split(':').map(Number); if (h < 6) h 
 
 function dayProgramme(day: string, i: number): Event[] {
   const out: Event[] = [], dw = weekday(day), is = (...d: number[]) => d.includes(dw)
-  const add = (venueId: string, category: Category, title: string, s: string, e: string | number, price: string) => {
-    const sm = tm(s), em = typeof e === 'number' ? sm + e : tm(e)
+  /** `e` is an end time, a length in minutes, or null when the venue publishes no end. */
+  const add = (venueId: string, category: Category, title: string, s: string, e: string | number | null, price: string) => {
+    const sm = tm(s), em = e === null ? null : typeof e === 'number' ? sm + e : tm(e)
     out.push({
       id: `demo-${day}-${out.length}`, title, category, venueId, price,
-      start: fromCultureDay(day, sm).toISOString(), end: fromCultureDay(day, em).toISOString(),
+      start: fromCultureDay(day, sm).toISOString(), end: em === null ? undefined : fromCultureDay(day, em).toISOString(),
       url: VENUES.find(v => v.id === venueId)!.url,
       image: category === 'theatre' && title !== 'Der Hobbit' ? undefined : IMAGES[category],
     })
@@ -54,8 +55,8 @@ function dayProgramme(day: string, i: number): Event[] {
     add('schauspiel', 'theatre', 'Der Hobbit', '19:30', '22:15', '18–49 €')
   }
   if (is(0)) add('schauspiel', 'theatre', 'Der Hobbit', '16:00', '18:45', '18–49 €')
-  if (is(2, 4, 5)) add('schauspiel', 'theatre', 'Die Physiker · Kleines Haus', '20:00', '21:45', '15–32 €')
-  if (is(4, 5, 6)) add('fft', 'theatre', 'Stadt ohne Autos (Performance)', '20:00', '21:20', '16 €')
+  if (is(2, 4, 5)) add('schauspiel', 'theatre', 'Die Physiker · Kleines Haus', '20:00', null, '15–32 €')
+  if (is(4, 5, 6)) add('fft', 'theatre', 'Stadt ohne Autos (Performance)', '20:00', null, '16 €')
   if (is(5)) {
     add('tanzhaus', 'theatre', 'Gravity Lines (Tanz)', '19:00', '20:15', '18 €')
     add('tanzhaus', 'theatre', 'Gravity Lines (Tanz)', '21:30', '22:45', '18 €')

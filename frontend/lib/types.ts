@@ -1,8 +1,8 @@
 /**
  * Data contract between your backend and the frontend.
  *
- * The frontend reads one `Programme` object. Produce it in your backend
- * and return it from `getProgramme()` in `lib/get-programme.ts`.
+ * The frontend reads one `Programme` object. `getProgramme()` in
+ * `lib/get-programme.ts` builds it from the database.
  */
 
 export const CATEGORIES = ['theatre', 'opera', 'movies'] as const
@@ -30,8 +30,11 @@ export type Event = {
   venueId: string
   /** ISO 8601 with offset or Z, for example "2026-11-20T19:30:00+01:00". */
   start: string
-  /** ISO 8601. If the venue publishes no end time, send an estimate. */
-  end: string
+  /**
+   * ISO 8601. Omit it if the venue publishes no end time; the frontend then
+   * assumes `FALLBACK_MIN` (lib/plan.ts) and marks the end as estimated.
+   */
+  end?: string
   /**
    * Absolute URL of the event page on the venue site, where people buy
    * tickets or read details. The frontend opens it in a new tab.

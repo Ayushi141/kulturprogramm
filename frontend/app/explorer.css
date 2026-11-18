@@ -82,6 +82,7 @@
 .x-leg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 12px;min-width:110px;font:11px/1.5 var(--mono)}
 .x-leg b{font-size:20px;line-height:1}
 .x-leg.x-bad{color:var(--red);font-weight:700}
+.x-leg.x-maybe{color:var(--red)}
 .x-planbtns{display:flex;gap:8px;margin-top:14px}
 .x-planbtns button{border:1px solid;font-weight:bold;padding:8px 12px;font-size:13px}
 

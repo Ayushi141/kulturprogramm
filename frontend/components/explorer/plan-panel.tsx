@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
-import type { Item } from '@/lib/plan'
+import { endLabel, type Item } from '@/lib/plan'
 import { dayLabel, fmt, WDL, weekday } from '@/lib/time'
 import { CAT } from './categories'
 
@@ -20,26 +20,29 @@ export function PlanPanel({ day, plan, suggestion, onToggle, onClear }: Props) {
   )
   const cities = new Set(plan.map(s => s.venue.city))
   const copy = async () => {
-    const txt = `${name} ${dayLabel(day)}\n` + plan.map(s => `${fmt(s.s)}–${fmt(s.e)}  ${s.ev.title} (${s.venue.name}, ${s.venue.city})${s.ev.url ? '\n             ' + s.ev.url : ''}`).join('\n')
+    const txt = `${name} ${dayLabel(day)}\n` + plan.map(s => `${fmt(s.s)}–${endLabel(s)}  ${s.ev.title} (${s.venue.name}, ${s.venue.city})${s.ev.url ? '\n             ' + s.ev.url : ''}`).join('\n')
     try { await navigator.clipboard.writeText(txt); setCopied('Copied') } catch { setCopied('Copy blocked') }
     setTimeout(() => setCopied(''), 1400)
   }
   return (
     <section className="x-plan" id="my-evening">
       <h2>YOUR {name.toUpperCase()}<span className="period">.</span></h2>
-      <p className="x-sum">{dayLabel(day)} · OUT {fmt(plan[0].s)} → {fmt(plan[plan.length - 1].e)} · {plan.length} STOP{plan.length > 1 ? 'S' : ''} · {[...cities].join(' + ').toUpperCase()}</p>
+      <p className="x-sum">{dayLabel(day)} · OUT {fmt(plan[0].s)} → {endLabel(plan[plan.length - 1])} · {plan.length} STOP{plan.length > 1 ? 'S' : ''} · {[...cities].join(' + ').toUpperCase()}</p>
       <div className="x-steps">
         {plan.map((s, i) => {
           const nx = plan[i + 1], gap = nx ? nx.s - s.e : 0 // minutes between this end and the next start
+          const est = s.endEstimated, leg = gap < 0 ? (est ? ' x-maybe' : ' x-bad') : ''
           return [
             <div className="x-step" key={s.id}>
-              <small>{fmt(s.s)}–{fmt(s.e)}{s.ev.price ? ' · ' + s.ev.price : ''}</small>
+              <small>{fmt(s.s)}–{endLabel(s)}{s.ev.price ? ' · ' + s.ev.price : ''}</small>
               <h3>{s.ev.title}</h3>
               <p><i style={{ background: CAT[s.category].color }} />{s.venue.name} · {s.venue.city}</p>
               {s.ev.url && <a className="x-ticket" href={s.ev.url} target="_blank" rel="noopener noreferrer">Tickets &amp; details <ArrowUpRight size={14} /></a>}
             </div>,
-            nx && <div className={'x-leg' + (gap < 0 ? ' x-bad' : '')} key={s.id + '-leg'}>
-              <b>→</b>{gap < 0 ? `overlaps by ${-gap} min` : gap === 0 ? 'back to back' : `${gap} min break`}
+            nx && <div className={'x-leg' + leg} key={s.id + '-leg'}>
+              <b>→</b>{est
+                ? (gap < 0 ? 'may overlap · end time not published' : gap === 0 ? 'about back to back' : `about ${gap} min break`)
+                : (gap < 0 ? `overlaps by ${-gap} min` : gap === 0 ? 'back to back' : `${gap} min break`)}
             </div>,
           ]
         })}

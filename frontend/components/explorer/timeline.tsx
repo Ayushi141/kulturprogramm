@@ -3,8 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { ArrowUpRight, Bookmark, X } from 'lucide-react'
 import type { Venue } from '@/lib/types'
 import { CATEGORIES } from '@/lib/types'
-import { clashes, upcoming, type Item, type Window } from '@/lib/plan'
-import { DAY0, DAY1, dur, fmt } from '@/lib/time'
+import { clashes, spanLabel, surelyOverlap, upcoming, type Item, type Window } from '@/lib/plan'
+import { DAY0, DAY1, fmt } from '@/lib/time'
 import { CAT } from './categories'
 
 /* Geometry (px) */
@@ -30,6 +30,23 @@ function fitText(s: string, max: number, font: string) {
 }
 const snap = (t: number) => Math.max(DAY0, Math.min(DAY1, Math.round(t / 30) * 30))
 
+/**
+ * Outline of an event bar from x0 to xr. An estimated end gets a soft step
+ * instead of a straight edge: down, a little to the right, down again.
+ */
+function barPath(x0: number, xr: number, y: number, estimated: boolean) {
+  if (!estimated) return `M${x0},${y}H${xr}V${y + BAR}H${x0}Z`
+  const j = Math.min(6, (xr - x0) / 3), xt = xr - j
+  return `M${x0},${y}H${xt}V${y + BAR * 0.3}C${xt},${y + BAR * 0.5} ${xr},${y + BAR * 0.5} ${xr},${y + BAR * 0.7}V${y + BAR}H${x0}Z`
+}
+
+/** "overlaps A · may overlap B", or "" when nothing overlaps. */
+function overlapText(it: Item, clash: Item[]) {
+  const names = (xs: Item[]) => xs.map(c => c.ev.title).join(', ')
+  const sure = clash.filter(c => surelyOverlap(it, c)), maybe = clash.filter(c => !surelyOverlap(it, c))
+  return [sure.length ? `overlaps ${names(sure)}` : '', maybe.length ? `may overlap ${names(maybe)}` : ''].filter(Boolean).join(' · ')
+}
+
 type Row = { kind: 'city' | 'venue'; label: string; y: number; h: number; alt: boolean }
 type Float = { x: number; y: number } | null
 
@@ -52,10 +69,10 @@ export type TimelineProps = {
 
 /** One line that says how an item relates to the picks of its day, or null if there is nothing to say. */
 export function relation(it: Item, plan: Item[], planIds: Set<string>, nowMin: number | null): { text: string; strong: boolean } | null {
-  const clash = clashes(it, plan)
-  if (planIds.has(it.id)) return { text: clash.length ? `In your evening · overlaps ${clash.map(c => c.ev.title).join(', ')}` : 'In your evening', strong: true }
+  const overlap = overlapText(it, clashes(it, plan))
+  if (planIds.has(it.id)) return { text: overlap ? `In your evening · ${overlap}` : 'In your evening', strong: true }
   if (!upcoming(it, nowMin)) return { text: 'Already started', strong: false }
-  if (clash.length) return { text: `Overlaps ${clash.map(c => c.ev.title).join(', ')} in your evening`, strong: false }
+  if (overlap) return { text: `${overlap[0].toUpperCase()}${overlap.slice(1)} in your evening`, strong: false }
   return null
 }
 
@@ -151,7 +168,7 @@ export function Timeline(p: TimelineProps) {
     const r = relation(it, p.plan, p.planIds, p.nowMin)
     return <>
       <div className="x-tt">{it.ev.title}</div>
-      <div className="x-tm">{CAT[it.category].label} · {fmt(it.s)}–{fmt(it.e)} · {dur(it.e - it.s)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+      <div className="x-tm">{CAT[it.category].label} · {spanLabel(it)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
         {r && <><br /><span className={r.strong ? 'x-hl' : undefined}>{r.text}</span></>}</div>
     </>
   }
@@ -266,23 +283,13 @@ export function Timeline(p: TimelineProps) {
           <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />
         </g>
 
-        {/* links between consecutive picks; red when they overlap */}
-        <g pointerEvents="none">
-          {p.plan.filter(s => layout.ys.has(s.id)).map((s, i, arr) => {
-            const nx = arr[i + 1]
-            if (!nx) return null
-            const yb = layout.ys.get(s.id)! + BAR + 0.5, y2 = layout.ys.get(nx.id)! + BAR + 0.5
-            const x1 = x(s.e), x2 = x(nx.s), dx = Math.max(24, (x2 - x1) / 2)
-            const ok = nx.s >= s.e
-            return <path key={s.id} d={`M${x1},${yb} C${x1 + dx},${yb} ${x2 - dx},${y2} ${x2},${y2}`} fill="none" stroke={ok ? INK : RED} strokeWidth={2.5} strokeDasharray="5 4" />
-          })}
-        </g>
-
         {/* bars */}
         <g>
           {layout.inWin.map(it => {
             const y = layout.ys.get(it.id)!, cat = CAT[it.category], planned = p.planIds.has(it.id), selected = pop?.id === it.id
             const x0 = x(it.s) + 1, w = Math.max(4, x(it.e) - 1 - x0)
+            // the step only shows when the estimated end is inside the view
+            const d = barPath(x0, x0 + w, y, it.endEstimated && it.e <= B)
             const lpad = it.s < A ? 14 : 7, avail = w - lpad - 8, time = fmt(it.s)
             const showTime = width(it.ev.title, TITLE_FONT) + width(time, '10.5px ' + MONO) + 10 <= avail
             return (
@@ -291,8 +298,8 @@ export function Timeline(p: TimelineProps) {
                 onMouseMove={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onMouseLeave={() => setTip(null)}
                 onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 230)! }) }}>
-                {planned && <rect x={x0 + 4} y={y + 4} width={w} height={BAR} fill={RED} />}
-                <rect x={x0} y={y} width={w} height={BAR} fill={cat.color} stroke={INK} strokeWidth={planned || selected ? 3 : 1.5} />
+                {planned && <path d={d} transform="translate(4,4)" fill={RED} />}
+                <path d={d} fill={cat.color} stroke={INK} strokeWidth={planned || selected ? 3 : 1.5} />
                 {it.s < A && <text x={x0 + 4} y={y + 17} fontFamily={MONO} fontSize={12} fontWeight={700} fill={cat.ink}>‹</text>}
                 {it.e > B && <text x={x0 + w - 4} y={y + 17} textAnchor="end" fontFamily={MONO} fontSize={12} fontWeight={700} fill={cat.ink}>›</text>}
                 {avail > 16 && (
@@ -306,14 +313,14 @@ export function Timeline(p: TimelineProps) {
           })}
         </g>
 
-        {/* the planned evening: thick line under each pick (links between picks are drawn behind the bars) */}
+        {/* the planned evening: thick line under each pick; the hollow end dot only for a published end */}
         <g pointerEvents="none">
           {p.plan.filter(s => layout.ys.has(s.id)).map(s => {
             const yb = layout.ys.get(s.id)! + BAR + 0.5
             return <g key={s.id}>
               <line x1={x(s.s)} x2={x(s.e)} y1={yb} y2={yb} stroke={INK} strokeWidth={5} />
               <circle cx={x(s.s)} cy={yb} r={4.5} fill={INK} />
-              <circle cx={x(s.e)} cy={yb} r={4.5} fill={PAPER} stroke={INK} strokeWidth={2} />
+              {!s.endEstimated && <circle cx={x(s.e)} cy={yb} r={4.5} fill={PAPER} stroke={INK} strokeWidth={2} />}
             </g>
           })}
         </g>

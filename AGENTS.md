@@ -31,11 +31,12 @@ from that directory, or pass the Compose file explicitly.
 - The scraper image uses `python:3.15-slim`. Its dependencies are `httpx`,
   `beautifulsoup4`, and `psycopg[binary]` 3, installed unpinned in
   `backend/scraper/Dockerfile`.
-- The frontend is a Next.js application (`node:22-alpine` image). In
-  `frontend/lib/events.ts` it selects `id`, `title`, `venue`, `category`, and
-  `starts_at` for events with `starts_at > NOW()`. The table offers category
-  filter buttons built from the categories present; display labels are in
-  `frontend/lib/events-data.ts`.
+- The frontend is a Next.js application (`node:22-alpine` image, built from
+  `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
+  reads `venues` and events from 6 hours ago to 8 days ahead, and maps
+  categories `theater`, `oper`, `film` to the frontend's `theatre`, `opera`,
+  `movies`; other categories are not shown. Without `PGPASSWORD_FILE` it shows
+  a demo programme. The data contract is `frontend/lib/types.ts`.
 - The Compose configuration expects the host password file at
   `/run/secrets/pg_password`. That path is outside the repository and must
   exist on the host before starting the services.
@@ -45,14 +46,22 @@ from that directory, or pass the Compose file explicitly.
 The current schema is in `backend/deploy/init.sql`:
 
 ```sql
+CREATE TABLE venues (
+    id   text PRIMARY KEY,
+    name text NOT NULL,
+    city text NOT NULL
+);
+
 CREATE TABLE events (
-    id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    title     text        NOT NULL,
-    venue     text        NOT NULL,
-    category  text        NOT NULL,
-    starts_at timestamptz NOT NULL,
+    id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    title      text        NOT NULL,
+    venue_id   text        NOT NULL REFERENCES venues (id),
+    category   text        NOT NULL,
+    starts_at  timestamptz NOT NULL,
+    ends_at    timestamptz,
+    url        text,
     updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (title, venue, starts_at)
+    UNIQUE (title, venue_id, starts_at)
 );
 ```
 
@@ -61,9 +70,11 @@ when PostgreSQL initializes an empty data volume; changing it does not update
 an existing database. Apply a separate migration to an existing database when
 changing its schema.
 
-Each row represents one event at one start time. The unique key lets the
-scraper update an existing event with the same title, venue, and start time.
-`save()` updates `category` and `updated_at` on conflict. It does not remove
+Each row represents one event at one start time. `ends_at` is NULL when the
+source lists no end time. The unique key lets the scraper update an existing
+event with the same title, venue, and start time. `save()` first upserts the
+events' venues, then updates `category`, `ends_at`, `url`, and `updated_at` on
+event conflict. It does not remove
 events that disappear from a venue's program, so cancelled or expired rows can
 remain in the database.
 
@@ -90,9 +101,11 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
   `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
-  database; give new ones a display label in `frontend/lib/events-data.ts`.
-- `Event` is a dataclass with `title`, `venue`, `category`, and one aware
-  `starts_at` datetime.
+  database; map new ones in `CATEGORY` in `frontend/lib/get-programme.ts`.
+- `Location` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
+  `venues` row. Build its `id` as `f"{self.name}-{slugify(name)}"`.
+- `Event` is a dataclass with `title`, `location`, `category`, an aware
+  `starts_at`, an optional aware `ends_at`, and an optional absolute `url`.
 - `Venue` stores a source key and URL and defines the abstract `scrape()`
   method.
 - Each venue's `scrape()` fetches and parses events. `Venue.save()` writes
@@ -145,10 +158,16 @@ that a venue's live page has not changed.
 
 - URL used in the venue configuration: `https://www.dhaus.de/programm/spielplan/schauspiel`.
 - Each `div.performance` is parsed as one performance.
-- Title: `.performance__title [itemprop=name]`.
+- Title: `.performance__title [itemprop=name]`, with soft hyphens (`\xad`)
+  removed. URL: that title link's `href`, made absolute.
 - Start: `meta[itemprop=startDate]` attribute `content`; the parser attaches
   the Berlin timezone to the naive datetime.
-- Venue: `.performance__location`, with a leading `📍` removed.
+- End: only in `.performance__time` text such as `19:00 – 20:15`; some
+  performances show only the start, giving `ends_at = None`. An end at or
+  before the start is moved to the next day.
+- Location name: `.performance__location`, with a leading `📍` removed (for
+  example, `Schauspielhaus, Großes Haus`). City: the text after the postal code
+  in the hidden `[itemprop=location] [itemprop=address]`.
 - Category: currently always `THEATER`, including special events.
 
 ### Schauspiel Köln

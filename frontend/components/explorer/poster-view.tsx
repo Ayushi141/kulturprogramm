@@ -1,8 +1,8 @@
 'use client'
 import { ArrowUpRight, Bookmark, MapPin } from 'lucide-react'
 import { Picture } from '@/components/picture'
-import type { Item } from '@/lib/plan'
-import { dur, fmt } from '@/lib/time'
+import { spanLabel, type Item } from '@/lib/plan'
+import { fmt } from '@/lib/time'
 import { CAT } from './categories'
 
 type Props = {
@@ -36,7 +36,7 @@ export function PosterView(p: Props) {
           </button>
         </div>
         <div className="cardtext">
-          <small>{fmt(it.s)}–{fmt(it.e)} · {dur(it.e - it.s)}{it.ev.price ? ' · ' + it.ev.price : ''}</small>
+          <small>{spanLabel(it)}{it.ev.price ? ' · ' + it.ev.price : ''}</small>
           <button onClick={() => p.onOpen(it)}><h3>{it.ev.title}</h3><ArrowUpRight size={18} /></button>
           <p><MapPin size={13} />{it.venue.name} · {it.venue.city}</p>
         </div>

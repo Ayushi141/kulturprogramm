@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, LayoutGrid, MicVocal, X } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
-import { byStart, indexProgramme, toggle, upcoming, type Item, type Window } from '@/lib/plan'
-import { cultureDay, DAY1, dayLabel, dur, fmt, shiftDate, WDL, weekday } from '@/lib/time'
+import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
+import { cultureDay, DAY1, dayLabel, shiftDate, WDL, weekday } from '@/lib/time'
 import { Masthead } from './masthead'
 import { Picture } from './picture'
 import { CAT } from './explorer/categories'
@@ -146,7 +146,7 @@ export default function Guide({ programme }: { programme: Programme }) {
             <div className="detailphoto"><Picture image={detail.ev.image} category={detail.category} key={detail.id} /></div>
             <small>{CAT[detail.category].tag} / {WDL[weekday(detail.day)].toUpperCase()} {dayLabel(detail.day)}</small>
             <h2>{detail.ev.title}</h2>
-            <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{fmt(detail.s)}–{fmt(detail.e)} · {dur(detail.e - detail.s)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
+            <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
             {detail.ev.note && <p>{detail.ev.note}</p>}
             {rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
             <div className="x-dialogbtns">
