@@ -1,14 +1,11 @@
-import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+import './explorer.css'
 
 export const metadata: Metadata = {
-  title: 'Culture Index',
-  description: 'Theatre, cinema, concerts, exhibitions and more - aggregated and sortable.',
+  title: 'Offscript — kulturprogramm.eu',
+  description: 'Theatre, opera and movies in Düsseldorf, Köln and Duisburg on one timeline. Pick a day, plan your evening, get tickets.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -30,7 +27,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#fafafa',
+  colorScheme: 'light',
+  themeColor: '#f7f3e8',
 }
 
 export default function RootLayout({
@@ -40,9 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
+      <body className="antialiased">
         {children}
-        <Analytics />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )

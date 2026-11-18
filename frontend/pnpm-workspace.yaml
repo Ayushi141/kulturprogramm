@@ -1,2 +1,5 @@
-allowBuilds:
-  sharp: true
+pmOnFail: ignore
+
+minimumReleaseAgeExclude:
+  - '@next/*'
+  - next

@@ -1,0 +1,124 @@
+/* Explorer: day strip, poster/timeline views, plan panel.
+   Uses the tokens from globals.css (--paper, --ink, --red, --blue, --mono, --display). */
+
+/* header: wordmark + domain stamp */
+.x-brand{display:flex;align-items:center;gap:14px;text-decoration:none}
+.x-domain{font:700 11px/1 var(--mono);letter-spacing:.5px;border:1px solid var(--ink);background:var(--paper);padding:4px 8px;transform:rotate(1.5deg);white-space:nowrap}
+.x-wrap{width:min(92%,1500px);margin:auto}
+.navwrap .saves{display:flex;align-items:center;gap:8px;white-space:nowrap}
+
+/* hero: the headline is the answer for the selected day */
+.x-hero{padding:24px 0 14px}
+.x-hero h1{font-size:clamp(52px,5.6vw,92px);line-height:.94;margin:14px 0 18px}
+.x-hero .issue span{color:var(--red);padding:0 3px}
+
+/* sticky control bar (the old marquee band, now with a job) */
+.x-band{position:sticky;top:0;z-index:6;background:var(--blue);border-block:2px solid var(--ink)}
+.x-bandrow{display:flex;align-items:center;gap:16px;padding:10px 0}
+.x-band .filters button{background:var(--paper);color:var(--ink);border:1.5px solid var(--ink)}
+.x-band .filters button[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:2px 2px var(--yellow)}
+.x-band .filters button[aria-pressed=false]{color:#565247}
+.x-cats{flex-wrap:nowrap;overflow-x:auto}
+.x-star{flex:none;width:16px;height:16px;background:var(--yellow);clip-path:polygon(50% 0%,57% 33%,82% 8%,67% 40%,100% 35%,72% 53%,98% 72%,65% 65%,78% 98%,54% 73%,43% 100%,41% 69%,10% 89%,31% 60%,0% 55%,32% 46%,9% 18%,41% 34%)}
+.x-band .x-views{margin-left:auto}
+
+/* view toggle */
+.x-views{display:inline-flex;border:2px solid var(--ink);box-shadow:3px 3px var(--ink);flex:none;background:var(--paper)}
+.x-views button{display:flex;align-items:center;gap:7px;font:18px var(--display);letter-spacing:.5px;text-transform:uppercase;padding:8px 15px;background:var(--paper)}
+.x-views button+button{border-left:2px solid var(--ink)}
+.x-views button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+
+.x-demo{font:700 11px/1.5 var(--mono);letter-spacing:.5px;background:var(--yellow);border:1px solid var(--ink);padding:6px 10px;margin:0 0 16px;display:inline-block}
+.x-demo code{font:inherit;background:var(--paper);padding:0 4px}
+
+/* day strip */
+.x-days{display:grid;grid-template-columns:repeat(7,minmax(118px,1fr));gap:8px;overflow-x:auto;padding:0 6px 8px 0}
+.x-day{border:1.5px solid var(--ink);background:var(--paper);padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:1px}
+.x-day:hover{background:#ebe4d4}
+.x-day[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:4px 4px var(--red)}
+.x-day small{font-size:9px;opacity:.75}
+.x-day strong{font:400 24px/1.1 var(--display);letter-spacing:-.02em}
+.x-day span{font:11px var(--mono)}
+.x-day svg{display:block;margin-top:6px;width:100%;height:22px}
+
+/* controls */
+.x-hint{font:12.5px/1.8 var(--mono);margin:0 0 10px;min-height:22px}
+.x-hint b{background:var(--ink);color:var(--paper);padding:2px 7px;letter-spacing:.5px}
+
+/* timeline */
+.x-chart{overflow-x:auto;border:2px solid var(--ink);background:#fbf8f1;box-shadow:5px 5px var(--blue)}
+.x-chart svg{display:block;user-select:none;-webkit-user-select:none;font-family:Arial,Helvetica,sans-serif;fill:var(--ink)}
+.x-tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--paper);padding:11px 13px;max-width:330px;box-shadow:4px 4px var(--red)}
+.x-tt{font:21px/1.05 var(--display);margin-bottom:5px}
+.x-tm{font:11.5px/1.6 var(--mono)}
+.x-hl{color:var(--yellow)}
+.x-key{display:flex;flex-wrap:wrap;gap:8px 22px;font:11px var(--mono);color:#565247;margin-top:16px;align-items:center}
+.x-key span{display:inline-flex;align-items:center;gap:7px}
+.x-k-path{width:26px;border-top:4px solid var(--ink)}
+
+/* poster view (reuses .gridcards/.card from globals.css) */
+.x-group{margin:20px 0 6px}
+.x-ghead{display:flex;align-items:baseline;gap:14px;border-bottom:1.5px solid var(--ink);padding-bottom:4px;margin-bottom:16px}
+.x-gh{font:40px/1 var(--display);letter-spacing:-.02em}
+.x-gc{font:700 10px var(--mono);letter-spacing:1px;color:#565247;text-transform:uppercase}
+.card{transition:opacity .15s,box-shadow .15s}
+.card.x-planned{box-shadow:6px 6px var(--red)}
+
+.x-note{font:12px var(--mono);color:#565247;margin-top:22px}
+.x-note button,.x-emptyplan button{font:inherit;text-decoration:underline;color:var(--ink)}
+.x-empty{font:13px/1.6 var(--mono);border:1.5px dashed var(--ink);padding:28px;text-align:center;margin-top:18px}
+
+/* plan panel */
+.x-plan{margin-top:30px;border:2px solid var(--ink);padding:18px 20px;box-shadow:5px 5px var(--red);scroll-margin-top:20px}
+.x-plan h2{font-size:clamp(32px,3vw,48px)}
+.x-sum{font:700 10.5px var(--mono);letter-spacing:1px;color:#565247;margin:4px 0 14px}
+.x-emptyplan{font:13px/1.6 var(--mono);margin:0}
+.x-steps{display:flex;flex-wrap:wrap;align-items:stretch}
+.x-step{border:1.5px solid var(--ink);background:#fbf8f1;padding:10px 12px;min-width:190px;max-width:270px}
+.x-step small{font-size:10px}
+.x-step h3{font-size:22px;line-height:1.05;margin:4px 0}
+.x-step p{font:11.5px var(--mono);color:#565247;margin:0;display:flex;align-items:center;gap:6px}
+.x-step p i{width:10px;height:10px;border:1.5px solid var(--ink);display:inline-block}
+.x-leg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 12px;min-width:110px;font:11px/1.5 var(--mono)}
+.x-leg b{font-size:20px;line-height:1}
+.x-leg.x-bad{color:var(--red);font-weight:700}
+.x-planbtns{display:flex;gap:8px;margin-top:14px}
+.x-planbtns button{border:1px solid;font-weight:bold;padding:8px 12px;font-size:13px}
+
+/* category swatch inside filter buttons (identity is never colour-only: icon + label too) */
+.x-sw{width:11px;height:11px;border:1.5px solid var(--ink);display:inline-block;flex:none}
+.filters button[aria-pressed=false] .x-sw{opacity:.3}
+.filters button[aria-pressed=false]{color:#565247}
+
+/* timeline detail popover */
+.x-pop{position:fixed;z-index:21;width:330px;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
+.x-popclose{position:absolute;top:8px;right:8px;color:var(--paper);background:none;border:1px solid #fff5;padding:3px;display:flex}
+.x-pop .x-tt{padding-right:26px}
+.x-popbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.x-popbtns button,.x-popbtns a{display:inline-flex;align-items:center;gap:6px;font:bold 13px Arial,Helvetica,sans-serif;padding:7px 10px;border:1px solid var(--paper);text-decoration:none;color:var(--paper)}
+.x-popbtns a{background:var(--paper);color:var(--ink)}
+.x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font:bold 12px Arial,Helvetica,sans-serif;text-decoration:underline;text-underline-offset:2px}
+
+/* dialog */
+.x-rel{font:700 12px/1.5 var(--mono);background:var(--yellow);border:1px solid var(--ink);padding:5px 8px;display:inline-block}
+.x-rel-muted{background:none;border-style:dashed;font-weight:400}
+.x-dialogbtns{display:flex;flex-wrap:wrap;gap:8px}
+.x-dialogbtns .visit{gap:8px;border:1px solid var(--ink)}
+.visit.x-outline{background:var(--paper);color:var(--ink);text-decoration:none}
+
+@media(max-width:700px){
+  .navwrap{height:auto;padding:10px 0}
+  .x-brand{flex-direction:column;align-items:flex-start;gap:5px}
+  .x-domain{font-size:9px;padding:3px 6px}
+  .x-hero h1{font-size:clamp(40px,12vw,64px)}
+  .x-views button{font-size:15px;padding:7px 10px}
+  .x-days{grid-template-columns:repeat(7,112px)}
+  .x-bandrow{gap:8px;flex-wrap:wrap}
+  .x-cats{width:100%}
+  .x-band .x-views{margin-left:0}
+  .x-star{display:none}
+  .x-band .filters button{padding:6px 8px}
+  .x-gh{font-size:32px}
+  .x-leg{min-width:100%;flex-direction:row;gap:8px;padding:6px 0}
+  .x-step{max-width:none;width:100%}
+}
