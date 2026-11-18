@@ -39,6 +39,16 @@ function fitText(s: string, max: number, font: string) {
 }
 /** Event id usable inside an SVG id and url(#…). */
 const safeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_')
+/** Splits text into lines no wider than `max` px. */
+function wrapText(s: string, max: number, font: string) {
+  const lines: string[] = []
+  let line = ''
+  for (const word of s.split(' ')) {
+    const next = line ? line + ' ' + word : word
+    if (line && width(next, font) > max) { lines.push(line); line = word } else line = next
+  }
+  return line ? [...lines, line] : lines
+}
 const snap = (t: number) => Math.max(DAY0, Math.min(DAY1, Math.round(t / 30) * 30))
 
 type OpenEnd = { xm: number; xe: number; fill: string; dots: string; outline: string }
@@ -236,6 +246,8 @@ export function Timeline(p: TimelineProps) {
     const by = CATEGORIES.map(c => [t.cat[c].label, on.filter(i => i.category === c).length] as [string, number]).filter(r => r[1])
     setTip({ ...near(e.clientX, e.clientY, 340, 90)!, body: <><div className="x-tt">{fmt(at)}</div><div className="x-tm">{t.running(on.length, by)}<br /><span className="x-hl">{t.stripHint}</span></div></> })
   }
+  // the browser took the gesture over (e.g. to scroll): drop the half-drawn window
+  const onCancel = () => { drag.current = null; setPreview(null) }
   const onUp = (e: React.PointerEvent) => {
     const d = drag.current
     drag.current = null
@@ -330,7 +342,6 @@ export function Timeline(p: TimelineProps) {
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 <text x={12} y={r.y + 7 + BAR / 2 + 4.5} fontFamily="Arial, Helvetica, sans-serif" fontSize={13} fontWeight={700}>{fitText(r.label, L - 30, 'bold 13px Arial')}</text>
               </g>)}
-          {!layout.rows.length && <text x={W / 2} y={TOP + 60} textAnchor="middle" fontFamily={MONO} fontSize={13} fill="#565247">{t.nothingInView}</text>}
         </g>
 
         {/* main axis */}
@@ -417,10 +428,22 @@ export function Timeline(p: TimelineProps) {
           </g>
         )}
 
+        {/* nothing in view: centred in the chart area, wrapped to fit, above the past-time overlay */}
+        {!layout.rows.length && (
+          <text x={L + (W - L - R) / 2} y={TOP + 60} textAnchor="middle" fontFamily={MONO} fontSize={13} fill="#565247">
+            {wrapText(t.nothingInView, W - L - R - 40, `13px ${MONO}`).map((line, i) => <tspan key={i} x={L + (W - L - R) / 2} dy={i ? 19 : 0}>{line}</tspan>)}
+          </text>
+        )}
+
         {/* brush hit area on the overview (on top, so it gets the pointer) */}
-        <rect x={L} y={OV_Y - 12} width={W - L - R} height={OV_H + 32} fill="transparent" style={{ cursor: 'ew-resize', touchAction: 'none' }}
-          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onMouseLeave={() => { if (!drag.current) setTip(null) }} />
       </svg>
+
+      {/* Brush hit area over the whole-day strip. An HTML element, not an SVG one: mobile browsers
+          honour touch-action only on HTML elements. pan-y keeps vertical page scrolling; a sideways
+          drag draws the window instead of scrolling the chart. */}
+      <div className="x-brush" style={{ left: L * Z, top: (OV_Y - 12) * Z, width: (W - L - R) * Z, height: (OV_H + 32) * Z }}
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
+        onMouseLeave={() => { if (!drag.current) setTip(null) }} />
 
       {tip && !pop && <div className="x-tip" style={{ left: tip.x, top: tip.y }}>{tip.body}</div>}
       {pop && popItem && (
