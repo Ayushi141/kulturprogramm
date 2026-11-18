@@ -23,7 +23,7 @@ export function PlanPanel({ day, plan, suggestion, onToggle, onClear }: Props) {
   )
   const cities = new Set(plan.map(s => s.venue.city))
   const copy = async () => {
-    const txt = `${name} ${dayLabel(day)}\n` + plan.map(s => `${fmt(s.s)}–${endLabel(s)}  ${s.ev.title} (${s.venue.name}, ${s.venue.city})${s.ev.url ? '\n             ' + s.ev.url : ''}`).join('\n')
+    const txt = `${t.dateline(name, dayLabel(day))}\n` + plan.map(s => `${fmt(s.s)}–${endLabel(s)}  ${s.ev.title} (${s.venue.name}, ${s.venue.city})${s.ev.url ? '\n             ' + s.ev.url : ''}`).join('\n')
     try { await navigator.clipboard.writeText(txt); setCopied(t.copied) } catch { setCopied(t.copyBlocked) }
     setTimeout(() => setCopied(''), 1400)
   }

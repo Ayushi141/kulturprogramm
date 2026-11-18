@@ -86,7 +86,8 @@ export function Timeline(p: TimelineProps) {
   const [W, setW] = useState(1100)
   const [, setFontsReady] = useState(0)
   const [tip, setTip] = useState<(Float & { body: ReactNode }) | null>(null)
-  const [pop, setPop] = useState<(Float & { id: string }) | null>(null)
+  // `fitted` is set once the popover has been measured and, if needed, moved on screen
+  const [pop, setPop] = useState<(Float & { id: string; fitted?: boolean }) | null>(null)
   const [preview, setPreview] = useState<Window | null>(null)
   const drag = useRef<{ p0: number; moved: boolean } | null>(null)
 
@@ -98,6 +99,14 @@ export function Timeline(p: TimelineProps) {
     return () => ro.disconnect()
   }, [])
   useEffect(() => { document.fonts?.ready.then(() => setFontsReady(n => n + 1)) }, [])
+  // a popover that would stick out of the window is centred instead
+  useLayoutEffect(() => {
+    const el = popRef.current
+    if (!pop || pop.fitted || !el) return
+    const r = el.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight, m = 8
+    const inside = r.left >= m && r.top >= m && r.right <= vw - m && r.bottom <= vh - m
+    setPop(inside ? { ...pop, fitted: true } : { ...pop, fitted: true, x: Math.max(m, (vw - r.width) / 2), y: Math.max(m, (vh - r.height) / 2) })
+  }, [pop])
   // close the detail popover on outside click, Escape or scroll
   useEffect(() => {
     if (!pop) return

@@ -1,8 +1,13 @@
 /* Explorer: day strip, poster/timeline views, plan panel.
    Uses the tokens from globals.css (--paper, --ink, --red, --blue, --mono, --display). */
 
-/* header: wordmark + category stamp, language switch */
-.x-brand{display:flex;align-items:center;gap:14px;text-decoration:none}
+/* header: logo (star + upright wordmark) + category stamp, language switch */
+.x-brand .brand{transform:none;flex-shrink:0}
+.x-brand .burst{margin-right:-9px}  /* the first letter overlaps the star */
+/* The stamp sits on the logo's line. When it does not fit, it wraps to a
+   second line, which the fixed height clips, so it simply disappears. */
+.x-brand{display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:14px;row-gap:40px;
+  height:44px;padding:5px;margin:-5px;overflow:hidden;min-width:0;text-decoration:none}
 .x-stamp{white-space:nowrap;background:var(--paper)}
 .x-navtools{display:flex;align-items:center;gap:14px}
 .x-lang{display:flex;border:1px solid var(--ink);font:700 11px/1 var(--mono)}
@@ -59,7 +64,6 @@ footer{gap:16px}
 .x-hl{color:var(--yellow)}
 .x-key{display:flex;flex-wrap:wrap;gap:8px 22px;font:11px var(--mono);color:#565247;margin-top:16px;align-items:center}
 .x-key span{display:inline-flex;align-items:center;gap:7px}
-.x-k-path{width:26px;border-top:4px solid var(--ink)}
 
 /* poster view (reuses .gridcards/.card from globals.css) */
 .x-group{margin:20px 0 6px}
@@ -97,7 +101,7 @@ footer{gap:16px}
 .filters button[aria-pressed=false]{color:#565247}
 
 /* timeline detail popover */
-.x-pop{position:fixed;z-index:21;width:330px;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
+.x-pop{position:fixed;z-index:21;width:min(330px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
 .x-popclose{position:absolute;top:8px;right:8px;color:var(--paper);background:none;border:1px solid #fff5;padding:3px;display:flex}
 .x-pop .x-tt{padding-right:26px}
 .x-popbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
@@ -114,7 +118,6 @@ footer{gap:16px}
 
 @media(max-width:700px){
   .navwrap{height:auto;padding:10px 0}
-  .x-brand{flex-direction:column;align-items:flex-start;gap:5px}
   .x-stamp{font-size:8px;letter-spacing:.4px}
   .x-navtools{gap:8px}
   .x-hero h1{font-size:clamp(40px,12vw,64px)}

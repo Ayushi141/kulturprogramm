@@ -101,7 +101,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
           <div className="x-wrap">
-            <h1>{nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase()} {dayLabel(day)}<br />
+            <h1>{t.dateline(nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase(), dayLabel(day))}<br />
               <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>
             <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(inCat)} />
           </div>
@@ -132,7 +132,6 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
             <Timeline venues={programme.venues} items={visible} overviewItems={pool} win={win} nowMin={nowMin}
               plan={plan} planIds={planIds} onToggle={onToggle} onWindow={setWin} />
             <div className="x-key">
-              <span><i className="x-k-path" />{t.keyEvening}</span>
               <span>{t.keyZoom}</span>
             </div>
           </> : (
@@ -150,7 +149,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
           <button className="dismiss" onClick={() => setDetail(null)} aria-label={t.close}><X size={18} /></button>
           {detail && <>
             <div className="detailphoto"><Picture image={detail.ev.image} category={detail.category} key={detail.id} /></div>
-            <small>{t.cat[detail.category].tag} / {t.wdl[weekday(detail.day)].toUpperCase()} {dayLabel(detail.day)}</small>
+            <small>{t.cat[detail.category].tag} / {t.dateline(t.wdl[weekday(detail.day)].toUpperCase(), dayLabel(detail.day))}</small>
             <h2>{detail.ev.title}</h2>
             <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail, t)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
             {detail.ev.note && <p>{detail.ev.note}</p>}

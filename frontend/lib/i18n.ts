@@ -27,6 +27,8 @@ const en = {
 
   // hero and day strip
   loading: 'Loading the programme…',
+  /** Day name or "TODAY" before a date. */
+  dateline: (day: string, date: string) => `${day} ${date}`,
   today: 'TODAY',
   tomorrow: 'TOMORROW',
   toCome: (n: number) => `${n} STILL TO COME.`,
@@ -44,9 +46,8 @@ const en = {
   hintTimeline: 'Tap an event for details, tickets or to add it to your evening.',
   hintPoster: 'Bookmark an event to add it to your evening.',
   demo: 'DEMO PROGRAMME — invented times and titles; links go to venue home pages. Set PGPASSWORD_FILE to load the database.',
-  keyEvening: 'your evening',
   keyZoom: 'drag on the whole-day strip to zoom · click it to move the view',
-  footer: 'Programme & images from the linked venues.',
+  footer: "Programme and images come from the venues' own websites.",
 
   // event details
   details: 'Programme details',
@@ -109,7 +110,7 @@ export type Dict = typeof en
 
 const de: Dict = {
   title: 'Kulturprogramm — Theater, Oper und Kino in NRW',
-  description: 'Theater, Oper und Kino in Düsseldorf, Köln und Duisburg auf einer Zeitleiste. Tag wählen, Abend planen, Tickets holen.',
+  description: 'Theater, Oper und Kino in Düsseldorf, Köln und Duisburg auf einer Timeline. Tag wählen, Abend planen, Tickets holen.',
   toTop: 'Kulturprogramm — nach oben',
   language: 'Sprache',
   myEvening: 'Mein Abend',
@@ -122,25 +123,26 @@ const de: Dict = {
   wdl: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
 
   loading: 'Programm wird geladen…',
+  // German date style: "Mittwoch, 18.11."
+  dateline: (day, date) => `${day}, ${date}`,
   today: 'HEUTE',
   tomorrow: 'MORGEN',
-  toCome: n => `NOCH ${n} ${n === 1 ? 'TERMIN' : 'TERMINE'}.`,
-  on: n => `${n} ${n === 1 ? 'TERMIN' : 'TERMINE'}.`,
+  toCome: n => `NOCH ${n} ${n === 1 ? 'EVENT' : 'EVENTS'}.`,
+  on: n => `${n} ${n === 1 ? 'EVENT' : 'EVENTS'}.`,
   nothingOn: 'NICHTS LOS.',
-  events: n => `${n} ${n === 1 ? 'Termin' : 'Termine'}`,
+  events: n => `${n} ${n === 1 ? 'Event' : 'Events'}`,
   dayGroup: 'Tag',
 
   categoriesGroup: 'Kategorien (eine oder mehrere)',
   viewGroup: 'Ansicht',
-  timeline: 'Zeitleiste',
-  poster: 'Plakate',
+  timeline: 'Timeline',
+  poster: 'Poster',
   inEvening: n => `${n} FÜR DEINEN ABEND`,
-  hintTimeline: 'Tippe auf einen Termin für Details, Tickets oder um ihn deinem Abend hinzuzufügen.',
-  hintPoster: 'Merk dir einen Termin vor, um ihn deinem Abend hinzuzufügen.',
+  hintTimeline: 'Tippe auf ein Event für Details, Tickets oder um es deinem Abend hinzuzufügen.',
+  hintPoster: 'Merk dir ein Event vor, um es deinem Abend hinzuzufügen.',
   demo: 'DEMO-PROGRAMM — erfundene Zeiten und Titel; Links führen zu den Startseiten der Spielstätten. Setze PGPASSWORD_FILE, um die Datenbank zu laden.',
-  keyEvening: 'dein Abend',
   keyZoom: 'auf dem Tagesstreifen ziehen zum Zoomen · klicken, um die Ansicht zu verschieben',
-  footer: 'Programm und Bilder von den verlinkten Spielstätten.',
+  footer: 'Programm und Bilder stammen von den Websites der Spielstätten.',
 
   details: 'Programmdetails',
   close: 'Schließen',
@@ -156,7 +158,7 @@ const de: Dict = {
   mayOverlap: names => `überschneidet sich vielleicht mit ${names}`,
   clashWithPlan: text => `${cap(text)} in deinem Abend`,
 
-  timelineLabel: 'Zeitleiste der Termine nach Spielstätte',
+  timelineLabel: 'Timeline der Events nach Spielstätte',
   wholeDay: 'GANZER TAG',
   onAtOnce: 'gleichzeitig los',
   dragToZoom: 'ziehen zum Zoomen',
@@ -171,8 +173,8 @@ const de: Dict = {
   addTo: title => `Zu meinem Abend hinzufügen: ${title}`,
   removeFrom: title => `Aus meinem Abend entfernen: ${title}`,
   starting: n => `${n} ${n === 1 ? 'beginnt' : 'beginnen'}`,
-  startedToday: n => `${n} ${n === 1 ? 'weiterer hat' : 'weitere haben'} heute schon begonnen — `,
-  seeOnTimeline: 'auf der Zeitleiste ansehen',
+  startedToday: n => `${n} ${n === 1 ? 'weiteres hat' : 'weitere haben'} heute schon begonnen — `,
+  seeOnTimeline: 'in der Timeline ansehen',
 
   yourDay: weekday => `DEIN ${weekday.toUpperCase()}`,
   empty: 'LEER',
