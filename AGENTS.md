@@ -102,17 +102,20 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
   `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
   database; map new ones in `CATEGORY` in `frontend/lib/get-programme.ts`.
-- `Location` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
-  `venues` row. Build its `id` as `f"{self.name}-{slugify(name)}"`.
-- `Event` is a dataclass with `title`, `location`, `category`, an aware
+- A `Source` is one website; a `Venue` is one physical place. One source can
+  list several venues (Filmkunstkinos lists four cinemas).
+- `Venue` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
+  `venues` row, like the frontend's `Venue`. Build its `id` as
+  `f"{self.name}-{slugify(name)}"`.
+- `Event` is a dataclass with `title`, `venue`, `category`, an aware
   `starts_at`, an optional aware `ends_at`, and an optional absolute `url`.
-- `Venue` stores a source key and URL and defines the abstract `scrape()`
+- `Source` stores a source key and URL and defines the abstract `scrape()`
   method.
-- Each venue's `scrape()` fetches and parses events. `Venue.save()` writes
-  events to PostgreSQL.
-- The run loop scrapes each venue in `venues`, saves its results, and sleeps
-  for one day. If a venue raises, the loop prints the traceback and continues
-  with the next venue, so one failing source does not stop the others.
+- Each source's `scrape()` fetches and parses events. `Source.save()` upserts
+  the events' venues, then the events.
+- The run loop scrapes each source in `sources`, saves its results, and sleeps
+  for one day. If a source raises, the loop prints the traceback and continues
+  with the next source, so one failing source does not stop the others.
 
 ### Scraper implementation rules
 
@@ -120,7 +123,7 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - Use `%s` placeholders in SQL. Do not interpolate values into SQL strings.
 - Set an HTTP timeout; the current scrapers use `timeout=60`.
 - Let parse errors surface instead of silently dropping malformed records;
-  the run loop logs them per venue.
+  the run loop logs them per source.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
 
@@ -128,9 +131,9 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - Use the source's name in ASCII CapWords for its class. Write `oe` for `ö`;
   for example, `SchauspielKoeln`.
-- Use a lowercase key for the `Venue` name argument, such as
+- Use a lowercase key for the `Source` name argument, such as
   `"schauspiel-koeln"`.
-- The event's `venue` field should identify the performance location, not
+- The event's `venue` should identify the performance location, not
   automatically the website operator. Check the source page for available
   location information.
 
@@ -146,8 +149,11 @@ that a venue's live page has not changed.
 - Title: direct text of `h2.movie-small--title a`; use
   `find(string=True, recursive=False)` to omit the subtitle in
   `span.extended-title`.
-- Venue: `span.meta-theater-logo` (for example, `Metropol`, `Bambi`, `Cinema`,
-  or `Atelier`).
+- URL: the title link's `href` (the film page).
+- Venue name: `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`, or
+  `Atelier`). City: fixed `Düsseldorf`; the program page names no city.
+- End: start plus the runtime in `.movie-small--meta p.meta` (`100 Min`). This
+  is the film length; trailers before the film are not included.
 - Each `time[datetime]` is a screening. The parser replaces its timezone with
   Berlin time because the page labels these local times with `+00:00`; it does
   not convert the clock time.
@@ -165,7 +171,7 @@ that a venue's live page has not changed.
 - End: only in `.performance__time` text such as `19:00 – 20:15`; some
   performances show only the start, giving `ends_at = None`. An end at or
   before the start is moved to the next day.
-- Location name: `.performance__location`, with a leading `📍` removed (for
+- Venue name: `.performance__location`, with a leading `📍` removed (for
   example, `Schauspielhaus, Großes Haus`). City: the text after the postal code
   in the hidden `[itemprop=location] [itemprop=address]`.
 - Category: currently always `THEATER`, including special events.
@@ -174,12 +180,14 @@ that a venue's live page has not changed.
 
 - URL: `https://www.schauspiel.koeln/kalender`.
 - Each `li.s-bko-activity` is parsed as one event.
-- Title: `.field--name-production a`.
+- Title: `.field--name-production a`. URL: its `href` (the production page).
 - Start: the date in `time.s-bko-activity__datetime[datetime]` and the last
   text piece from that element, parsed with
   `strptime(..., "%Y-%m-%d %H.%M Uhr")`; the parser attaches Berlin time.
-- Venue: currently the fixed string `"Schauspiel Köln"`; stage information is
-  not recorded.
+- Venue: fixed `Schauspiel Köln` in `Köln`; the calendar names no stage.
+- End: always `None`; the calendar gives no end or length. Production pages
+  list stage and length (for example, `Schauspielhaus 1 h 45 min`), but are
+  not fetched.
 - Label: `.field--name-category`, or an empty string if missing. Labels in
   `EXCLUDED_LABELS` (`Führung`, `Workshop`) are skipped. `Schulvorstellung`
   is not filtered.
@@ -251,8 +259,6 @@ between runs; the scraper Compose service also has no `restart` policy.
 
 - `Event` inherits from `ABC`, although it has no abstract methods; it may be
   a plain dataclass.
-- Consider renaming `Venue` to `Source`, because one website can list multiple
-  physical venues.
 - Decide how to remove or mark cancelled events.
 - Decide whether to include `Lesung`, `Party`, and Dhaus special events, and
   how to categorize them.

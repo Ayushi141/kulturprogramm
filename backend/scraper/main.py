@@ -22,7 +22,7 @@ class Category(StrEnum):
 
 
 @dataclass(frozen=True)
-class Location:
+class Venue:
     id: str
     name: str
     city: str
@@ -31,7 +31,7 @@ class Location:
 @dataclass
 class Event(ABC):
     title: str
-    location: Location
+    venue: Venue
     category: Category
     starts_at: datetime
     ends_at: datetime | None
@@ -45,7 +45,7 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
 
 
-class Venue(ABC):
+class Source(ABC):
     def __init__(self, name, website):
         self.name = name
         self.website = website
@@ -54,12 +54,12 @@ class Venue(ABC):
     def scrape(self) -> list[Event]: ...
 
     def save(self, events: list[Event]) -> None:
-        locations = {e.location for e in events}
-        location_rows = [(l.id, l.name, l.city) for l in locations]
+        venues = {e.venue for e in events}
+        venue_rows = [(v.id, v.name, v.city) for v in venues]
         event_rows = [
             (
                 e.title,
-                e.location.id,
+                e.venue.id,
                 e.category.value,
                 e.starts_at,
                 e.ends_at,
@@ -80,7 +80,7 @@ class Venue(ABC):
                     name = EXCLUDED.name,
                     city = EXCLUDED.city
                 """,
-                location_rows,
+                venue_rows,
             )
             cursor.executemany(
                 """
@@ -98,7 +98,10 @@ class Venue(ABC):
             )
 
 
-class Filmkunstkinos(Venue):
+class Filmkunstkinos(Source):
+    # The program page names no city; all four cinemas are in Düsseldorf.
+    CITY = "Düsseldorf"
+
     def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
         response.raise_for_status()
@@ -108,9 +111,19 @@ class Filmkunstkinos(Venue):
         for article in soup.select("article.col-group"):
             link = article.select_one("h2.movie-small--title a")
             title = link.find(string=True, recursive=False).strip()
+            url = str(response.url.join(link["href"]))
 
-            venue = article.select_one("span.meta-theater-logo").get_text(
+            name = article.select_one("span.meta-theater-logo").get_text(
                 strip=True
+            )
+            venue = Venue(
+                id=f"{self.name}-{slugify(name)}", name=name, city=self.CITY
+            )
+
+            # e.g. "Biografie, Musik • GB, DE 1994 • 100 Min • Regie: ..."
+            meta = article.select_one(".movie-small--meta p.meta").get_text()
+            runtime = timedelta(
+                minutes=int(re.search(r"(\d+)\s*Min", meta).group(1))
             )
 
             for time_element in article.select("time[datetime]"):
@@ -123,13 +136,15 @@ class Filmkunstkinos(Venue):
                         venue=venue,
                         category=Category.FILM,
                         starts_at=starts_at,
+                        ends_at=starts_at + runtime,
+                        url=url,
                     )
                 )
 
         return events
 
 
-class Dhaus(Venue):
+class Dhaus(Source):
     def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
         response.raise_for_status()
@@ -156,7 +171,7 @@ class Dhaus(Venue):
                 "[itemprop=location] [itemprop=address]"
             ).get_text(strip=True)
             city = re.fullmatch(r".*\b\d{5}\s+(.+)", address).group(1)
-            location = Location(
+            venue = Venue(
                 id=f"{self.name}-{slugify(name)}", name=name, city=city
             )
 
@@ -183,7 +198,7 @@ class Dhaus(Venue):
             events.append(
                 Event(
                     title=title,
-                    location=location,
+                    venue=venue,
                     category=Category.THEATER,
                     starts_at=starts_at,
                     ends_at=ends_at,
@@ -193,8 +208,14 @@ class Dhaus(Venue):
         return events
 
 
-class SchauspielKoeln(Venue):
+class SchauspielKoeln(Source):
     EXCLUDED_LABELS = {"Führung", "Workshop"}
+    # The calendar names no stage, so all events share one venue.
+    VENUE = Venue(
+        id="schauspiel-koeln-schauspiel-koeln",
+        name="Schauspiel Köln",
+        city="Köln",
+    )
 
     def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
@@ -208,9 +229,9 @@ class SchauspielKoeln(Venue):
             if label in self.EXCLUDED_LABELS:
                 continue
 
-            title = activity.select_one(".field--name-production a").get_text(
-                strip=True
-            )
+            link = activity.select_one(".field--name-production a")
+            title = link.get_text(strip=True)
+            url = str(response.url.join(link["href"]))
 
             time_tag = activity.select_one("time.s-bko-activity__datetime")
             clock = list(time_tag.stripped_strings)[-1]
@@ -224,16 +245,19 @@ class SchauspielKoeln(Venue):
             events.append(
                 Event(
                     title=title,
-                    venue="Schauspiel Köln",
+                    venue=self.VENUE,
                     category=category,
                     starts_at=starts_at,
+                    # The calendar gives no end or length.
+                    ends_at=None,
+                    url=url,
                 )
             )
 
         return events
 
 
-venues = [
+sources = [
     Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/"),
     Dhaus("dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel"),
     SchauspielKoeln(
@@ -243,13 +267,13 @@ venues = [
 
 if __name__ == "__main__":
     while True:
-        for venue in venues:
+        for source in sources:
             try:
-                events = venue.scrape()
-                venue.save(events)
+                events = source.scrape()
+                source.save(events)
             except Exception:
-                print(f"Failed to scrape {venue.name}:", flush=True)
+                print(f"Failed to scrape {source.name}:", flush=True)
                 traceback.print_exc()
                 continue
-            print(f"Scraped {len(events)} events from {venue.name}", flush=True)
+            print(f"Scraped {len(events)} events from {source.name}", flush=True)
         sleep(60 * 60 * 24)
