@@ -46,7 +46,8 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-colorbar i:nth-child(1){background:#00a0e3}.x-colorbar i:nth-child(2){background:#e4007c}.x-colorbar i:nth-child(3){background:var(--yellow)}
 .x-colorbar i:nth-child(4){background:var(--ink)}.x-colorbar i:nth-child(5){background:var(--red)}.x-colorbar i:nth-child(6){background:var(--blue)}
 .x-colorbar i:nth-child(7){background:var(--paper)}
-@media(max-width:700px){.x-halftone{width:85%}.x-colorbar i{width:16px;height:10px}}
+@media(max-width:700px){.x-halftone{width:85%;right:calc(-100% * .04 / .92)}  /* runs out to the screen edge (.x-wrap is 92% wide) */
+  .x-colorbar i{width:16px;height:10px}}
 .x-hero h1{font-size:clamp(52px,5.6vw,92px);line-height:.94;margin:14px 0 18px}
 /* "In focus" card beside the headline (styles .feature* in globals.css) */
 /* the card is exactly as tall as the headline (grid stretch), so it costs no extra height;

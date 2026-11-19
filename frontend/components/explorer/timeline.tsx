@@ -131,7 +131,23 @@ export function Timeline(p: TimelineProps) {
   const xo = (m: number) => L + (Math.max(DAY0, Math.min(DAY1, m)) - DAY0) * ko
   const fromXo = (px: number) => DAY0 + (px - L) / ko
 
-  /* Rows: venues grouped by city, overlapping items packed into lanes */
+  /* Lanes: overlapping items of a venue are packed into lanes over the whole day, not
+     just the view, so an item keeps its lane while the view moves. */
+  const lanes = useMemo(() => {
+    const lane = new Map<string, number>(), count = new Map<string, number>()
+    for (const v of p.venues) {
+      const ends: number[] = []
+      p.items.filter(i => i.venue.id === v.id).sort((a, b) => a.s - b.s).forEach(it => {
+        let li = ends.findIndex(end => end <= it.s)
+        if (li < 0) { li = ends.length; ends.push(0) }
+        ends[li] = it.e; lane.set(it.id, li)
+      })
+      count.set(v.id, ends.length)
+    }
+    return { lane, count }
+  }, [p.items, p.venues])
+
+  /* Rows: venues grouped by city; a venue is shown when it has an item in the view */
   const layout = useMemo(() => {
     const inWin = p.items.filter(it => it.s < p.win[1] && it.e > p.win[0])
     const cities: string[] = []
@@ -140,24 +156,19 @@ export function Timeline(p: TimelineProps) {
     let y = TOP
     for (const city of cities) {
       const vs = p.venues.filter(v => v.city === city)
-        .map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id).sort((a, b) => a.s - b.s) }))
+        .map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id) }))
         .filter(r => r.its.length)
       if (!vs.length) continue
       rows.push({ kind: 'city', label: city, y, h: 30, alt: false }); y += 30
       vs.forEach(({ v, its }, i) => {
-        const lanes: number[] = []
-        its.forEach(it => {
-          let li = lanes.findIndex(end => end <= it.s)
-          if (li < 0) { li = lanes.length; lanes.push(0) }
-          lanes[li] = it.e; ys.set(it.id, y + head + 7 + li * LANE)
-        })
-        const h = head + lanes.length * LANE + 8
+        its.forEach(it => ys.set(it.id, y + head + 7 + lanes.lane.get(it.id)! * LANE))
+        const h = head + lanes.count.get(v.id)! * LANE + 8
         rows.push({ kind: 'venue', label: v.name, y, h, alt: i % 2 === 1 }); y += h
       })
       y += 6
     }
     return { rows, ys, inWin, H: Math.max(y + 24, TOP + 120) }
-  }, [p.items, p.venues, p.win, head])
+  }, [p.items, p.venues, p.win, head, lanes])
   const H = layout.H
 
   /* Bar geometry. Memoised so hover (which re-renders for the tooltip) does not rebuild the halftone paths. */
