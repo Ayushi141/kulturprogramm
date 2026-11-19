@@ -23,7 +23,7 @@ footer .x-footbrand{font:20px/.95 var(--display);letter-spacing:-1px;transform:n
 footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 
 /* hero: the headline is the answer for the selected day */
-.x-hero{padding:36px 0 32px;position:relative;overflow:hidden}  /* room for the vertical crop marks */
+.x-hero{padding:18px 0;position:relative;overflow:hidden}
 .x-hero>.x-wrap{position:relative;z-index:1}
 
 /* ── Print shop: the page as a printer's layout sheet ─────────────────────────
@@ -37,32 +37,10 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
   background:repeating-linear-gradient(to right,var(--rule) 0 1px,transparent 1px calc(100% / 6))}
 /* halftone field behind the hero (halftone-field.tsx), inside the content column and
    over the hero's full height; z-index -1 keeps it under the headline and cards */
-.x-halftone{position:absolute;top:-36px;right:0;bottom:-32px;width:66%;z-index:-1;pointer-events:none}
+.x-halftone{position:absolute;top:-18px;right:0;bottom:-18px;width:66%;z-index:-1;pointer-events:none}
 .x-halftone svg{display:block}
-/* crop marks (crop-marks.tsx) at the four corners of the hero's content column:
-   1px hairlines, 20px long, 8px clear of the corner, fixed px (never scaled).
-   Each mark's corner sits --crop-out outside the column, so the vertical lines
-   stay clear of the page's column rules at the content edges. */
-.trim{position:relative;--crop-len:20px;--crop-gap:8px;--crop-out:8px}
-.crop{position:absolute;width:0;height:0;pointer-events:none}
-.crop.tl{left:calc(-1 * var(--crop-out));top:0}.crop.tr{right:calc(-1 * var(--crop-out));top:0}
-.crop.bl{left:calc(-1 * var(--crop-out));bottom:0}.crop.br{right:calc(-1 * var(--crop-out));bottom:0}
-.crop::before,.crop::after{content:'';position:absolute;background:var(--ink)}
-.crop::before{width:var(--crop-len);height:1px}  /* horizontal */
-.crop::after{width:1px;height:var(--crop-len)}   /* vertical */
-/* horizontal: on the top/bottom edge, outside left/right */
-.crop.tl::before,.crop.bl::before{right:var(--crop-gap)}
-.crop.tr::before,.crop.br::before{left:var(--crop-gap)}
-.crop.tl::before,.crop.tr::before{top:0}
-.crop.bl::before,.crop.br::before{bottom:0}
-/* vertical: on the left/right edge, outside top/bottom */
-.crop.tl::after,.crop.tr::after{bottom:var(--crop-gap)}
-.crop.bl::after,.crop.br::after{top:var(--crop-gap)}
-.crop.tl::after,.crop.bl::after{left:0}
-.crop.tr::after,.crop.br::after{right:0}
-@media(max-width:899px){.crop{display:none}}
 /* CMYK + house colours, standing on the top edge of the blue bar */
-.x-colorbar{position:absolute;right:0;bottom:-32px;display:flex;border:1px solid var(--ink);border-bottom:0}
+.x-colorbar{position:absolute;right:0;bottom:-18px;display:flex;border:1px solid var(--ink);border-bottom:0}
 .x-colorbar i{display:block;width:24px;height:12px}
 .x-colorbar i+i{border-left:1px solid var(--ink)}
 .x-colorbar i:nth-child(1){background:#00a0e3}.x-colorbar i:nth-child(2){background:#e4007c}.x-colorbar i:nth-child(3){background:var(--yellow)}
@@ -133,6 +111,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* timeline */
 .x-chart{position:relative;overflow-x:auto;border:2px solid var(--ink);background:#fbf8f1;box-shadow:5px 5px var(--blue)}
 .x-brush{position:absolute;cursor:ew-resize;touch-action:pan-y}
+/* sideways drags pan the timeline (timeline.tsx); vertical ones still scroll the page.
+   When the chart is wider than its box, touch keeps the native sideways scroll. */
+.x-chart{touch-action:pan-y}.x-chart.x-overflow{touch-action:auto}
 .x-chart svg{display:block;user-select:none;-webkit-user-select:none;font-family:Arial,Helvetica,sans-serif;fill:var(--ink)}
 .x-tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--paper);padding:11px 13px;max-width:330px;box-shadow:4px 4px var(--red)}
 .x-tt{margin-bottom:5px}
@@ -178,8 +159,10 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 
 /* timeline detail popover */
 .x-pop{position:fixed;z-index:21;width:min(330px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
-.x-popclose{position:absolute;top:8px;right:8px;color:var(--paper);background:none;border:1px solid #fff5;padding:3px;display:flex}
+.x-popclose{position:absolute;top:8px;right:8px;z-index:1;color:var(--paper);background:var(--ink);border:1px solid #fff5;padding:3px;display:flex}
 .x-pop .x-tt{padding-right:26px}
+/* thumbnail on click (hover shows only the text tooltip); the close button sits on it */
+.x-popphoto{height:130px;margin:-13px -14px 12px;border-bottom:1.5px solid var(--paper)}
 .x-popbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .x-popbtns button,.x-popbtns a{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--paper);text-decoration:none;color:var(--paper)}
 .x-popbtns a{background:var(--paper);color:var(--ink)}
@@ -268,9 +251,3 @@ small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step smal
 /* secondary text is grey, never smaller or lighter */
 .x-updated,.x-note,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
 
-/* Detail dialog: the picture in its own format (tall film posters, wide stage
-   photos), never cropped. Capped in height so title and buttons stay in view.
-   Without an image the typographic tile keeps the fixed height from globals.css. */
-.detailphoto:has(img){height:auto}
-.detailphoto .source-image:has(img){background:none;height:auto}
-.detailphoto img{display:block;width:auto;height:auto;max-width:100%;max-height:min(55dvh,520px);margin:0 auto;object-fit:contain;border:1.5px solid var(--ink)}

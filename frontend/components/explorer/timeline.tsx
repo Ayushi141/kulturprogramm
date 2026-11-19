@@ -7,6 +7,7 @@ import { clashes, spanLabel, surelyOverlap, upcoming, type Item, type Window } f
 import { DAY0, DAY1, fmt } from '@/lib/time'
 import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
+import { Picture } from '../picture'
 import { CAT } from './categories'
 import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
@@ -76,6 +77,8 @@ export function Timeline(p: TimelineProps) {
   const popRef = useRef<HTMLDivElement>(null)
   const [cw, setCw] = useState(1100) // CSS px available for the chart
   const [narrow, setNarrow] = useState(false)
+  // the chart is wider than its box (MIN_W) and scrolls natively; touch then keeps that scroll
+  const [overflow, setOverflow] = useState(false)
   const [, setFontsReady] = useState(0)
   const [tip, setTip] = useState<(Float & { body: ReactNode }) | null>(null)
   // `fitted` is set once the popover has been measured and, if needed, moved on screen
@@ -89,6 +92,7 @@ export function Timeline(p: TimelineProps) {
     const ro = new ResizeObserver(() => {
       const n = el.clientWidth <= NARROW
       setNarrow(n)
+      setOverflow(!n && el.clientWidth < MIN_W)
       setCw(n ? el.clientWidth : Math.max(MIN_W, el.clientWidth))
     })
     ro.observe(el)
@@ -245,6 +249,57 @@ export function Timeline(p: TimelineProps) {
     setPreview(null)
   }
 
+  /* Panning: a sideways drag on the chart or a horizontal scroll (trackpad, shift + wheel)
+     moves the view through the day; the window keeps its length. */
+  const live = useRef({ win: p.win, k, Z, onWindow: p.onWindow })
+  useLayoutEffect(() => { live.current = { win: p.win, k, Z, onWindow: p.onWindow } })
+  // minutes as a float, so slow scrolling adds up; the view itself moves in whole minutes
+  const panTo = (a: number) => {
+    const { win: [a0, b0], onWindow } = live.current, w = b0 - a0
+    const next = Math.round(Math.max(DAY0, Math.min(DAY1 - w, a)))
+    if (next === a0) return
+    live.current.win = [next, next + w]
+    onWindow([next, next + w])
+  }
+  const pan = useRef<{ cx: number; cy: number; a: number; moved: boolean } | null>(null)
+  const panned = useRef(false) // swallow the click that ends a drag
+  const onPanDown = (e: React.PointerEvent) => {
+    panned.current = false
+    if (e.button !== 0 || (e.target as Element).closest('.x-brush, .x-pop')) return
+    pan.current = { cx: e.clientX, cy: e.clientY, a: p.win[0], moved: false }
+  }
+  const onPanMove = (e: React.PointerEvent) => {
+    const d = pan.current
+    if (!d) return
+    const dx = e.clientX - d.cx, dy = e.clientY - d.cy
+    if (!d.moved) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { pan.current = null; return } // a vertical gesture
+      if (Math.abs(dx) < 6) return
+      d.moved = true; setTip(null); setPop(null)
+      ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    }
+    panTo(d.a - dx / Z / k)
+  }
+  const onPanEnd = () => { if (pan.current?.moved) panned.current = true; pan.current = null }
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    let acc: number | null = null, t0 = 0
+    const wheel = (e: WheelEvent) => {
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0
+      const { win: [a, b], k, Z } = live.current
+      if (!dx || b - a >= DAY1 - DAY0) return // nothing to pan: leave the event to the page
+      e.preventDefault()
+      setTip(null); setPop(null)
+      if (acc === null || e.timeStamp - t0 > 200) acc = a
+      t0 = e.timeStamp
+      acc = Math.max(DAY0, Math.min(DAY1 - (b - a), acc + (dx * (e.deltaMode === 1 ? 16 : 1)) / Z / k))
+      panTo(acc)
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    return () => el.removeEventListener('wheel', wheel)
+  }, [])
+
   /* Axis ticks adapt to zoom */
   const pxPerH = 60 * k
   // an hour label needs AXIS_LABEL_W plus some air; the first and last ones sit at the edges
@@ -272,7 +327,9 @@ export function Timeline(p: TimelineProps) {
   const popItem = pop ? p.items.find(i => i.id === pop.id) : undefined
 
   return (
-    <div className="x-chart" ref={box}>
+    <div className={'x-chart' + (overflow ? ' x-overflow' : '')} ref={box}
+      onPointerDown={onPanDown} onPointerMove={onPanMove} onPointerUp={onPanEnd} onPointerCancel={onPanEnd}
+      onClickCapture={e => { if (panned.current) { e.stopPropagation(); panned.current = false } }}>
       <svg ref={svg} width={cw} height={H * Z} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.timelineLabel}>
         <defs>
           {/* open-end bars may reach past the view; they are clipped to the plot area */}
@@ -356,7 +413,7 @@ export function Timeline(p: TimelineProps) {
                 onMouseEnter={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onMouseMove={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onMouseLeave={() => setTip(null)}
-                onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 230)! }) }}>
+                onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 380)! }) }}>
                 {open ? (
                   <g clipPath={`url(#${uid}plot)`}>
                     {planned && <path d={wedge(x0, open.xm, open.xe, y, BAR)} transform="translate(4,4)" fill={RED} />}
@@ -437,6 +494,7 @@ export function Timeline(p: TimelineProps) {
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
           <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
+          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} /></div>
           {itemSummary(popItem)}
           <div className="x-popbtns">
             <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>

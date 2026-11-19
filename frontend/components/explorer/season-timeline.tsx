@@ -5,6 +5,7 @@ import type { Venue } from '@/lib/types'
 import { productions, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
+import { Picture } from '../picture'
 import { CAT } from './categories'
 import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
@@ -179,7 +180,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
               return <g key={it.id} data-mark="" style={{ cursor: 'pointer' }}
                 onMouseEnter={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY), body: summary(it) }) }}
                 onMouseLeave={() => setTip(null)}
-                onClick={e => { setTip(null); setPop(sel ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 220) }) }}>
+                onClick={e => { setTip(null); setPop(sel ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 370) }) }}>
                 {/* click area = exactly this day, so neighbours never steal the click */}
                 <rect x={x - k / 2} y={y - LANE / 2} width={k} height={LANE} fill="transparent" />
                 {planned && <rect x={x - mw / 2 + 2} y={y - MARK_H / 2 + 2} width={mw} height={MARK_H} fill={RED} />}
@@ -194,6 +195,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
           <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
+          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} /></div>
           {summary(popItem)}
           <div className="x-popbtns">
             <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>

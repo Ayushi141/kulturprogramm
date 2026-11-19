@@ -14,7 +14,6 @@ import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
 import { SeasonTimeline } from './explorer/season-timeline'
 import { HalftoneField } from './explorer/halftone-field'
-import { CropMarks } from './crop-marks'
 import { relation, Timeline } from './explorer/timeline'
 
 type View = 'timeline' | 'poster'
@@ -144,9 +143,8 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
       {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
-          <div className="x-wrap trim">
-            {/* printer's proof details: crop marks at the corners, colour bar on the blue bar */}
-            <CropMarks />
+          <div className="x-wrap">
+            {/* printer's proof detail: colour bar on the blue bar */}
             <HalftoneField />
             <div className="x-herorow">
               {isLater
@@ -218,7 +216,6 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
         <div className="dialogbody">
           <button className="dismiss" onClick={() => setDetail(null)} aria-label={t.close}><X size={18} /></button>
           {detail && <>
-            <div className="detailphoto"><Picture image={detail.ev.image} category={detail.category} key={detail.id} /></div>
             <small>{t.cat[detail.category].tag} / {t.dateline(t.wdl[weekday(detail.day)].toUpperCase(), dayLabel(detail.day))}</small>
             <h2>{detail.ev.title}</h2>
             <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail, t)}{detail.ev.price && ` · ${detail.ev.price}`}</p>

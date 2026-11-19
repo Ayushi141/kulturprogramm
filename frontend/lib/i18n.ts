@@ -75,7 +75,7 @@ const en = {
   /** Folio line in the hero: today's issue number (day of the year) and place. */
   updated: (when: string) => `Updated ${when} · refreshed daily`,
   demo: 'DEMO PROGRAMME — invented times and titles; links go to venue home pages. Set PGPASSWORD_FILE to load the database.',
-  keyZoom: 'drag on the whole-day strip to zoom · click it to move the view',
+  keyZoom: 'drag on the whole-day strip to zoom · click it to move the view · drag or scroll the timeline sideways to move through the day',
   footer: "Programme and images come from the venues' own websites.",
 
   // event details
@@ -196,7 +196,7 @@ const de: Dict = {
   inFocus: 'IM FOKUS',
   updated: when => `Stand: ${when} · täglich aktualisiert`,
   demo: 'DEMO-PROGRAMM — erfundene Zeiten und Titel; Links führen zu den Startseiten der Spielstätten. Setze PGPASSWORD_FILE, um die Datenbank zu laden.',
-  keyZoom: 'auf dem Tagesstreifen ziehen zum Zoomen · klicken, um die Ansicht zu verschieben',
+  keyZoom: 'auf dem Tagesstreifen ziehen zum Zoomen · klicken, um die Ansicht zu verschieben · die Zeitleiste seitlich ziehen oder scrollen, um durch den Tag zu gehen',
   footer: 'Programm und Bilder stammen von den Websites der Spielstätten.',
 
   details: 'Programmdetails',
