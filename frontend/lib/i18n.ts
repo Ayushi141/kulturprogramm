@@ -9,6 +9,8 @@ export const LANGS: Lang[] = ['de', 'en']
 export const HOME: Record<Lang, string> = { de: '/', en: '/en' }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
 const en = {
   title: 'Kulturprogramm — theatre, opera and movies in NRW',
@@ -36,7 +38,7 @@ const en = {
   nothingOn: 'NOTHING ON.',
   events: (n: number) => `${n} ${n === 1 ? 'event' : 'events'}`,
   dayGroup: 'Day',
-  months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  months: MONTHS_EN,
   monthsLong: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
 
   // "later": everything after the seven days, up to six months
@@ -70,6 +72,7 @@ const en = {
   hintTimeline: 'Tap an event for details, tickets or to add it to your evening.',
   hintPoster: 'Bookmark an event to add it to your evening.',
   inFocus: 'IN FOCUS',
+  /** Folio line in the hero: today's issue number (day of the year) and place. */
   updated: (when: string) => `Updated ${when} · refreshed daily`,
   demo: 'DEMO PROGRAMME — invented times and titles; links go to venue home pages. Set PGPASSWORD_FILE to load the database.',
   keyZoom: 'drag on the whole-day strip to zoom · click it to move the view',
@@ -159,7 +162,7 @@ const de: Dict = {
   nothingOn: 'NICHTS LOS.',
   events: n => `${n} ${n === 1 ? 'Event' : 'Events'}`,
   dayGroup: 'Tag',
-  months: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+  months: MONTHS_DE,
   monthsLong: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
 
   later: 'SPÄTER',

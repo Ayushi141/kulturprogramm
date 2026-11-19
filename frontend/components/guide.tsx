@@ -13,6 +13,8 @@ import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
 import { SeasonTimeline } from './explorer/season-timeline'
+import { HalftoneField } from './explorer/halftone-field'
+import { CropMarks } from './crop-marks'
 import { relation, Timeline } from './explorer/timeline'
 
 type View = 'timeline' | 'poster'
@@ -142,7 +144,10 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
       {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
-          <div className="x-wrap">
+          <div className="x-wrap trim">
+            {/* printer's proof details: crop marks at the corners, colour bar on the blue bar */}
+            <CropMarks />
+            <HalftoneField />
             <div className="x-herorow">
               {isLater
                 ? <h1>{t.laterHead(dayLabel(laterFrom), dayLabel(laterTo))}<br /><em>{laterPool.length ? t.showsAhead(laterPool.length) : t.nothingAnnounced}</em></h1>
@@ -162,6 +167,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
             </div>
             <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(inCat)}
               later={{ key: LATER, until: laterTo, count: laterPool.length, weekly: laterWeekly }} />
+            <span className="x-colorbar" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>
           </div>
         </section>
 

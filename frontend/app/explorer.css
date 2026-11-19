@@ -9,20 +9,66 @@
 .x-brand{display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:14px;row-gap:40px;
   height:44px;padding:5px;margin:-5px;overflow:hidden;min-width:0;text-decoration:none}
 .x-stamp{white-space:nowrap;background:var(--paper)}
-.x-navtools{display:flex;align-items:center;gap:14px}
+.x-navtools{display:flex;align-items:stretch;gap:14px}  /* "My evening" is as tall as the language switch */
 .x-lang{display:flex;border:1px solid var(--ink)}
 .x-lang a{padding:6px 7px;text-decoration:none}
 .x-lang a+a{border-left:1px solid var(--ink)}
 .x-lang a[aria-current]{background:var(--ink);color:var(--paper)}
 .x-wrap{width:min(92%,1500px);margin:auto}
-.navwrap .saves{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.navwrap .saves{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:0 7px;border:1px solid var(--ink);box-shadow:none}
+.navwrap .saves b{padding:0 4px}
 footer{gap:16px}
 /* footer: the same logo as the header, smaller */
 footer .x-footbrand{font:20px/.95 var(--display);letter-spacing:-1px;transform:none;flex-shrink:0}
 footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 
 /* hero: the headline is the answer for the selected day */
-.x-hero{padding:24px 0}
+.x-hero{padding:36px 0 32px;position:relative;overflow:hidden}  /* room for the vertical crop marks */
+.x-hero>.x-wrap{position:relative;z-index:1}
+
+/* ── Print shop: the page as a printer's layout sheet ─────────────────────────
+   Base layer under everything: faint baselines (full width, every 34px) and six
+   column rules aligned to the content. Elements with their own background
+   (chart, cards, blue bar) cover it. */
+main#top{position:relative;isolation:isolate;--rule:rgba(32,31,26,.07)}
+main#top::before,main#top::after{content:'';position:absolute;top:0;bottom:0;z-index:-1;pointer-events:none}
+main#top::before{left:0;right:0;background:repeating-linear-gradient(to bottom,transparent 0 33px,var(--rule) 33px 34px)}
+main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border-right:1px solid var(--rule);
+  background:repeating-linear-gradient(to right,var(--rule) 0 1px,transparent 1px calc(100% / 6))}
+/* halftone field behind the hero (halftone-field.tsx), inside the content column and
+   over the hero's full height; z-index -1 keeps it under the headline and cards */
+.x-halftone{position:absolute;top:-36px;right:0;bottom:-32px;width:66%;z-index:-1;pointer-events:none}
+.x-halftone svg{display:block}
+/* crop marks (crop-marks.tsx) at the four corners of the hero's content column:
+   1px hairlines, 20px long, 8px clear of the corner, fixed px (never scaled).
+   Each mark's corner sits --crop-out outside the column, so the vertical lines
+   stay clear of the page's column rules at the content edges. */
+.trim{position:relative;--crop-len:20px;--crop-gap:8px;--crop-out:8px}
+.crop{position:absolute;width:0;height:0;pointer-events:none}
+.crop.tl{left:calc(-1 * var(--crop-out));top:0}.crop.tr{right:calc(-1 * var(--crop-out));top:0}
+.crop.bl{left:calc(-1 * var(--crop-out));bottom:0}.crop.br{right:calc(-1 * var(--crop-out));bottom:0}
+.crop::before,.crop::after{content:'';position:absolute;background:var(--ink)}
+.crop::before{width:var(--crop-len);height:1px}  /* horizontal */
+.crop::after{width:1px;height:var(--crop-len)}   /* vertical */
+/* horizontal: on the top/bottom edge, outside left/right */
+.crop.tl::before,.crop.bl::before{right:var(--crop-gap)}
+.crop.tr::before,.crop.br::before{left:var(--crop-gap)}
+.crop.tl::before,.crop.tr::before{top:0}
+.crop.bl::before,.crop.br::before{bottom:0}
+/* vertical: on the left/right edge, outside top/bottom */
+.crop.tl::after,.crop.tr::after{bottom:var(--crop-gap)}
+.crop.bl::after,.crop.br::after{top:var(--crop-gap)}
+.crop.tl::after,.crop.bl::after{left:0}
+.crop.tr::after,.crop.br::after{right:0}
+@media(max-width:899px){.crop{display:none}}
+/* CMYK + house colours, standing on the top edge of the blue bar */
+.x-colorbar{position:absolute;right:0;bottom:-32px;display:flex;border:1px solid var(--ink);border-bottom:0}
+.x-colorbar i{display:block;width:24px;height:12px}
+.x-colorbar i+i{border-left:1px solid var(--ink)}
+.x-colorbar i:nth-child(1){background:#00a0e3}.x-colorbar i:nth-child(2){background:#e4007c}.x-colorbar i:nth-child(3){background:var(--yellow)}
+.x-colorbar i:nth-child(4){background:var(--ink)}.x-colorbar i:nth-child(5){background:var(--red)}.x-colorbar i:nth-child(6){background:var(--blue)}
+.x-colorbar i:nth-child(7){background:var(--paper)}
+@media(max-width:700px){.x-halftone{width:85%}.x-colorbar i{width:16px;height:10px}}
 .x-hero h1{font-size:clamp(52px,5.6vw,92px);line-height:.94;margin:14px 0 18px}
 /* "In focus" card beside the headline (styles .feature* in globals.css) */
 /* the card is exactly as tall as the headline (grid stretch), so it costs no extra height;
@@ -42,6 +88,8 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 .x-band .filters button{background:var(--paper);color:var(--ink);border:1.5px solid var(--ink)}
 .x-band .filters button[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:2px 2px var(--yellow)}
 .x-band .filters button[aria-pressed=false]{color:#565247}
+/* category buttons use the view toggle's type: Poster 18px, upper case */
+.x-band .filters button{font:400 18px var(--display);letter-spacing:.5px;text-transform:uppercase}
 /* room for the buttons' 2px offset shadow, which the scroll container would clip */
 .x-cats{flex-wrap:nowrap;overflow-x:auto;padding:0 2px 2px 0}
 .x-star{flex:none;width:16px;height:16px;background:var(--yellow);clip-path:polygon(50% 0%,57% 33%,82% 8%,67% 40%,100% 35%,72% 53%,98% 72%,65% 65%,78% 98%,54% 73%,43% 100%,41% 69%,10% 89%,31% 60%,0% 55%,32% 46%,9% 18%,41% 34%)}
@@ -52,6 +100,7 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 .x-views button{display:flex;align-items:center;gap:7px;font:400 18px var(--display);letter-spacing:.5px;text-transform:uppercase;padding:8px 15px;background:var(--paper)}
 .x-views button+button{border-left:2px solid var(--ink)}
 .x-views button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.x-views button[aria-pressed=false]{color:#565247}  /* greyed like inactive category buttons */
 
 .x-demo{background:var(--yellow);border:1px solid var(--ink);padding:6px 10px;margin:0 0 var(--info-gap);display:inline-block}
 .x-demo code{font:inherit;background:var(--paper);padding:0 4px}
@@ -149,14 +198,15 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
   .x-stamp{font-size:8px;letter-spacing:.4px}
   .x-navtools{gap:8px}
   .x-hero h1{font-size:clamp(40px,12vw,64px)}
-  .x-views button{font-size:15px;padding:7px 10px}
+  .x-views button,.x-band .filters button{font-size:15px}
+  .x-views button{padding:7px 10px}
   /* phones: all eight buttons in a 4 × 2 grid, no scrolling; dates and counts only */
   .x-days{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;overflow:visible;padding:0 4px 4px 0}
   .x-day{padding:6px 7px}
   .x-day strong{font-size:clamp(15px,4.6vw,22px);white-space:nowrap}
   .x-day small{font-size:9px}
   .x-day span{font-size:10px}
-  .x-day svg,.x-day .x-blank{display:none}
+  .x-day svg{display:none}
   .x-day[aria-pressed=true]{box-shadow:3px 3px var(--red)}
   /* "BIS 19.05." / "UNTIL 19.05." is longer than a date and the double rule takes 5px */
   .x-later strong{font-size:clamp(13px,3.9vw,20px)}
@@ -190,7 +240,8 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
      title-m  display 22             titles of cards, steps, tooltips
      title-l  display 32             section headings
    Fixed sizes outside this block, chosen for contrast with the titles:
-   the view toggle (Poster 18px, 15px on phones), the day-card dates (Poster
+   the view toggle and the category buttons in the blue bar (Poster 18px,
+   upper case, 15px on phones), the day-card dates (Poster
    24px), the small day-card and "In focus" lines (mono 11px), and the hint,
    "Stand" and zoom-hint lines around the chart (mono 12px).
    All sizes in this block scale with the page by --zs, exactly like the timeline's zoom Z

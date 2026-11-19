@@ -32,8 +32,8 @@ export function DayStrip({ days, selected, win, itemsOf, countOf, onSelect, late
         const max = Math.max(1, ...cnt)
         return (
           <button key={d} className="x-day" aria-pressed={d === selected} onClick={() => onSelect(d)}>
-            {/* days without a label keep an empty line on desktop (aligned dates); phones drop it */}
-            <small className={i > 1 ? 'x-blank' : undefined}>{i === 0 ? t.today : i === 1 ? t.tomorrow : ' '}</small>
+            {/* days without a label keep an empty line, so all dates line up */}
+            <small>{i === 0 ? t.today : i === 1 ? t.tomorrow : ' '}</small>
             <strong>{t.wd[weekday(d)]} {dayLabel(d)}</strong>
             <span>{t.events(countOf(d))}</span>
             <svg viewBox="0 0 96 22" preserveAspectRatio="none" aria-hidden="true">

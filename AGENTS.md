@@ -121,7 +121,7 @@ instead of adding new sizes or weights:
   with the page, like the timeline's zoom `Z`, so chart and page text match.
 - Secondary text is grey (`#565247`), never smaller or lighter.
 - Exceptions with fixed sizes: the logo, the hero headline, the view toggle
-  (Poster 18px, 15px on phones), the day-card dates (Poster 24px), and the
+  and category buttons (Poster 18px, upper case, 15px on phones), the day-card dates (Poster 24px), and the
   small day-card and "In focus" lines (mono 11px), and the hint, "Stand" and
   zoom-hint lines around the chart (mono 12px). `globals.css` holds v0 template leftovers; do not set fonts there.
 

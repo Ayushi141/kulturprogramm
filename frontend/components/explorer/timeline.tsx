@@ -247,7 +247,8 @@ export function Timeline(p: TimelineProps) {
 
   /* Axis ticks adapt to zoom */
   const pxPerH = 60 * k
-  const labelEvery = pxPerH >= 46 ? 60 : pxPerH >= 23 ? 120 : 180
+  // an hour label needs AXIS_LABEL_W plus some air; the first and last ones sit at the edges
+  const labelEvery = pxPerH >= 56 ? 60 : pxPerH >= 28 ? 120 : 180
   const minor = pxPerH >= 90 ? 30 : 60
   const ticks: number[] = []
   for (let m = Math.ceil(A / minor) * minor; m <= B; m += minor) ticks.push(m)
