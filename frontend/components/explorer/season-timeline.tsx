@@ -140,7 +140,8 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
   const popItem = pop ? p.items.find(i => i.id === pop.id) : undefined
 
   return (
-    <div className="x-chart" ref={box}>
+    // no drag-to-pan here: the chart always uses the native sideways scroll, so touch must keep it (x-overflow)
+    <div className="x-chart x-overflow" ref={box}>
       <svg width={W * Z} height={H * Z} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.seasonLabel}>
         {/* grid */}
         {mondays.map(x => <line key={x} x1={x} x2={x} y1={TOP - 8} y2={H - 12} stroke="#e6dfcf" strokeDasharray="2 3" />)}
