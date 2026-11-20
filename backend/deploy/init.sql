@@ -18,7 +18,8 @@ CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
     venue_id   text        NOT NULL REFERENCES venues (id),
-    category   text        NOT NULL,
+    -- the values of the scraper's Category enum; "konzert" is stored but not shown yet
+    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert')),
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,
@@ -26,6 +27,10 @@ CREATE TABLE events (
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
+
+-- The frontend reads a window of start times. Rows are never deleted, and
+-- sources list whole seasons, so the table keeps growing.
+CREATE INDEX events_starts_at ON events (starts_at);
 
 -- Productions shown in the "In focus" card, by event title. The card shows the
 -- next performance of one of them; `until` (inclusive) ends the feature, NULL
