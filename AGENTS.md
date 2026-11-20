@@ -66,7 +66,7 @@ CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
     venue_id   text        NOT NULL REFERENCES venues (id),
-    category   text        NOT NULL,
+    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert')),
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,
@@ -74,6 +74,7 @@ CREATE TABLE events (
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
+CREATE INDEX events_starts_at ON events (starts_at);  -- the frontend's window
 
 CREATE TABLE featured (
     title    text PRIMARY KEY,  -- event title shown in the "In focus" card
@@ -82,10 +83,10 @@ CREATE TABLE featured (
 );
 ```
 
-There is no category `CHECK` constraint in the current schema. `init.sql` runs
-when PostgreSQL initializes an empty data volume; changing it does not update
-an existing database. To apply a schema change, recreate the database (see
-`docker compose down -v` below) or migrate the existing one by hand.
+`init.sql` runs when PostgreSQL initializes an empty data volume; changing it
+does not update an existing database. Recreate the database (see `docker
+compose down -v` below) or migrate it by hand, e.g. for the category check and
+index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE INDEX ...`.
 
 Each row represents one event at one start time. `ends_at` is NULL when the
 source lists no end time. The unique key lets the scraper update an existing
@@ -119,8 +120,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
   `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
-  database; map new ones in `CATEGORY` in `frontend/lib/get-programme.ts`
-  (`konzert` is stored but not shown yet).
+  database; add new ones to the `category` check in `init.sql` and to
+  `CATEGORY` in `frontend/lib/get-programme.ts` (`konzert` is not shown yet).
 - A `Source` is one website; a `Venue` is one physical place. One source can
   list several venues (Filmkunstkinos lists four cinemas).
 - `Venue` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
@@ -293,13 +294,8 @@ never exits, so this stays in the foreground until stopped:
 docker compose run --rm --build scraper
 ```
 
-Query the event count:
-
-```bash
-docker compose exec postgres psql -U kultur -d kultur -c "SELECT count(*) FROM events;"
-```
-
-Show event times in Berlin time:
+Query the database (`docker compose exec postgres psql -U kultur -d kultur`),
+for example event times in Berlin time:
 
 ```sql
 SELECT title, starts_at AT TIME ZONE 'Europe/Berlin'
