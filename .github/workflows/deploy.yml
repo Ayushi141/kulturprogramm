@@ -1,0 +1,35 @@
+# Deploys the frontend to the VPS after every push to main.
+#
+# The job connects over SSH with a key that the server restricts to
+# backend/deploy/deploy.sh. That script pulls main and rebuilds the frontend.
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   DEPLOY_SSH_KEY      private key of the deploy key pair
+#   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <host>` (checks the server's identity)
+#   DEPLOY_TARGET       user@host, or ssh://user@host:port for a different SSH port
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits for the running deploy to finish.
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Run deploy.sh on the server
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          TARGET: ${{ secrets.DEPLOY_TARGET }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$TARGET"
