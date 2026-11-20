@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import hashlib
 import io
+import json
 import os
 import re
 import traceback
@@ -91,10 +92,79 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
 
 
+def absolute_url(base: httpx.URL, href: str) -> str:
+    url = base.join(href)
+    if url.scheme == "http":
+        url = url.copy_with(scheme="https")
+    return str(url)
+
+
+def end_time_from_text(starts_at: datetime, text: str) -> datetime | None:
+    match = re.search(
+        r"\b\d{1,2}:\d{2}\s*(?:-|–|—|\bbis\b)\s*(\d{1,2}:\d{2})\b",
+        text,
+    )
+    if not match:
+        return None
+
+    end_clock = datetime.strptime(match[1], "%H:%M").time()
+    ends_at = datetime.combine(
+        starts_at.date(), end_clock, tzinfo=starts_at.tzinfo
+    )
+    return ends_at + timedelta(days=1) if ends_at <= starts_at else ends_at
+
+
 class Source(ABC):
+    # Generic German event-type words, matched against an event's short texts
+    # (title, label, badge, subtitle); never against production descriptions,
+    # which mention anything. Info and ticket lines are only checked for
+    # CLOSED. The same for every source: keep them generic and do not
+    # override them per source.
+    #
+    # Closed performances: booked by schools or kindergartens, or not on sale.
+    CLOSED = re.compile(
+        r"\b(?:\w*schul(?:vorstellung|konzert)\w*|kita\w*|\w*kindergarten\w*|"
+        r"für\s+schulen|geschlossene\s+vorstellung\w*)\b",
+        re.IGNORECASE,
+    )
+    CONCERT = re.compile(
+        r"\b(?:\w*konzert\w*|jazz\w*|\w*gala)\b", re.IGNORECASE
+    )
+    # Not a performance: tours, workshops and classes, readings, talks, intro
+    # events, parties. "führung" excludes (Ur-, Erst-, Vor-)Aufführung and
+    # Einführung, which label real performances ("18:15 Einführung").
+    NON_PERFORMANCE = re.compile(
+        r"\b(?:\w*workshops?|atelier|\w*(?<!auf|ein)führung(?:en)?|rundg\w*|"
+        r"\w*tour(?:en)?|open\s+classes?|mitmach\w*|trainings?|"
+        r"\w*kurs(?:e|en)?|labs?|"
+        r"\w*lesung(?:en)?|liest|talks?|vortr[aä]g\w*|gespr[aä]ch\w*|"
+        r"diskussion\w*|moderation|salon\w*|soiree|\w*matinee|partys?)\b",
+        re.IGNORECASE,
+    )
+
     def __init__(self, name, website):
         self.name = name
         self.website = website
+
+    def event_category(
+        self, default: Category | None, *labels: str
+    ) -> Category | None:
+        """
+        The category of an event with these short texts, or None to skip it.
+        Closed performances are skipped. A concert word gives CONCERT and wins
+        over NON_PERFORMANCE ("Benefiz-Matinee" with the label "Konzert"),
+        which skips the event. Otherwise the event gets `default`; None skips
+        it.
+        """
+        # "+ Einführung", "+ Gespräch": an extra before or after a performance
+        text = " ".join(re.sub(r"\+[^+]*", " ", label) for label in labels)
+        if self.CLOSED.search(text):
+            return None
+        if self.CONCERT.search(text):
+            return Category.CONCERT
+        if self.NON_PERFORMANCE.search(text):
+            return None
+        return default
 
     @abstractmethod
     def scrape(self) -> list[Event]: ...
@@ -303,12 +373,24 @@ class Dhaus(Source):
         performances = soup.select("div.performance")
         debug(f"{self.name}: {len(performances)} div.performance")
         for performance in performances:
+            if "performance--is-cancelled" in performance["class"]:
+                continue
             link = performance.select_one(".performance__title a")
             title = (
                 link.select_one("[itemprop=name]")
                 .get_text(strip=True)
                 .replace("\xad", "")
             )
+            # credits or format, e.g. "Szenische Konzertreihe"
+            subtitles = [
+                tag.get_text(" ", strip=True)
+                for tag in performance.select(
+                    ".performance__infos .performance__text"
+                )
+            ]
+            category = self.event_category(Category.THEATER, title, *subtitles)
+            if not category:
+                continue
             url = str(response.url.join(link["href"]))
 
             name = (
@@ -350,7 +432,93 @@ class Dhaus(Source):
                 Event(
                     title=title,
                     venue=venue,
-                    category=Category.THEATER,
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    url=url,
+                )
+            )
+        return events
+
+
+class OperAmRhein(Source):
+    VENUE = Venue(
+        id="oper-am-rhein-opernhaus-duesseldorf",
+        name="Opernhaus Düsseldorf",
+        city="Düsseldorf",
+    )
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        performances = soup.select("div.performance")
+        debug(f"{self.name}: {len(performances)} div.performance")
+        for performance in performances:
+            if "performance--is-cancelled" in performance["class"]:
+                continue
+            location_tag = performance.select_one(".performance__location")
+            location = location_tag.get_text(strip=True)
+            if location != self.VENUE.name:
+                continue
+
+            # e.g. "Oper", "Ballett", "Junge Oper, Konzert"; tours have none
+            category_tag = performance.select_one(".performance__category")
+            if not category_tag:
+                continue
+            label = category_tag.get_text(" ", strip=True)
+
+            link = performance.select_one("a.performance__link")
+            title_tag = link.select_one(".performance__title [itemprop=name]")
+            title = title_tag.get_text(" ", strip=True).replace("\xad", "")
+            # badges, e.g. "Schulvorstellung"
+            attributes = [
+                tag.get_text(" ", strip=True)
+                for tag in performance.select(".attribute")
+            ]
+            category = self.event_category(
+                Category.OPER, title, label, *attributes
+            )
+            if not category:
+                continue
+            url = str(response.url.join(link["href"]))
+
+            starts_at = datetime.fromisoformat(
+                performance.select_one('meta[itemprop="startDate"]')["content"]
+            )
+            if starts_at.tzinfo is None:
+                starts_at = starts_at.replace(tzinfo=berlin)
+            else:
+                starts_at = starts_at.astimezone(berlin)
+
+            time_tag = performance.select_one(
+                ".performance__col--date .performance__time"
+            )
+            time_text = time_tag.get_text(" ", strip=True)
+            end_match = re.search(
+                r"\b\d{1,2}:\d{2}\s*[-–]\s*(\d{1,2}:\d{2})\b",
+                time_text,
+            )
+            ends_at = None
+            if end_match:
+                end_clock = datetime.strptime(end_match[1], "%H:%M").time()
+                ends_at = datetime.combine(
+                    starts_at.date(), end_clock, tzinfo=berlin
+                )
+                if ends_at <= starts_at:
+                    ends_at += timedelta(days=1)
+
+            debug(f"  {title!r} at {self.VENUE.id}: {starts_at} - {ends_at}")
+            events.append(
+                Event(
+                    title=title,
+                    venue=self.VENUE,
+                    category=category,
                     starts_at=starts_at,
                     ends_at=ends_at,
                     url=url,
@@ -369,7 +537,6 @@ class Production:
 
 
 class SchauspielKoeln(Source):
-    EXCLUDED_LABELS = {"Führung", "Workshop"}
     # Used when a production page names no single stage or cannot be loaded.
     VENUE = Venue(
         id="schauspiel-koeln-schauspiel-koeln",
@@ -433,14 +600,18 @@ class SchauspielKoeln(Source):
         activities = soup.select("li.s-bko-activity")
         debug(f"{self.name}: {len(activities)} li.s-bko-activity")
         for activity in activities:
+            ticket = activity.select_one(".field--name-ticket")
+            if ticket and ticket.get_text(strip=True) == "Entfällt":
+                continue
+            # e.g. "Premiere", "Konzert", "Lesung", "Führung"
             label_tag = activity.select_one(".field--name-category")
             label = label_tag.get_text(strip=True) if label_tag else ""
-            if label in self.EXCLUDED_LABELS:
-                debug(f"  skip label {label!r}")
-                continue
-
             link = activity.select_one(".field--name-production a")
             title = link.get_text(strip=True)
+            category = self.event_category(Category.THEATER, title, label)
+            if not category:
+                debug(f"  skip {title!r} [{label}]")
+                continue
             url = str(response.url.join(link["href"]))
 
             time_tag = activity.select_one("time.s-bko-activity__datetime")
@@ -458,10 +629,6 @@ class SchauspielKoeln(Source):
                     productions[url] = Production(self.VENUE, None, None)
             details = productions[url]
             debug(f"  {title!r} [{label}] {starts_at}")
-
-            category = (
-                Category.CONCERT if label == "Konzert" else Category.THEATER
-            )
             events.append(
                 Event(
                     title=title,
@@ -479,12 +646,555 @@ class SchauspielKoeln(Source):
         return events
 
 
+class TheaterKrefeldMoenchengladbach(Source):
+    # Category by the first listed branch an event has. Other branches
+    # ("Extras": tours, talks, trips) give no category, so only their
+    # concerts are kept.
+    BRANCHES = {
+        "Musiktheater": Category.OPER,
+        "Ballett": Category.OPER,
+        "Konzerte": Category.CONCERT,
+        "Schauspiel": Category.THEATER,
+        "Kinder & Jugend": Category.THEATER,
+    }
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        performances = soup.select("article.performance")
+        debug(f"{self.name}: {len(performances)} article.performance")
+        for performance in performances:
+            # badge "Entfällt"
+            if "performance--canceled" in performance["class"]:
+                continue
+            branch_tags = performance.select(".performance__branch-link")
+            branches = {
+                tag.get_text(" ", strip=True) for tag in branch_tags
+            }
+            default = next(
+                (c for b, c in self.BRANCHES.items() if b in branches), None
+            )
+
+            title_tag = performance.select_one(".performance__title")
+            title = title_tag.get_text(" ", strip=True).replace("\xad", "")
+            # badges, e.g. "Premiere", "Soiree", "+ Einführung"
+            meta = performance.select_one(".performance__meta")
+            subtitle = performance.select_one(".performance__subtitle")
+            category = self.event_category(
+                default,
+                title,
+                meta.get_text(" ", strip=True) if meta else "",
+                subtitle.get_text(" ", strip=True) if subtitle else "",
+            )
+            if not category:
+                continue
+
+            link = performance.select_one(".performance__title a")
+            date_tag = performance.select_one("time.date[datetime]")
+            starts_at = datetime.fromisoformat(date_tag["datetime"])
+            if starts_at.tzinfo is None:
+                starts_at = starts_at.replace(tzinfo=berlin)
+            else:
+                starts_at = starts_at.astimezone(berlin)
+
+            location = performance.select_one(
+                ".performance__location"
+            ).get_text(" ", strip=True)
+            city = (
+                "Mönchengladbach"
+                if re.search(r"\bMG\b|Mönchengladbach", location)
+                else "Krefeld"
+            )
+            venue = Venue(
+                id=f"{self.name}-{slugify(location)}",
+                name=location,
+                city=city,
+            )
+            url = absolute_url(response.url, link["href"]) if link else None
+            events.append(
+                Event(
+                    title=title,
+                    venue=venue,
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=None,
+                    url=url,
+                )
+            )
+        return events
+
+
+class OperWuppertal(Source):
+    API = "https://api.wb.c4c.it/api/performances"
+    VENUE = Venue(
+        id="oper-wuppertal-opernhaus",
+        name="Opernhaus Wuppertal",
+        city="Wuppertal",
+    )
+
+    def scrape(self) -> list[Event]:
+        berlin = ZoneInfo("Europe/Berlin")
+        after = datetime.now(berlin).isoformat(timespec="seconds")
+        performances = []
+        page = 1
+        while True:
+            # The API returns at most 50 performances (of all branches) per
+            # page; one page covers only a few weeks.
+            params = {
+                "startDateTime[after]": after,
+                "itemsPerPage": 50,
+                "page": page,
+            }
+            debug(f"{self.name}: GET", self.API, "page", page)
+            response = httpx.get(
+                self.API,
+                params=params,
+                headers={"Accept": "application/ld+json"},
+                timeout=60,
+            )
+            debug("  ->", response.status_code, len(response.text), "chars")
+            response.raise_for_status()
+            data = response.json()
+            performances += data["hydra:member"]
+            if "hydra:next" not in data.get("hydra:view", {}):
+                break
+            page += 1
+
+        events = []
+        for performance in performances:
+            production = performance["production"]
+            branch = production["branch"]["title"]
+            location = (performance.get("location") or {}).get("title")
+            # Opera at the Opernhaus (not its foyers) and all orchestra
+            # concerts; the other branches are Schauspiel and "Sonstiges".
+            if branch == "Oper" and location == "Opernhaus":
+                default = Category.OPER
+            elif branch == "Sinfonieorchester" and location:
+                default = Category.CONCERT
+            else:
+                continue
+
+            title = production["title"].replace("\xad", "").strip()
+            event_label = performance.get("event") or {}
+            # a subtitle, e.g. "Crashkurs für Neugierige"
+            description = BeautifulSoup(
+                production.get("shortDescription") or "",
+                "html.parser",
+            ).get_text(" ", strip=True)
+            category = self.event_category(
+                default, title, event_label.get("title", ""), description
+            )
+            if not category:
+                continue
+            venue = (
+                self.VENUE
+                if location == "Opernhaus"
+                else Venue(
+                    id=f"{self.name}-{slugify(location)}",
+                    name=location,
+                    city=self.VENUE.city,
+                )
+            )
+
+            starts_at = datetime.fromisoformat(
+                performance["startDateTime"]
+            )
+            if starts_at.tzinfo is None:
+                starts_at = starts_at.replace(tzinfo=berlin)
+            else:
+                starts_at = starts_at.astimezone(berlin)
+            end_value = performance.get("endDateTime")
+            ends_at = datetime.fromisoformat(end_value) if end_value else None
+            if ends_at:
+                if ends_at.tzinfo is None:
+                    ends_at = ends_at.replace(tzinfo=berlin)
+                else:
+                    ends_at = ends_at.astimezone(berlin)
+                if ends_at <= starts_at:
+                    ends_at = None
+
+            events.append(
+                Event(
+                    title=title,
+                    venue=venue,
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    url=absolute_url(response.url, performance["url"]),
+                )
+            )
+
+        debug(f"{self.name}: {len(events)} qualifying performances")
+        return events
+
+
+class TheaterEssen(Source):
+    # by the first category the card lists
+    CATEGORIES = {
+        "Aalto Ballett Essen": Category.OPER,
+        "Aalto Musiktheater": Category.OPER,
+        "Schauspiel Essen": Category.THEATER,
+        "Essener Philharmoniker": Category.CONCERT,
+        "Philharmonie Essen": Category.CONCERT,
+    }
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        performances = soup.select("div.performance")
+        debug(f"{self.name}: {len(performances)} div.performance")
+        for performance in performances:
+            if "performance--is-cancelled" in performance["class"]:
+                continue
+            category_tag = performance.select_one(".performance__category")
+            category_name = (
+                category_tag.get_text(" ", strip=True) if category_tag else ""
+            )
+            default = self.CATEGORIES.get(category_name)
+            if not default:
+                continue
+            location = performance.select_one(
+                ".performance__location"
+            ).get_text(" ", strip=True)
+            # a meeting point: guided tours and walks
+            if location.startswith("Treffpunkt:"):
+                continue
+
+            title_tag = performance.select_one(
+                ".performance__title [itemprop=name]"
+            )
+            title = title_tag.get_text(" ", strip=True).replace("\xad", "")
+            subtitle = performance.select_one(".performance__subtitle")
+            category = self.event_category(
+                default,
+                title,
+                subtitle.get_text(" ", strip=True) if subtitle else "",
+            )
+            if not category:
+                continue
+            # The ticket line says "Schulvorstellung" or "geschlossene
+            # Vorstellung"; only closed bookings are read from it.
+            ticket = performance.select_one(".performance__ticketbutton")
+            if ticket and self.CLOSED.search(ticket.get_text(" ", strip=True)):
+                continue
+
+            link = performance.select_one(".performance__title a")
+            starts_at = datetime.fromisoformat(
+                performance.select_one(
+                    'meta[itemprop="startDate"]'
+                )["content"]
+            )
+            if starts_at.tzinfo is None:
+                starts_at = starts_at.replace(tzinfo=berlin)
+            else:
+                starts_at = starts_at.astimezone(berlin)
+
+            time_tag = performance.select_one(
+                ".performance__col--date .performance__time"
+            )
+            ends_at = end_time_from_text(
+                starts_at, time_tag.get_text(" ", strip=True)
+            )
+            venue = Venue(
+                id=f"{self.name}-{slugify(location)}",
+                name=location,
+                city="Essen",
+            )
+            url = absolute_url(response.url, link["href"]) if link else None
+            events.append(
+                Event(
+                    title=title,
+                    venue=venue,
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    url=url,
+                )
+            )
+        return events
+
+
+class OperKoeln(Source):
+    VENUE = Venue(
+        id="oper-koeln-oper-koeln",
+        name="Oper Köln",
+        city="Köln",
+    )
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        activities = soup.select("li.s-bko-activity--schedule")
+        debug(f"{self.name}: {len(activities)} .s-bko-activity")
+        for activity in activities:
+            time_string = activity.select_one(".s-time-string")
+            time_text = time_string.get_text(" ", strip=True)
+            # e.g. "Premiere", "Konzert", "Führung", "Öffentliche Probe"
+            category_tag = activity.select_one(
+                ".s-bko-activity__category"
+            )
+            category_text = (
+                category_tag.get_text(" ", strip=True)
+                if category_tag
+                else ""
+            )
+            link = activity.select_one(".s-link-container a[href]")
+            title = (
+                link.get_text(" ", strip=True).replace("\xad", "")
+                if link
+                else ""
+            )
+            default = (
+                Category.THEATER
+                if re.search(r"Schauspiel", category_text, re.IGNORECASE)
+                else Category.OPER
+            )
+            category = self.event_category(default, title, category_text)
+            if not category:
+                continue
+            # The info line names who books it, e.g. "Mobile Kinderoper vor
+            # Ort in Ihrer Kita"; only closed bookings are read from it.
+            info = activity.select_one(".s-bko-activity__text-infos")
+            if info and self.CLOSED.search(info.get_text(" ", strip=True)):
+                continue
+            if not link:
+                raise ValueError(f"{self.name}: event has no production URL")
+            url = absolute_url(response.url, link["href"])
+
+            time_tags = time_string.select("time[datetime]")
+            clock_match = re.search(r"\b(\d{1,2}:\d{2})\b", time_text)
+            date_tag = activity.select_one(
+                "time.s-bko-activity__datetime[datetime]"
+            )
+            starts_at = datetime.combine(
+                datetime.fromisoformat(date_tag["datetime"]).date(),
+                datetime.strptime(clock_match[1], "%H:%M").time(),
+                tzinfo=berlin,
+            )
+
+            ends_at = None
+            if time_tags:
+                end_datetime = datetime.fromisoformat(
+                    time_tags[-1]["datetime"].replace("Z", "+00:00")
+                )
+                if end_datetime.tzinfo is None:
+                    end_datetime = end_datetime.replace(tzinfo=berlin)
+                ends_at = end_datetime.astimezone(berlin)
+
+            events.append(
+                Event(
+                    title=title,
+                    venue=self.VENUE,
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    url=url,
+                )
+            )
+        return events
+
+
+class SchauspielhausBochum(Source):
+    DANCE_URL = "https://www.schauspielhausbochum.de/de/spielplan/11/tanz"
+
+    def scrape(self) -> list[Event]:
+        events = []
+        # A piece can be listed on both pages; the first listing wins.
+        seen: set[tuple[str, str, datetime]] = set()
+        berlin = ZoneInfo("Europe/Berlin")
+        for url, default in (
+            (self.website, Category.THEATER),
+            (self.DANCE_URL, Category.OPER),
+        ):
+            debug(f"{self.name}: GET", url)
+            response = httpx.get(url, follow_redirects=True, timeout=60)
+            debug("  ->", response.status_code, len(response.text), "chars")
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            groups = soup.select(".schedule__group[data-groupdate]")
+            debug(f"{self.name}: {len(groups)} schedule groups")
+
+            for group in groups:
+                for item in group.select(".schedule__item"):
+                    link = item.select_one(".schedule__title a")
+                    stage_tag = item.select_one(".schedule__stage")
+                    time_tag = item.select_one(".schedule__times")
+                    if not link or not stage_tag or not time_tag:
+                        continue
+                    stage = stage_tag.get_text(" ", strip=True)
+                    if stage == "Theater Hagen":  # a guest stage, not in Bochum
+                        continue
+                    # status badges, e.g. "Fällt aus", "Wenige Karten"
+                    badges = [
+                        tag.get_text(" ", strip=True)
+                        for tag in item.select(".schedule__cards")
+                    ]
+                    if "Fällt aus" in badges:
+                        continue
+                    title = link.get_text(" ", strip=True).replace("\xad", "")
+                    # e.g. "Premiere", "Schulvorstellung"
+                    attributes = item.select_one(".schedule__attributes")
+                    category = self.event_category(
+                        default,
+                        title,
+                        (
+                            attributes.get_text(" ", strip=True)
+                            if attributes
+                            else ""
+                        ),
+                    )
+                    if not category:
+                        continue
+
+                    starts_at = datetime.fromisoformat(
+                        group["data-groupdate"]
+                    ).replace(tzinfo=berlin)
+                    time_text = time_tag.get_text(" ", strip=True)
+                    clock_match = re.search(
+                        r"\b(\d{1,2}:\d{2})\b", time_text
+                    )
+                    start_clock = datetime.strptime(
+                        clock_match[1], "%H:%M"
+                    ).time()
+                    starts_at = datetime.combine(
+                        starts_at.date(), start_clock, tzinfo=berlin
+                    )
+                    venue = Venue(
+                        id=f"{self.name}-{slugify(stage)}",
+                        name=stage,
+                        city="Bochum",
+                    )
+                    if (title, venue.id, starts_at) in seen:
+                        continue
+                    seen.add((title, venue.id, starts_at))
+                    events.append(
+                        Event(
+                            title=title,
+                            venue=venue,
+                            category=category,
+                            starts_at=starts_at,
+                            ends_at=end_time_from_text(starts_at, time_text),
+                            url=absolute_url(response.url, link["href"]),
+                        )
+                    )
+        return events
+
+
+class PinaBausch(Source):
+    """
+    The calendar page is rendered in the browser from the JSON in its
+    data-page attribute, which holds the whole season. The home page shows
+    only the next few dates.
+    """
+
+    CITY = "Wuppertal"
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(
+            self.website,
+            follow_redirects=True,
+            timeout=60,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        page = json.loads(soup.select_one("[data-page]")["data-page"])
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        dates = [d for month in page["props"]["months"] for d in month["dates"]]
+        debug(f"{self.name}: {len(dates)} dates")
+        for date in dates:
+            piece = date["event"]
+            place = piece["place"]
+            # performances link the pieces played; labs and classes none
+            if place["city"] != self.CITY or not piece["plays"]:
+                continue
+
+            # the same stage as Oper Wuppertal's
+            venue = (
+                OperWuppertal.VENUE
+                if place["name"] == OperWuppertal.VENUE.name
+                else Venue(
+                    id=f"{self.name}-{slugify(place['name'])}",
+                    name=place["name"],
+                    city=place["city"],
+                )
+            )
+            events.append(
+                Event(
+                    title=piece["title"].replace("\xad", "").strip(),
+                    venue=venue,
+                    category=Category.OPER,
+                    # UTC, e.g. "2027-01-15T18:30:00.000000Z"
+                    starts_at=datetime.fromisoformat(
+                        date["date_time"]
+                    ).astimezone(berlin),
+                    ends_at=None,
+                    url=absolute_url(response.url, piece["route"]),
+                )
+            )
+        return events
+
+    def scrape_image(self, event: Event) -> str | None:
+        """The share image from the event page's data-page (no og:image)."""
+        debug(f"{self.name}: image lookup on", event.url)
+        response = httpx.get(
+            event.url,
+            follow_redirects=True,
+            timeout=60,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        debug("  ->", response.status_code)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        page = json.loads(soup.select_one("[data-page]")["data-page"])
+        return page["props"]["event"]["data"]["meta"]["thumbnail"]
+
 sources = [
     Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/"),
     Dhaus("dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel"),
+    OperAmRhein(
+        "oper-am-rhein",
+        "https://www.operamrhein.de/spielplan/kalender/duesseldorf/",
+    ),
     SchauspielKoeln(
         "schauspiel-koeln", "https://www.schauspiel.koeln/kalender"
     ),
+    TheaterKrefeldMoenchengladbach(
+        "theater-krefeld-moenchengladbach",
+        "https://theater-kr-mg.de/kalender/",
+    ),
+    OperWuppertal("oper-wuppertal", "https://www.oper-wuppertal.de/"),
+    TheaterEssen(
+        "theater-essen", "https://www.theater-essen.de/programm/kalender/"
+    ),
+    OperKoeln("oper-koeln", "https://www.oper.koeln/programm"),
+    SchauspielhausBochum(
+        "schauspielhaus-bochum",
+        "https://www.schauspielhausbochum.de/de/spielplan/13/schauspiel",
+    ),
+    PinaBausch("pina-bausch", "https://www.pina-bausch.de/de/calendar"),
 ]
 
 if __name__ == "__main__":
