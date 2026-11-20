@@ -505,7 +505,7 @@ export function Timeline(p: TimelineProps) {
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
           <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
-          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} /></div>
+          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} peek={popItem.ev.title} /></div>
           {itemSummary(popItem)}
           <div className="x-popbtns">
             <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>

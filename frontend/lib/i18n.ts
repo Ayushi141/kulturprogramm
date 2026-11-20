@@ -113,6 +113,9 @@ const en = {
   // poster view
   posterEmpty: 'Nothing left on this day for these categories. Try another day.',
   detailsFor: (title: string) => `Details for ${title}`,
+  // sticker on the popover photo
+  peek: 'Preview',
+  posterAlt: (title: string) => `Poster: ${title}`,
   addTo: (title: string) => `Add to my evening: ${title}`,
   removeFrom: (title: string) => `Remove from my evening: ${title}`,
   starting: (n: number) => `${n} starting`,
@@ -231,6 +234,8 @@ const de: Dict = {
 
   posterEmpty: 'An diesem Tag ist in diesen Kategorien nichts mehr los. Probier einen anderen Tag.',
   detailsFor: title => `Details zu ${title}`,
+  peek: 'Vorschau',
+  posterAlt: title => `Plakat: ${title}`,
   addTo: title => `Zu meinem Abend hinzufügen: ${title}`,
   removeFrom: title => `Aus meinem Abend entfernen: ${title}`,
   starting: n => `${n} ${n === 1 ? 'beginnt' : 'beginnen'}`,
