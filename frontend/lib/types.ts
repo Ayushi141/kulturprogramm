@@ -5,7 +5,8 @@
  * `lib/get-programme.ts` builds it from the database.
  */
 
-export const CATEGORIES = ['theatre', 'opera', 'movies'] as const
+/** Order of the filter buttons, legends and stacked overview. */
+export const CATEGORIES = ['theatre', 'opera', 'concerts', 'movies'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 export type Venue = {

@@ -4,5 +4,6 @@ import type { Category } from '@/lib/types'
 export const CAT: Record<Category, { color: string; ink: string }> = {
   theatre: { color: '#df3929', ink: '#ffffff' },
   opera: { color: '#e2a012', ink: '#201f1a' },
+  concerts: { color: '#b0398f', ink: '#ffffff' },
   movies: { color: '#2646c8', ink: '#ffffff' },
 }

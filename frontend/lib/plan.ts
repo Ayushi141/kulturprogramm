@@ -14,7 +14,7 @@ import { cultureDay, dur, fmt } from './time'
  * lane packing, overlap checks) when the venue announced no end; never shown
  * as an end time.
  */
-export const TYPICAL_LENGTH: Record<Category, number> = { theatre: 150, opera: 180, movies: 120 }
+export const TYPICAL_LENGTH: Record<Category, number> = { theatre: 150, opera: 180, concerts: 120, movies: 120 }
 
 export type Item = {
   id: string

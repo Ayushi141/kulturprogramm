@@ -21,7 +21,9 @@ const VENUES: (Venue & { url: string })[] = [
   { id: 'fft', name: 'FFT im KAP1', city: 'Düsseldorf', url: 'https://www.fft-duesseldorf.de/' },
   { id: 'tanzhaus', name: 'tanzhaus nrw', city: 'Düsseldorf', url: 'https://www.tanzhaus-nrw.de/' },
   { id: 'metropol', name: 'Metropol', city: 'Düsseldorf', url: 'https://filmkunstkinos.de/' },
+  { id: 'tonhalle', name: 'Tonhalle', city: 'Düsseldorf', url: 'https://www.tonhalle.de/' },
   { id: 'schauspiel-k', name: 'Schauspiel Köln', city: 'Köln', url: 'https://www.schauspiel.koeln/' },
+  { id: 'philharmonie-k', name: 'Kölner Philharmonie', city: 'Köln', url: 'https://www.koelner-philharmonie.de/' },
   { id: 'oper-k', name: 'Oper Köln', city: 'Köln', url: 'https://www.oper.koeln/' },
   { id: 'odeon', name: 'Odeon', city: 'Köln', url: 'https://www.odeon-koeln.de/' },
 ]
@@ -30,7 +32,9 @@ const FILMS: [string, number][] = [
   ['Kurzfilmrolle', 90], ['Das stille Haus', 112], ['Nordlicht', 98], ['Am Ende des Sommers', 131],
 ]
 const CLASSICS = ['Metropolis (Stummfilm + Live-Klavier)', 'Der Himmel über Berlin', 'Nosferatu (Stummfilm + Live-Klavier)', 'M — Eine Stadt sucht einen Mörder']
-const IMAGES: Partial<Record<Category, string>> = { theatre: '/images/theatre.webp', movies: '/images/cinema.webp' }
+/** Concert programmes change every week: week n plays CONCERTS[n % length]. */
+const CONCERTS = ['Sinfoniekonzert: Brahms 4', 'Mahler 5', 'Kammermusik am Abend', 'Beethoven: Klavierkonzerte', 'Jazz-Orchester: Big Band Night']
+const IMAGES: Partial<Record<Category, string>> = { theatre: '/images/theatre.webp', concerts: '/images/music.webp', movies: '/images/cinema.webp' }
 
 /** Run of each stage production in weeks from today [first, last]. Titles not listed run all season. */
 const RUNS: Record<string, [number, number]> = {
@@ -92,6 +96,11 @@ function dayProgramme(day: string, i: number): Event[] {
   if (is(4, 6)) add('oper-k', 'opera', 'Der Rosenkavalier', '18:00', '22:15', '25–110 €')
   if (is(5)) add('oper-k', 'opera', 'Hänsel und Gretel', '18:00', '20:30', '15–65 €')
   if (is(0)) add('oper-k', 'opera', 'Hänsel und Gretel', '16:00', '18:30', '15–65 €')
+  // concerts
+  const week = Math.floor(i / 7), concert = (k: number) => CONCERTS[(week + k) % CONCERTS.length]
+  if (is(5, 6)) add('tonhalle', 'concerts', concert(0), '20:00', '22:00', '19–65 €')
+  if (is(0)) add('tonhalle', 'concerts', concert(0), '11:00', '13:00', '19–65 €')
+  if (is(4, 0)) add('philharmonie-k', 'concerts', concert(2), '20:00', null, '15–75 €')
   // movies — fixed slots, films rotate through the week
   const CIN: Record<string, string[]> = {
     metropol: ['14:30', '17:00', '19:15', '21:30'], bambi: ['15:00', '17:30', '20:00', '22:15'], atelier: ['13:00', '15:45', '18:15', '20:45'],

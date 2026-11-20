@@ -34,8 +34,8 @@ from that directory, or pass the Compose file explicitly.
 - The frontend is a Next.js application (`node:22-alpine` image, built from
   `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
   reads `venues` and events from 6 hours ago to 183 days ahead, and maps
-  categories `theater`, `oper`, `film` to the frontend's `theatre`, `opera`,
-  `movies`; other categories are not shown. Without `PGPASSWORD_FILE` it shows
+  categories `theater`, `oper`, `konzert`, `film` to the frontend's `theatre`,
+  `opera`, `concerts`, `movies`; others are not shown. Without `PGPASSWORD_FILE` it shows
   a demo programme. The data contract is `frontend/lib/types.ts`.
 - The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
@@ -149,8 +149,9 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
   `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
-  database; add new ones to the `category` check in `init.sql` and to
-  `CATEGORY` in `frontend/lib/get-programme.ts` (`konzert` is not shown yet).
+  database; add new ones to the `category` check in `init.sql`, `CATEGORY` in
+  `frontend/lib/get-programme.ts`, and every `Record<Category, …>` the type
+  checker then flags (colour, labels, icon, typical length, `.cat-*` fallback).
 - A `Source` is one website; a `Venue` is one physical place. One source can
   list several venues (Filmkunstkinos lists four cinemas).
 - `Venue` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
