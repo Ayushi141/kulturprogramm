@@ -420,10 +420,12 @@ export function Timeline(p: TimelineProps) {
             // the › marker sits on the halftone (paper) when the solid part ends inside the view
             const moreInk = open && open.xm < W - R ? INK : cat.ink
             return (
+              // the hover tooltip is for a mouse only: phones fire hover on a long press, and a tap opens the card
               <g key={it.id} data-bar="" opacity={opacity(it)} style={{ cursor: 'pointer' }}
-                onMouseEnter={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
-                onMouseMove={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
-                onMouseLeave={() => setTip(null)}
+                onPointerEnter={e => { if (e.pointerType === 'mouse' && !pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
+                onPointerMove={e => { if (e.pointerType === 'mouse' && !pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
+                onPointerLeave={() => setTip(null)}
+                onContextMenu={e => e.preventDefault()}
                 onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 380)! }) }}>
                 {open ? (
                   <g clipPath={`url(#${uid}plot)`}>

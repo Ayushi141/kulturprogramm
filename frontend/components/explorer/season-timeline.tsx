@@ -178,9 +178,11 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
             <line x1={Math.min(...xs)} x2={Math.max(...xs)} y1={y} y2={y} stroke={INK} strokeWidth={1} opacity={0.45} />
             {pr.dates.map(it => {
               const x = xd(it.day), planned = p.planIds.has(it.id), sel = pop?.id === it.id
+              // the hover tooltip is for a mouse only: phones fire hover on a long press, and a tap opens the card
               return <g key={it.id} data-mark="" style={{ cursor: 'pointer' }}
-                onMouseEnter={e => { if (!pop) setTip({ ...near(e.clientX, e.clientY), body: summary(it) }) }}
-                onMouseLeave={() => setTip(null)}
+                onPointerEnter={e => { if (e.pointerType === 'mouse' && !pop) setTip({ ...near(e.clientX, e.clientY), body: summary(it) }) }}
+                onPointerLeave={() => setTip(null)}
+                onContextMenu={e => e.preventDefault()}
                 onClick={e => { setTip(null); setPop(sel ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 370) }) }}>
                 {/* click area = exactly this day, so neighbours never steal the click */}
                 <rect x={x - k / 2} y={y - LANE / 2} width={k} height={LANE} fill="transparent" />
