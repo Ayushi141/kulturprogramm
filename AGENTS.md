@@ -70,7 +70,7 @@ CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
     venue_id   text        NOT NULL REFERENCES venues (id),
-    category   text        NOT NULL,
+    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert')),
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,
@@ -78,6 +78,7 @@ CREATE TABLE events (
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (title, venue_id, starts_at)
 );
+CREATE INDEX events_starts_at ON events (starts_at);  -- the frontend's window
 
 CREATE TABLE featured (
     title    text PRIMARY KEY,  -- event title shown in the "In focus" card
@@ -86,10 +87,10 @@ CREATE TABLE featured (
 );
 ```
 
-There is no category `CHECK` constraint in the current schema. `init.sql` runs
-when PostgreSQL initializes an empty data volume; changing it does not update
-an existing database. To apply a schema change, recreate the database (see
-`docker compose down -v` below) or migrate the existing one by hand.
+`init.sql` runs when PostgreSQL initializes an empty data volume; changing it
+does not update an existing database. Recreate the database (see `docker
+compose down -v` below) or migrate it by hand, e.g. for the category check and
+index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE INDEX ...`.
 
 Each row represents one event at one start time. `ends_at` is NULL when the
 source lists no end time. The unique key lets the scraper update an existing
@@ -148,7 +149,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
   `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
-  database; map new ones in `CATEGORY` in `frontend/lib/get-programme.ts`.
+  database; add new ones to the `category` check in `init.sql` and to
+  `CATEGORY` in `frontend/lib/get-programme.ts` (`konzert` is not shown yet).
 - A `Source` is one website; a `Venue` is one physical place. One source can
   list several venues (Filmkunstkinos lists four cinemas).
 - `Venue` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
@@ -182,6 +184,13 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - Let parse errors surface instead of silently dropping malformed records;
   the run loop logs them per source. Images are the exception: they are
   optional, so image errors never stop an event from being saved.
+- Store public performances and concerts. Skip cancelled cards by the site's
+  marker, then classify with `self.event_category(default, *texts)` (on
+  `Source`, with its word lists as class attributes) on short texts
+  (title, label, badge, subtitle; never descriptions): `CLOSED` (school, Kita)
+  skips, `CONCERT` words give `CONCERT`, `NON_PERFORMANCE` words (Führung,
+  Workshop, Lesung, Gespräch, Matinee, Party) skip. Prefer page structure;
+  keep the word lists generic, never per event. `+ Einführung` is ignored.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
 
@@ -216,7 +225,6 @@ that a venue's live page has not changed.
   Berlin time because the page labels these local times with `+00:00`; it does
   not convert the clock time.
 - Category: `FILM`.
-- The source may be slow or return errors; the request timeout is 60 seconds.
 
 ### Dhaus (Düsseldorfer Schauspielhaus)
 
@@ -232,7 +240,8 @@ that a venue's live page has not changed.
 - Venue name: `.performance__location`, with a leading `📍` removed (for
   example, `Schauspielhaus, Großes Haus`). City: the text after the postal code
   in the hidden `[itemprop=location] [itemprop=address]`.
-- Category: currently always `THEATER`, including special events.
+- Cancelled cards are skipped; the title and `.performance__infos
+  .performance__text` (credits, format) are classified, default `THEATER`.
 
 ### Schauspiel Köln
 
@@ -253,10 +262,49 @@ that a venue's live page has not changed.
   - Image: `og:image`, passed on as `image_url`.
 - A production page that fails to load is logged; its events are still saved
   with the general venue and no end or image.
-- Label: `.field--name-category`, or an empty string if missing. Labels in
-  `EXCLUDED_LABELS` (`Führung`, `Workshop`) are skipped. `Schulvorstellung`
-  is not filtered.
-- Category: `CONCERT` for the `Konzert` label, otherwise `THEATER`.
+- Label `.field--name-category` (`Premiere`, `Konzert`, `Lesung`) is classified
+  with the title, default `THEATER`. `Entfällt` tickets are skipped.
+
+### Deutsche Oper am Rhein (Opernhaus Düsseldorf)
+- `https://www.operamrhein.de/spielplan/kalender/duesseldorf/`: `div.performance`
+  at Opernhaus with a `.performance__category` (tours have none), default
+  `OPER`. Cards provide title/link, Berlin start, optional end.
+
+### Theater Krefeld-Mönchengladbach
+- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
+  listed branch in `BRANCHES` gives the default category; `Extras` keeps only
+  concerts. Cards provide title, URL, venue, start; no end.
+
+### Oper Wuppertal
+- `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, all pages (at most
+  50 items each). Keep Oper at Opernhaus (`OPER`) and all Sinfonieorchester
+  concerts; API provides title, URL, venue and times.
+
+### Theater und Philharmonie Essen
+- `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the
+  first category in `CATEGORIES` (Schauspiel, Aalto, Philharmonie) gives the
+  default; `Treffpunkt:` locations (tours) are skipped and the ticket line
+  marks closed shows. Cards provide title/times/venue.
+
+### Oper Köln
+- `https://www.oper.koeln/programm` (`li.s-bko-activity--schedule`): cards
+  provide label, local times and production links; the info line marks Kita
+  bookings. Venue Oper Köln, default `OPER`; image: `og:image` of the link.
+
+### Schauspielhaus Bochum
+- Read `/de/spielplan/13/schauspiel` and `/de/spielplan/11/tanz`;
+  `.schedule__group`/`.schedule__item` provide date/title/stage/times.
+  Skip Theater Hagen and `Fällt aus`; default Schauspiel `THEATER`, Tanz
+  `OPER`; a piece on both pages keeps its first listing.
+
+### Pina Bausch
+- `https://www.pina-bausch.de/de/calendar`: season JSON in `data-page`. Keep
+  Wuppertal dates whose event links played pieces (`plays`); labs and classes
+  link none. UTC times, no end; image from the event page JSON.
+
+### Rheinisches Landestheater
+- Supplied page currently has filters but no `.performance` records or feed;
+  it is not registered until dated event data is served.
 
 ## Common operations
 
@@ -275,13 +323,8 @@ never exits, so this stays in the foreground until stopped:
 docker compose run --rm --build scraper
 ```
 
-Query the event count:
-
-```bash
-docker compose exec postgres psql -U kultur -d kultur -c "SELECT count(*) FROM events;"
-```
-
-Show event times in Berlin time:
+Query the database (`docker compose exec postgres psql -U kultur -d kultur`),
+for example event times in Berlin time:
 
 ```sql
 SELECT title, starts_at AT TIME ZONE 'Europe/Berlin'
@@ -307,13 +350,10 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 
 ## Deployment scheduling
 
-The repository does not configure a systemd timer. If a timer is installed on
-the server, verify its unit files and schedule directly on that server; do not
-assume the following values are active configuration. The previously proposed
-schedule was daily at 06:00 with up to 10 minutes of random delay, using a
-oneshot service in `/home/deploy/aggregator/backend/deploy/`. A oneshot
-service does not fit the current scraper, which loops forever and sleeps
-between runs; the scraper Compose service also has no `restart` policy.
+The repository configures no systemd timer; check the server before assuming
+one. A previously proposed daily oneshot service (06:00, in
+`/home/deploy/aggregator/backend/deploy/`) does not fit the scraper, which
+loops forever; its Compose service has no `restart` policy.
 
 ## Working in this repository
 
@@ -332,6 +372,4 @@ between runs; the scraper Compose service also has no `restart` policy.
 
 - `Event` inherits from `ABC`, although it has no abstract methods; it may be
   a plain dataclass.
-- Decide how to remove or mark cancelled events.
-- Decide whether to include `Lesung`, `Party`, and Dhaus special events, and
-  how to categorize them.
+- Decide how to remove events saved before they were cancelled.
