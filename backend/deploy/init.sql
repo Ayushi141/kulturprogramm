@@ -18,8 +18,8 @@ CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
     venue_id   text        NOT NULL REFERENCES venues (id),
-    -- the values of the scraper's Category enum; "konzert" is stored but not shown yet
-    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert')),
+    -- the values of the scraper's Category enum
+    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,

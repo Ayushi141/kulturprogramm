@@ -18,14 +18,11 @@ aggregator/
 └── pyproject.toml    # uv project for local scraper development (with uv.lock)
 ```
 
-Compose files use paths relative to `backend/deploy/`. Run Compose commands
-from that directory, or pass the Compose file explicitly.
-
 ## Runtime and services
 
 - `backend/deploy/compose.yaml` defines PostgreSQL, scraper, and frontend
-  services. The Compose project name defaults to `deploy` when run from
-  `backend/deploy/`.
+  services with paths relative to `backend/deploy/`; run Compose from there
+  (project name `deploy`) or pass the Compose file explicitly.
 - PostgreSQL uses `postgres:18`; the configured database and user are both
   `kultur`.
 - The scraper image uses `python:3.15-slim`. Its dependencies are `httpx`,
@@ -34,9 +31,9 @@ from that directory, or pass the Compose file explicitly.
 - The frontend is a Next.js application (`node:22-alpine` image, built from
   `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
   reads `venues` and events from 6 hours ago to 183 days ahead, and maps
-  categories `theater`, `oper`, `konzert`, `film` to the frontend's `theatre`,
-  `opera`, `concerts`, `movies`; others are not shown. Without `PGPASSWORD_FILE` it shows
-  a demo programme. The data contract is `frontend/lib/types.ts`.
+  categories `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`,
+  `dance`, `concerts`, `movies`; others are not shown. Without `PGPASSWORD_FILE`
+  it shows a demo programme. The data contract is `frontend/lib/types.ts`.
 - The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
@@ -70,7 +67,7 @@ CREATE TABLE events (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title      text        NOT NULL,
     venue_id   text        NOT NULL REFERENCES venues (id),
-    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert')),
+    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     starts_at  timestamptz NOT NULL,
     ends_at    timestamptz,
     url        text,
@@ -92,14 +89,11 @@ does not update an existing database. Recreate the database (see `docker
 compose down -v` below) or migrate it by hand, e.g. for the category check and
 index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE INDEX ...`.
 
-Each row represents one event at one start time. `ends_at` is NULL when the
-source lists no end time. The unique key lets the scraper update an existing
-event with the same title, venue, and start time. `save()` first upserts the
-events' venues and new images, then updates `category`, `ends_at`, `url`,
-`image_key` (kept when the new lookup found none), and `updated_at` on event
-conflict. It does not remove
-events that disappear from a venue's program, so cancelled or expired rows can
-remain in the database.
+Each row is one event at one start time; `ends_at` is NULL when the source
+lists no end. `save()` upserts venues and new images, then on a key conflict
+updates `category`, `ends_at`, `url`, `image_key` (kept when the new lookup
+found none) and `updated_at`. Events that disappear from a program are not
+removed, so cancelled or expired rows can remain.
 
 ## Frontend typography
 
@@ -129,27 +123,22 @@ instead of adding new sizes or weights:
 ## Configuration and secrets
 
 Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, and `PGPASSWORD_FILE` for the
-scraper and frontend; the frontend also gets `PGPORT`. libpq reads the `PG*`
-connection variables but not `PGPASSWORD_FILE`, so the scraper reads the
-password from that path and passes it to `psycopg.connect()`. The frontend
-reads the same file itself and passes it to the `pg` `Pool`.
+scraper and frontend (the frontend also gets `PGPORT`). libpq ignores
+`PGPASSWORD_FILE`, so the scraper and frontend read that file themselves and
+pass the password to `psycopg.connect()` and the `pg` `Pool`.
 
-The scraper and frontend receive the `pg_password` Compose secret at
-`/run/secrets/pg_password`. The PostgreSQL service instead bind-mounts the host
-file at that path and reads it through `POSTGRES_PASSWORD_FILE`. Do not put
-credentials in the repository.
-
-The Compose file binds PostgreSQL and frontend ports to `127.0.0.1` on the
-host. Confirm server-side access and secret setup before relying on these
-services in a deployment.
+Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`;
+PostgreSQL bind-mounts the host file there and reads it through
+`POSTGRES_PASSWORD_FILE`. Do not put credentials in the repository. PostgreSQL
+and frontend ports are bound to `127.0.0.1` on the host.
 
 ## Scraper code model
 
 All scraper classes and the run loop are in `backend/scraper/main.py`.
 
-- `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`,
-  `OPER = "oper"`, and `CONCERT = "konzert"`. These values are written to the
-  database; add new ones to the `category` check in `init.sql`, `CATEGORY` in
+- `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`, `OPER =
+  "oper"`, `CONCERT = "konzert"`, and `TANZ = "tanz"` (ballet and dance
+  theatre). These values are written to the database; add new ones to the `category` check in `init.sql`, `CATEGORY` in
   `frontend/lib/get-programme.ts`, and every `Record<Category, …>` the type
   checker then flags (colour, labels, icon, typical length, `.cat-*` fallback).
 - A `Source` is one website; a `Venue` is one physical place. One source can
@@ -161,10 +150,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   `starts_at`, an optional aware `ends_at`, an optional absolute `url`, and
   optional `image_url` (set by `scrape()` when the program page shows one) and
   `image_key` (set by `add_images()`).
-- `Source` stores a source key and URL and defines the abstract `scrape()`
-  method.
-- Each source's `scrape()` fetches and parses events. `Source.save()` upserts
-  the events' venues, new images, then the events.
+- `Source` stores a key and URL; its abstract `scrape()` fetches and parses
+  events, and `save()` upserts their venues, new images, then the events.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the
   default returns `event.image_url`, else the `og:image` of `event.url`.
   `Source.add_images(events)` calls it once per title and stores the image's
@@ -181,7 +168,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 - Make datetimes aware using `ZoneInfo("Europe/Berlin")`.
 - Use `%s` placeholders in SQL. Do not interpolate values into SQL strings.
-- Set an HTTP timeout; the current scrapers use `timeout=60`.
+- Set an HTTP timeout; the current scrapers use `timeout=60`. Sites that
+  answer 403 to httpx get `User-Agent: Mozilla/5.0`, as `download_image()` sends.
 - Let parse errors surface instead of silently dropping malformed records;
   the run loop logs them per source. Images are the exception: they are
   optional, so image errors never stop an event from being saved.
@@ -192,6 +180,9 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   skips, `CONCERT` words give `CONCERT`, `NON_PERFORMANCE` words (Führung,
   Workshop, Lesung, Gespräch, Matinee, Party) skip. Prefer page structure;
   keep the word lists generic, never per event. `+ Einführung` is ignored.
+  Cinemas use `self.screening_category(title, *labels)` instead, which skips
+  nothing: genre/series labels matching `DANCE_LABEL`/`OPERA_LABEL` give
+  `TANZ`/`OPER` (never titles), a `CONCERT` word gives `CONCERT`, else `FILM`.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
 
@@ -211,65 +202,41 @@ The notes below describe the parser implementation. They are not a guarantee
 that a venue's live page has not changed.
 
 ### Filmkunstkinos
-
-- URL: `https://filmkunstkinos.de/programm/`
-- Each `article.col-group` represents a film at a cinema.
-- Title: direct text of `h2.movie-small--title a`; use
-  `find(string=True, recursive=False)` to omit the subtitle in
-  `span.extended-title`.
-- URL: the title link's `href` (the film page).
-- Venue name: `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`, or
-  `Atelier`). City: fixed `Düsseldorf`; the program page names no city.
-- End: start plus the runtime in `.movie-small--meta p.meta` (`100 Min`). This
-  is the film length; trailers before the film are not included.
-- Each `time[datetime]` is a screening. The parser replaces its timezone with
-  Berlin time because the page labels these local times with `+00:00`; it does
-  not convert the clock time.
-- Category: `FILM`.
+- `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and
+  cinema. Title: direct text of `h2.movie-small--title a`
+  (`find(string=True, recursive=False)` drops `span.extended-title`); URL: its
+  `href`. Venue `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`,
+  `Atelier`) in Düsseldorf. Each `time[datetime]` is a screening labelled
+  `+00:00` but local: replace the timezone, do not convert. End: start plus
+  `.movie-small--meta p.meta` (`100 Min`, without trailers). Labels: the
+  genres before its first `•`.
 
 ### Dhaus (Düsseldorfer Schauspielhaus)
-
-- URL used in the venue configuration: `https://www.dhaus.de/programm/spielplan/schauspiel`.
-- Each `div.performance` is parsed as one performance.
-- Title: `.performance__title [itemprop=name]`, with soft hyphens (`\xad`)
-  removed. URL: that title link's `href`, made absolute.
-- Start: `meta[itemprop=startDate]` attribute `content`; the parser attaches
-  the Berlin timezone to the naive datetime.
-- End: only in `.performance__time` text such as `19:00 – 20:15`; some
-  performances show only the start, giving `ends_at = None`. An end at or
-  before the start is moved to the next day.
-- Venue name: `.performance__location`, with a leading `📍` removed (for
-  example, `Schauspielhaus, Großes Haus`). City: the text after the postal code
-  in the hidden `[itemprop=location] [itemprop=address]`.
-- Cancelled cards are skipped; the title and `.performance__infos
-  .performance__text` (credits, format) are classified, default `THEATER`.
+- `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance`
+  each. Title `.performance__title [itemprop=name]` without soft hyphens, its
+  link made absolute. Start: naive `meta[itemprop=startDate]`; end only from
+  `.performance__time` (`19:00 – 20:15`), moved to the next day if not after
+  the start. Venue `.performance__location` without `📍`; city after the postal
+  code in the hidden `[itemprop=location] [itemprop=address]`. Cancelled cards
+  are skipped; title and `.performance__infos .performance__text` are
+  classified, default `THEATER`.
 
 ### Schauspiel Köln
-
-- URL: `https://www.schauspiel.koeln/kalender`.
-- Each `li.s-bko-activity` is parsed as one event.
-- Title: `.field--name-production a`. URL: its `href` (the production page).
-- Start: the date in `time.s-bko-activity__datetime[datetime]` and the last
-  text piece from that element, parsed with
-  `strptime(..., "%Y-%m-%d %H.%M Uhr")`; the parser attaches Berlin time.
-- The calendar names no stage or length, so `production(url)` fetches each
-  production page once per run and reads:
-  - Venue: `.field--name-stages` (`Schauspielhaus`, `Kleines Haus`,
-    `Erfrischungsraum`, `Offenbachplatz`, `Kolumba`) in `Köln`. A page listing
-    several stages (`Erfrischungsraum & Kleines Haus`) or none uses the general
-    `VENUE` `Schauspiel Köln`.
-  - End: start plus `.field--name-duration` (`1 h 45 min`, `5 h`); `None` when
-    missing (about a third of the productions). Unknown formats are logged.
-  - Image: `og:image`, passed on as `image_url`.
-- A production page that fails to load is logged; its events are still saved
-  with the general venue and no end or image.
-- Label `.field--name-category` (`Premiere`, `Konzert`, `Lesung`) is classified
-  with the title, default `THEATER`. `Entfällt` tickets are skipped.
+- `https://www.schauspiel.koeln/kalender`: one `li.s-bko-activity` each. Title
+  and link `.field--name-production a`; start: date of
+  `time.s-bko-activity__datetime[datetime]` plus its last text piece
+  (`"%Y-%m-%d %H.%M Uhr"`). `production(url)` reads each production page once
+  per run: stage `.field--name-stages` in Köln (several or none: general
+  `VENUE` Schauspiel Köln), length `.field--name-duration` (`1 h 45 min`,
+  `5 h`; missing for about a third, unknown formats logged), `og:image`. A
+  failing page is logged; its events keep the general venue, no end or image.
+  Label `.field--name-category` is classified with the title, default
+  `THEATER`; `Entfällt` tickets are skipped.
 
 ### Deutsche Oper am Rhein (Opernhaus Düsseldorf)
 - `https://www.operamrhein.de/spielplan/kalender/duesseldorf/`: `div.performance`
   at Opernhaus with a `.performance__category` (tours have none), default
-  `OPER`. Cards provide title/link, Berlin start, optional end.
+  `TANZ` for `Ballett`, else `OPER`. Cards give title/link, start, optional end.
 
 ### Theater Krefeld-Mönchengladbach
 - `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
@@ -293,15 +260,33 @@ that a venue's live page has not changed.
   bookings. Venue Oper Köln, default `OPER`; image: `og:image` of the link.
 
 ### Schauspielhaus Bochum
-- Read `/de/spielplan/13/schauspiel` and `/de/spielplan/11/tanz`;
-  `.schedule__group`/`.schedule__item` provide date/title/stage/times.
-  Skip Theater Hagen and `Fällt aus`; default Schauspiel `THEATER`, Tanz
-  `OPER`; a piece on both pages keeps its first listing.
+- Read `/de/spielplan/11/tanz` (`TANZ`), then `/de/spielplan/13/schauspiel`
+  (`THEATER`), which also lists the dance pieces; the first listing wins.
+  `.schedule__group`/`.schedule__item` provide date/title/stage/times. Skip
+  Theater Hagen and `Fällt aus`.
 
 ### Pina Bausch
 - `https://www.pina-bausch.de/de/calendar`: season JSON in `data-page`. Keep
   Wuppertal dates whose event links played pieces (`plays`); labs and classes
-  link none. UTC times, no end; image from the event page JSON.
+  link none. `TANZ`, UTC times, no end; image from the event page JSON.
+
+### UFA Palast Düsseldorf
+- `https://ufa-duesseldorf.de/programm/`: every announced day (presales months
+  ahead) as `section.day-section`, one `article.movie-row` per film: title `h2`
+  in `a.group` (the film page), runtime in the div after it (`2 Std 39 Min`,
+  `2 Std`, `95 Min`), poster `img`. Each `.showtime-wrap[data-date][data-time]`
+  is a screening; screens (`Kino 13`) are halls of venue `UFA Palast`. Labels:
+  the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all rows.
+
+### UCI Kinowelt Düsseldorf
+- `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only
+  today): one `div.film-container` per film, title link
+  `h2.film-container__description__text__eventtitle a`, `159min` in
+  `ul.film-info` (missing for unreleased films), poster `img.film-thumb`;
+  screenings `a.badge-performance[data-date="20261120"][data-time]`. Venue
+  `UCI Kino`; labels: the `ul.film-info` genres (`Oper`, `Ballett`). Page and
+  posters need a browser User-Agent. Both cinemas date after-midnight
+  screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
 
 ### Rheinisches Landestheater
 - Supplied page currently has filters but no `.performance` records or feed;
@@ -311,11 +296,7 @@ that a venue's live page has not changed.
 
 Run these commands from `backend/deploy/`:
 
-Start PostgreSQL:
-
-```bash
-docker compose up -d postgres
-```
+Start PostgreSQL: `docker compose up -d postgres`.
 
 Run the scraper image, rebuilding it from the current source. The run loop
 never exits, so this stays in the foreground until stopped:
@@ -333,11 +314,7 @@ FROM events
 ORDER BY starts_at;
 ```
 
-Delete all rows while keeping the table:
-
-```sql
-TRUNCATE events;
-```
+Delete all rows while keeping the table: `TRUNCATE events;`.
 
 Feature a production in the "In focus" card (title as in `events`; the card
 shows its next performance, from the selected day on):
@@ -352,9 +329,8 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 ## Deployment scheduling
 
 The repository configures no systemd timer; check the server before assuming
-one. A previously proposed daily oneshot service (06:00, in
-`/home/deploy/aggregator/backend/deploy/`) does not fit the scraper, which
-loops forever; its Compose service has no `restart` policy.
+one. A daily oneshot service (once proposed for 06:00) does not fit the
+scraper, which loops forever; its Compose service has no `restart` policy.
 
 ## Working in this repository
 
@@ -364,10 +340,8 @@ loops forever; its Compose service has no `restart` policy.
 - Keep documentation direct and easy to follow.
 - Hard limit: `AGENTS.md` must not exceed 350 lines. Condense or remove
   outdated content before adding more.
-- HTML samples supplied as text may be Python `repr()` output, with a leading
-  quote and literal `\r\n`. Decode such samples with
-  `ast.literal_eval` before parsing them. The scraper receives real HTML from
-  `response.text`.
+- HTML samples supplied as text may be Python `repr()` output (a leading quote,
+  literal `\r\n`): decode them with `ast.literal_eval` before parsing.
 
 ## Open implementation questions
 

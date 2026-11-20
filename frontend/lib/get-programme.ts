@@ -4,7 +4,7 @@ import type { Category, Event, Programme, Venue } from './types'
 import { demoProgramme } from './demo-programme'
 
 /** Category values the scraper writes (`Category` in backend/scraper/main.py) → frontend categories. Rows with other values are not shown. */
-const CATEGORY: Record<string, Category> = { theater: 'theatre', oper: 'opera', konzert: 'concerts', film: 'movies' }
+const CATEGORY: Record<string, Category> = { theater: 'theatre', oper: 'opera', tanz: 'dance', konzert: 'concerts', film: 'movies' }
 
 let pool: Pool | undefined
 

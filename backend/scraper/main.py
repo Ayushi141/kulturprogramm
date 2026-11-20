@@ -28,6 +28,8 @@ class Category(StrEnum):
     THEATER = "theater"
     OPER = "oper"
     CONCERT = "konzert"
+    # ballet and dance theatre
+    TANZ = "tanz"
 
 
 @dataclass(frozen=True)
@@ -72,7 +74,13 @@ def download_image(source_url: str) -> StoredImage:
     that the bytes are an image and names the format.
     """
     debug("download image", source_url)
-    response = httpx.get(source_url, follow_redirects=True, timeout=60)
+    # some sites (UCI) answer 403 to httpx's default User-Agent
+    response = httpx.get(
+        source_url,
+        follow_redirects=True,
+        timeout=60,
+        headers={"User-Agent": "Mozilla/5.0"},
+    )
     debug("  ->", response.status_code, len(response.content), "bytes")
     response.raise_for_status()
     data = response.content
@@ -127,9 +135,15 @@ class Source(ABC):
         r"für\s+schulen|geschlossene\s+vorstellung\w*)\b",
         re.IGNORECASE,
     )
+    # "live viewing": a concert shown live in cinemas
     CONCERT = re.compile(
-        r"\b(?:\w*konzert\w*|jazz\w*|\w*gala)\b", re.IGNORECASE
+        r"\b(?:\w*konzert\w*|jazz\w*|\w*gala|live[\s-]+viewing)\b",
+        re.IGNORECASE,
     )
+    # A cinema's genre or series labels ("Oper", "Ballett", "MET Opera") for
+    # broadcasts of stage works. Labels only: film titles mention anything.
+    OPERA_LABEL = re.compile(r"\b(?:oper|opera)\b", re.IGNORECASE)
+    DANCE_LABEL = re.compile(r"\b(?:ballett?|tanz|dance)\b", re.IGNORECASE)
     # Not a performance: tours, workshops and classes, readings, talks, intro
     # events, parties. "führung" excludes (Ur-, Erst-, Vor-)Aufführung and
     # Einführung, which label real performances ("18:15 Einführung").
@@ -165,6 +179,22 @@ class Source(ABC):
         if self.NON_PERFORMANCE.search(text):
             return None
         return default
+
+    def screening_category(self, title: str, *labels: str) -> Category:
+        """
+        The category of a cinema screening: TANZ or OPER when its labels
+        (genre, series badge) name a ballet or opera broadcast, CONCERT for a
+        concert word in the title or labels ("Weihnachtskonzert", "Live
+        Viewing"), otherwise FILM. Unlike event_category() it skips nothing.
+        """
+        text = " ".join(labels)
+        if self.DANCE_LABEL.search(text):
+            return Category.TANZ
+        if self.OPERA_LABEL.search(text):
+            return Category.OPER
+        if self.CONCERT.search(f"{title} {text}"):
+            return Category.CONCERT
+        return Category.FILM
 
     @abstractmethod
     def scrape(self) -> list[Event]: ...
@@ -338,6 +368,8 @@ class Filmkunstkinos(Source):
             runtime = timedelta(
                 minutes=int(re.search(r"(\d+)\s*Min", meta).group(1))
             )
+            # the genres before the first "•" ("Oper", "Ballett" for broadcasts)
+            category = self.screening_category(title, meta.split("•")[0])
 
             times = article.select("time[datetime]")
             debug(f"  {title!r} at {name}: {len(times)} screenings, {runtime}")
@@ -349,7 +381,7 @@ class Filmkunstkinos(Source):
                     Event(
                         title=title,
                         venue=venue,
-                        category=Category.FILM,
+                        category=category,
                         starts_at=starts_at,
                         ends_at=starts_at + runtime,
                         url=url,
@@ -482,7 +514,10 @@ class OperAmRhein(Source):
                 for tag in performance.select(".attribute")
             ]
             category = self.event_category(
-                Category.OPER, title, label, *attributes
+                Category.TANZ if "Ballett" in label else Category.OPER,
+                title,
+                label,
+                *attributes,
             )
             if not category:
                 continue
@@ -652,7 +687,7 @@ class TheaterKrefeldMoenchengladbach(Source):
     # concerts are kept.
     BRANCHES = {
         "Musiktheater": Category.OPER,
-        "Ballett": Category.OPER,
+        "Ballett": Category.TANZ,
         "Konzerte": Category.CONCERT,
         "Schauspiel": Category.THEATER,
         "Kinder & Jugend": Category.THEATER,
@@ -837,7 +872,7 @@ class OperWuppertal(Source):
 class TheaterEssen(Source):
     # by the first category the card lists
     CATEGORIES = {
-        "Aalto Ballett Essen": Category.OPER,
+        "Aalto Ballett Essen": Category.TANZ,
         "Aalto Musiktheater": Category.OPER,
         "Schauspiel Essen": Category.THEATER,
         "Essener Philharmoniker": Category.CONCERT,
@@ -1017,12 +1052,13 @@ class SchauspielhausBochum(Source):
 
     def scrape(self) -> list[Event]:
         events = []
-        # A piece can be listed on both pages; the first listing wins.
+        # The Schauspiel page also lists the dance pieces; the first listing
+        # wins, so the dance page is read first.
         seen: set[tuple[str, str, datetime]] = set()
         berlin = ZoneInfo("Europe/Berlin")
         for url, default in (
+            (self.DANCE_URL, Category.TANZ),
             (self.website, Category.THEATER),
-            (self.DANCE_URL, Category.OPER),
         ):
             debug(f"{self.name}: GET", url)
             response = httpx.get(url, follow_redirects=True, timeout=60)
@@ -1145,7 +1181,7 @@ class PinaBausch(Source):
                 Event(
                     title=piece["title"].replace("\xad", "").strip(),
                     venue=venue,
-                    category=Category.OPER,
+                    category=Category.TANZ,
                     # UTC, e.g. "2027-01-15T18:30:00.000000Z"
                     starts_at=datetime.fromisoformat(
                         date["date_time"]
@@ -1171,6 +1207,141 @@ class PinaBausch(Source):
         page = json.loads(soup.select_one("[data-page]")["data-page"])
         return page["props"]["event"]["data"]["meta"]["thumbnail"]
 
+
+class UfaPalastDuesseldorf(Source):
+    """
+    The program page lists every announced day (presales months ahead), one
+    section.day-section per day with one article.movie-row per film. The
+    screens ("Kino 13 – UFA Lounge") are halls of one cinema, not venues.
+    """
+
+    VENUE = Venue(
+        id="ufa-palast-duesseldorf-ufa-palast",
+        name="UFA Palast",
+        city="Düsseldorf",
+    )
+
+    @staticmethod
+    def runtime(text: str) -> timedelta | None:
+        """ "2 Std 39 Min", "2 Std" or "95 Min" in the row's info line."""
+        match = re.search(r"\b(\d+)\s*Std\b(?:\s*(\d+)\s*Min\b)?|\b(\d+)\s*Min\b", text)
+        if not match:
+            return None
+        hours, minutes, only_minutes = match.groups()
+        if only_minutes:
+            return timedelta(minutes=int(only_minutes))
+        return timedelta(hours=int(hours), minutes=int(minutes or 0))
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        rows = soup.select("section.day-section article.movie-row")
+        debug(f"{self.name}: {len(rows)} article.movie-row")
+        for row in rows:
+            link = row.select_one("a.group[href]")
+            title = link.select_one("h2").get_text(" ", strip=True)
+            # FSK badge, year and runtime; the description is in a later div
+            runtime = self.runtime(link.find_next_sibling("div").get_text(" "))
+            # badges such as "2D", "OV", "MET Opera", "First Preview"
+            badges = [b.get_text(" ", strip=True) for b in row.select(".prog-badge")]
+            category = self.screening_category(title, *badges)
+            poster = row.select_one("img[src]")
+            for show in row.select(".showtime-wrap[data-date][data-time]"):
+                # local clock time; after midnight it is already the next date
+                starts_at = datetime.strptime(
+                    f"{show['data-date']} {show['data-time']}", "%Y-%m-%d %H:%M"
+                ).replace(tzinfo=berlin)
+                events.append(
+                    Event(
+                        title=title,
+                        venue=self.VENUE,
+                        category=category,
+                        starts_at=starts_at,
+                        ends_at=starts_at + runtime if runtime else None,
+                        url=absolute_url(response.url, link["href"]),
+                        image_url=(
+                            absolute_url(response.url, poster["src"]) if poster else None
+                        ),
+                    )
+                )
+        return events
+
+
+class UciKinowelt(Source):
+    """
+    The cinema's program page without "/day" lists every film with all its
+    announced screenings (the "/day" page shows only today). One
+    div.film-container per film, with a table of a.badge-performance links.
+    """
+
+    VENUE = Venue(
+        id="uci-kinowelt-uci-kino",
+        name="UCI Kino",
+        city="Düsseldorf",
+    )
+
+    def scrape(self) -> list[Event]:
+        debug(f"{self.name}: GET", self.website)
+        # the site answers 403 to httpx's default User-Agent
+        response = httpx.get(
+            self.website,
+            follow_redirects=True,
+            timeout=60,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        debug("  ->", response.status_code, len(response.text), "chars")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        films = soup.select("div.film-container")
+        debug(f"{self.name}: {len(films)} div.film-container")
+        for film in films:
+            link = film.select_one(
+                "h2.film-container__description__text__eventtitle a[href]"
+            )
+            title = link.get_text(" ", strip=True)
+            # e.g. ["Neu", "159min", "Action, Science-Fiction"]; some films have no length
+            info = [li.get_text(strip=True) for li in film.select("ul.film-info li")]
+            minutes = next(
+                (int(m[1]) for i in info if (m := re.fullmatch(r"(\d+)\s*min", i))),
+                None,
+            )
+            # genres such as "Oper", "Ballett", "Live"
+            category = self.screening_category(title, *info)
+            poster = film.select_one("img.film-thumb[src]")
+            shows = film.select("a.badge-performance[data-date][data-time]")
+            debug(f"  {title!r}: {len(shows)} screenings, {minutes} min")
+            for show in shows:
+                # local clock time; after midnight it is already the next date
+                starts_at = datetime.strptime(
+                    f"{show['data-date']} {show['data-time']}", "%Y%m%d %H:%M"
+                ).replace(tzinfo=berlin)
+                events.append(
+                    Event(
+                        title=title,
+                        venue=self.VENUE,
+                        category=category,
+                        starts_at=starts_at,
+                        ends_at=(
+                            starts_at + timedelta(minutes=minutes) if minutes else None
+                        ),
+                        url=absolute_url(response.url, link["href"]),
+                        image_url=(
+                            absolute_url(response.url, poster["src"]) if poster else None
+                        ),
+                    )
+                )
+        return events
+
+
 sources = [
     Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/"),
     Dhaus("dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel"),
@@ -1195,6 +1366,13 @@ sources = [
         "https://www.schauspielhausbochum.de/de/spielplan/13/schauspiel",
     ),
     PinaBausch("pina-bausch", "https://www.pina-bausch.de/de/calendar"),
+    UfaPalastDuesseldorf(
+        "ufa-palast-duesseldorf", "https://ufa-duesseldorf.de/programm/"
+    ),
+    UciKinowelt(
+        "uci-kinowelt",
+        "https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50",
+    ),
 ]
 
 if __name__ == "__main__":

@@ -13,14 +13,15 @@ const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
 const en = {
-  title: 'Kulturprogramm — theatre, opera, concerts and movies in NRW',
-  description: 'Theatre, opera, concerts and movies in NRW on one timeline. Pick a day, plan your evening, get tickets.',
+  title: 'Kulturprogramm — theatre, opera, dance, concerts and movies in NRW',
+  description: 'Theatre, opera, dance, concerts and movies in NRW on one timeline. Pick a day, plan your evening, get tickets.',
   toTop: 'Kulturprogramm — to the top',
   language: 'Language',
   myEvening: 'My evening',
   cat: {
     theatre: { label: 'Theatre', tag: 'THEATRE' },
     opera: { label: 'Opera', tag: 'OPERA' },
+    dance: { label: 'Dance', tag: 'DANCE' },
     concerts: { label: 'Concerts', tag: 'CONCERTS' },
     movies: { label: 'Movies', tag: 'MOVIES' },
   } satisfies Record<Category, { label: string; tag: string }>,
@@ -143,14 +144,15 @@ const en = {
 export type Dict = typeof en
 
 const de: Dict = {
-  title: 'Kulturprogramm — Theater, Oper, Konzerte und Kino in NRW',
-  description: 'Theater, Oper, Konzerte und Kino in NRW auf einer Timeline. Tag wählen, Abend planen, Tickets holen.',
+  title: 'Kulturprogramm — Theater, Oper, Tanz, Konzerte und Kino in NRW',
+  description: 'Theater, Oper, Tanz, Konzerte und Kino in NRW auf einer Timeline. Tag wählen, Abend planen, Tickets holen.',
   toTop: 'Kulturprogramm — nach oben',
   language: 'Sprache',
   myEvening: 'Mein Abend',
   cat: {
     theatre: { label: 'Theater', tag: 'THEATER' },
     opera: { label: 'Oper', tag: 'OPER' },
+    dance: { label: 'Tanz', tag: 'TANZ' },
     concerts: { label: 'Konzert', tag: 'KONZERT' },
     movies: { label: 'Kino', tag: 'KINO' },
   },

@@ -6,7 +6,7 @@
  */
 
 /** Order of the filter buttons, legends and stacked overview. */
-export const CATEGORIES = ['theatre', 'opera', 'concerts', 'movies'] as const
+export const CATEGORIES = ['theatre', 'opera', 'dance', 'concerts', 'movies'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 export type Venue = {

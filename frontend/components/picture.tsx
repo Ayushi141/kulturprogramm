@@ -1,11 +1,11 @@
 'use client'
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Clapperboard, Drama, Maximize, MicVocal, Music } from 'lucide-react'
+import { Clapperboard, Drama, Footprints, Maximize, MicVocal, Music } from 'lucide-react'
 import type { Category } from '@/lib/types'
 import { useT } from './i18n'
 
-const icons: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, concerts: Music, movies: Clapperboard }
+const icons: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
 const HOLD_MS = 150 // a shorter touch is a tap or the start of a scroll
 const SLOP_PX = 8   // moving further before the peek shows means the finger is scrolling
 

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, LayoutGrid, MicVocal, Music, X } from 'lucide-react'
+import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music, X } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
 import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
 import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time'
@@ -19,7 +19,7 @@ import { relation, Timeline } from './explorer/timeline'
 type View = 'timeline' | 'poster'
 type Now = { day: string; min: number }
 
-const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, concerts: Music, movies: Clapperboard }
+const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
 const STORE = 'kulturprogramm.plans.v1'
 /** Day buttons in the strip; the "later" button covers the rest of the horizon. */
 const STRIP_DAYS = 7

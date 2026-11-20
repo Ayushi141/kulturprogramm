@@ -77,12 +77,12 @@ function dayProgramme(day: string, i: number): Event[] {
   if (is(2, 4, 5)) add('schauspiel', 'theatre', 'Die Physiker · Kleines Haus', '20:00', null, '15–32 €')
   if (is(4, 5, 6)) add('fft', 'theatre', 'Stadt ohne Autos (Performance)', '20:00', null, '16 €')
   if (is(5)) {
-    add('tanzhaus', 'theatre', 'Gravity Lines (Tanz)', '19:00', '20:15', '18 €')
-    add('tanzhaus', 'theatre', 'Gravity Lines (Tanz)', '21:30', '22:45', '18 €')
+    add('tanzhaus', 'dance','Gravity Lines (Tanz)', '19:00', '20:15', '18 €')
+    add('tanzhaus', 'dance','Gravity Lines (Tanz)', '21:30', '22:45', '18 €')
   }
-  if (is(6)) add('tanzhaus', 'theatre', 'Gravity Lines (Tanz)', '20:00', '21:15', '18 €')
+  if (is(6)) add('tanzhaus', 'dance','Gravity Lines (Tanz)', '20:00', '21:15', '18 €')
   // theatre — Duisburg, Köln
-  if (is(5)) add('theater-du', 'theatre', 'Ballett am Rhein: b.52', '19:30', '21:30', '15–48 €')
+  if (is(5)) add('theater-du', 'dance', 'Ballett am Rhein: b.52', '19:30', '21:30', '15–48 €')
   if (is(3, 4, 5, 6)) add('schauspiel-k', 'theatre', 'Die Räuber', '19:30', '22:00', '17–42 €')
   if (is(0)) add('schauspiel-k', 'theatre', 'Die Räuber', '18:00', '20:30', '17–42 €')
   // opera
