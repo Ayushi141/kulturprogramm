@@ -13,7 +13,7 @@ import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 
 /* Geometry (px) */
-const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 158, LANE = 32, BAR = 24
+const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 150, LANE = 28, BAR = 24, AIR = 3  // AIR: space above the first and below the last bar in a venue row
 /**
  * The chart is drawn at a logical width of about BASE_W px and scaled up to the
  * available width, by at most MAX_ZOOM. Wide screens get bigger text and bars
@@ -159,13 +159,13 @@ export function Timeline(p: TimelineProps) {
         .map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id) }))
         .filter(r => r.its.length)
       if (!vs.length) continue
-      rows.push({ kind: 'city', label: city, y, h: 30, alt: false }); y += 30
+      rows.push({ kind: 'city', label: city, y, h: 22, alt: false }); y += 22
       vs.forEach(({ v, its }, i) => {
-        its.forEach(it => ys.set(it.id, y + head + 7 + lanes.lane.get(it.id)! * LANE))
-        const h = head + lanes.count.get(v.id)! * LANE + 8
+        its.forEach(it => ys.set(it.id, y + head + AIR + lanes.lane.get(it.id)! * LANE))
+        const h = head + (lanes.count.get(v.id)! - 1) * LANE + BAR + 2 * AIR
         rows.push({ kind: 'venue', label: v.name, y, h, alt: i % 2 === 1 }); y += h
       })
-      y += 6
+      y += 2
     }
     return { rows, ys, inWin, H: Math.max(y + 24, TOP + 120) }
   }, [p.items, p.venues, p.win, head, lanes])
@@ -389,14 +389,14 @@ export function Timeline(p: TimelineProps) {
         <g>
           {layout.rows.map((r, i) => r.kind === 'city'
             ? <g key={i}>
-                <line x1={12} x2={W - R} y1={r.y + 24} y2={r.y + 24} stroke={INK} strokeWidth={1.5} />
-                <text x={12} y={r.y + 18} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
+                <line x1={12} x2={W - R} y1={r.y + 20} y2={r.y + 20} stroke={INK} strokeWidth={1.5} />
+                <text x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow
                   ? <text x={12} y={r.y + 14} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-                  : <text x={12} y={r.y + 7 + BAR / 2 + 4.5} {...T.ui}>{fitText(r.label, L - 30, UI_FONT)}</text>}
+                  : <text x={12} y={r.y + AIR + BAR / 2 + 4.5} {...T.ui}>{fitText(r.label, L - 30, UI_FONT)}</text>}
               </g>)}
         </g>
 

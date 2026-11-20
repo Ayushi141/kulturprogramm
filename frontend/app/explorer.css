@@ -195,7 +195,8 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
   /* "BIS 19.05." / "UNTIL 19.05." is longer than a date and the double rule takes 5px */
   .x-later strong{font-size:clamp(13px,3.9vw,20px)}
   .x-bandrow{gap:8px;flex-wrap:wrap}
-  .x-cats{width:100%}
+  /* globals.css gives .filters a 13px top margin on phones; the band's padding is enough */
+  .x-cats{width:100%;margin-top:0}
   .x-band .x-views{margin-left:0}
   .x-star{display:none}
   .x-band .filters button{padding:6px 8px}
