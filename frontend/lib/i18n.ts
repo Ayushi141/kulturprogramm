@@ -91,6 +91,13 @@ const en = {
   endNotAnnounced: 'end not announced',
   /** End of the evening when the last pick has no announced end. */
   open: 'open',
+  // other dates of the production
+  moreDates: (n: number) => `+${n} more ${n === 1 ? 'date' : 'dates'}`,
+  otherDates: 'MORE DATES',
+  calendarLabel: 'Performances in the next two weeks',
+  openDate: (when: string) => `Open ${when}`,
+  allDates: (n: number) => `See all ${n} dates`,
+  fewerDates: 'Show fewer',
 
   // how an event relates to the plan
   inYourEvening: 'In your evening',
@@ -215,6 +222,12 @@ const de: Dict = {
   from: 'ab',
   endNotAnnounced: 'Ende nicht angekündigt',
   open: 'offen',
+  moreDates: n => `+${n} ${n === 1 ? 'weiterer Termin' : 'weitere Termine'}`,
+  otherDates: 'WEITERE TERMINE',
+  calendarLabel: 'Vorstellungen der nächsten zwei Wochen',
+  openDate: when => `${when} öffnen`,
+  allDates: n => `Alle ${n} Termine ansehen`,
+  fewerDates: 'Weniger anzeigen',
 
   inYourEvening: 'In deinem Abend',
   alreadyStarted: 'Hat schon begonnen',

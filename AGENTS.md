@@ -38,6 +38,8 @@ aggregator/
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
+- The event card lists its production's other upcoming dates (`DatesContext`
+  from `guide.tsx`): 14-day calendar, three rows, "see all"; a tap opens one.
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
@@ -294,9 +296,7 @@ that a venue's live page has not changed.
 
 ## Common operations
 
-Run these commands from `backend/deploy/`:
-
-Start PostgreSQL: `docker compose up -d postgres`.
+Run these commands from `backend/deploy/`. Start PostgreSQL: `docker compose up -d postgres`.
 
 Run the scraper image, rebuilding it from the current source. The run loop
 never exits, so this stays in the foreground until stopped:
@@ -314,9 +314,7 @@ FROM events
 ORDER BY starts_at;
 ```
 
-Delete all rows while keeping the table: `TRUNCATE events;`.
-
-Feature a production in the "In focus" card (title as in `events`; the card
+Delete all rows while keeping the table: `TRUNCATE events;`. Feature a production in the "In focus" card (title as in `events`; the card
 shows its next performance, from the selected day on):
 
 ```sql
@@ -326,11 +324,13 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
 
-## Deployment scheduling
+## Deployment
 
-The repository configures no systemd timer; check the server before assuming
-one. A daily oneshot service (once proposed for 06:00) does not fit the
-scraper, which loops forever; its Compose service has no `restart` policy.
+Every push to `main` runs `.github/workflows/deploy.yml`: it connects over SSH
+with a key that the server restricts to `backend/deploy/deploy.sh`, which pulls
+`main` into the server's clone and rebuilds the frontend (project `deploy`).
+The scraper loops forever (no `restart` policy, no systemd timer) and is not
+redeployed: restart it by hand after scraper changes.
 
 ## Working in this repository
 
@@ -345,6 +345,5 @@ scraper, which loops forever; its Compose service has no `restart` policy.
 
 ## Open implementation questions
 
-- `Event` inherits from `ABC`, although it has no abstract methods; it may be
-  a plain dataclass.
+- `Event` inherits from `ABC` without abstract methods; make it a dataclass?
 - Decide how to remove events saved before they were cancelled.
