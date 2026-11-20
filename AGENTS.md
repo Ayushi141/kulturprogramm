@@ -229,6 +229,47 @@ that a venue's live page has not changed.
   is not filtered.
 - Category: `CONCERT` for the `Konzert` label, otherwise `THEATER`.
 
+### Deutsche Oper am Rhein (Opernhaus Düsseldorf)
+- `https://www.operamrhein.de/spielplan/kalender/duesseldorf/`: parse
+  `div.performance` at Opernhaus only; include Oper, Junge Oper and Ballett as
+  `OPER`. Cards provide title/link, Berlin start, optional end and image.
+
+### Theater Krefeld-Mönchengladbach
+- `https://theater-kr-mg.de/kalender/` (`article.performance`): include
+  Schauspiel, Ballett, Musiktheater; exclude Extras, Kinder & Jugend and
+  non-performances. Cards provide title, URL, venue, start; no end.
+
+### Oper Wuppertal
+- `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, first 100 upcoming
+  only. Keep Oper at Opernhaus; API provides title, URL, venue and times;
+  exclude school/non-performance events.
+
+### Theater und Philharmonie Essen
+- `https://www.theater-essen.de/programm/kalender/` (`div.performance`):
+  include Schauspiel Essen, Aalto Musiktheater and Aalto Ballett Essen; exclude
+  concerts, tours and non-performances. Cards provide title/times/venue;
+  Schauspiel -> `THEATER`, others -> `OPER`.
+
+### Oper Köln
+- `https://www.oper.koeln/programm` (`li.s-bko-activity--schedule`): cards
+  provide local times and production links. Detail pages provide images and
+  filter children's/non-performance events; venue Oper Köln, category `OPER`.
+
+### Schauspielhaus Bochum
+- Read `/de/spielplan/13/schauspiel` and `/de/spielplan/11/tanz`;
+  `.schedule__group`/`.schedule__item` provide date/title/stage/times.
+  Exclude non-performances, Theaterrevier and Theater Hagen; map Schauspiel
+  to `THEATER`, Tanz to `OPER`.
+
+### Pina Bausch
+- `https://www.pina-bausch.de/de`: include dated `/de/plays/` cards in
+  Wuppertal only. Cards provide title/date/start/venue and optional image; no
+  end is listed. Missing links raise an error.
+
+### Rheinisches Landestheater
+- Supplied page currently has filters but no `.performance` records or feed;
+  it is not registered until dated event data is served.
+
 ## Common operations
 
 Run these commands from `backend/deploy/`:
