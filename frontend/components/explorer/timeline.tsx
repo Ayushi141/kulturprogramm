@@ -13,7 +13,7 @@ import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 
 /* Geometry (px) */
-const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 150, LANE = 28, BAR = 24, AIR = 3  // AIR: space above the first and below the last bar in a venue row
+const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 134, LANE = 28, BAR = 24, AIR = 3  // AIR: space above the first and below the last bar in a venue row
 /**
  * The chart is drawn at a logical width of about BASE_W px and scaled up to the
  * available width, by at most MAX_ZOOM. Wide screens get bigger text and bars
@@ -380,7 +380,7 @@ export function Timeline(p: TimelineProps) {
           <rect x={L} y={OV_Y - 8} width={Math.max(0, fa - L)} height={OV_H + 8} fill={CARD} opacity={0.72} />
           <rect x={fb} y={OV_Y - 8} width={Math.max(0, W - R - fb)} height={OV_H + 8} fill={CARD} opacity={0.72} />
           <rect x={fa} y={OV_Y - 8} width={fb - fa} height={OV_H + 8} fill="none" stroke={RED} strokeWidth={2.5} />
-          <path d={`M${fa},${OV_Y + OV_H} L${L},${TOP - 30} M${fb},${OV_Y + OV_H} L${W - R},${TOP - 30}`} stroke={RED} strokeWidth={1} opacity={0.55} fill="none" />
+          <path d={`M${fa},${OV_Y + OV_H} L${L},${TOP - 14} M${fb},${OV_Y + OV_H} L${W - R},${TOP - 14}`} stroke={RED} strokeWidth={1} opacity={0.55} fill="none" />
           <rect x={flx - flw / 2} y={OV_Y + OV_H + 21} width={flw} height={17} fill={RED} />
           <text x={flx} y={OV_Y + OV_H + 33} textAnchor="middle" {...T.label} fill="#fff">{frameLabel}</text>
         </g>
@@ -405,8 +405,8 @@ export function Timeline(p: TimelineProps) {
           {ticks.map(m => {
             const major = m % labelEvery === 0
             return <g key={m}>
-              <line x1={x(m)} x2={x(m)} y1={TOP - 6} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
-              {major && !underNow(m) && <text x={x(m)} y={TOP - 12} textAnchor={anchorAt(x(m), L, W - R)} {...T.label}>{fmt(m)}</text>}
+              <line x1={x(m)} x2={x(m)} y1={TOP + 10} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
+              {major && !underNow(m) && <text x={x(m)} y={TOP + 4} textAnchor={anchorAt(x(m), L, W - R)} {...T.label}>{fmt(m)}</text>}
             </g>
           })}
           {!narrow && <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />}
@@ -475,11 +475,11 @@ export function Timeline(p: TimelineProps) {
         {/* past part of today */}
         {p.nowMin !== null && p.nowMin > A && (
           <g pointerEvents="none">
-            <rect x={L} y={TOP - 4} width={x(p.nowMin) - L} height={H - TOP - 10} fill={PAPER} opacity={0.6} />
+            <rect x={L} y={TOP + 12} width={x(p.nowMin) - L} height={H - TOP - 26} fill={PAPER} opacity={0.6} />
             {p.nowMin < B && <>
-              <line x1={x(p.nowMin)} x2={x(p.nowMin)} y1={TOP - 4} y2={H - 14} stroke={RED} strokeWidth={2} />
-              <rect x={nowLeft} y={TOP - 27} width={nowW} height={17} fill={RED} />
-              <text x={nowLeft + nowW / 2} y={TOP - 15} textAnchor="middle" {...T.label} fill="#fff">{nowText}</text>
+              <line x1={x(p.nowMin)} x2={x(p.nowMin)} y1={TOP + 12} y2={H - 14} stroke={RED} strokeWidth={2} />
+              <rect x={nowLeft} y={TOP - 11} width={nowW} height={17} fill={RED} />
+              <text x={nowLeft + nowW / 2} y={TOP + 1} textAnchor="middle" {...T.label} fill="#fff">{nowText}</text>
             </>}
           </g>
         )}
@@ -505,7 +505,7 @@ export function Timeline(p: TimelineProps) {
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
           <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
-          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} /></div>
+          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} peek={popItem.ev.title} /></div>
           {itemSummary(popItem)}
           <div className="x-popbtns">
             <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>
