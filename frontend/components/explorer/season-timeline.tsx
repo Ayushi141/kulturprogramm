@@ -1,12 +1,11 @@
 'use client'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowUpRight, Bookmark, X } from 'lucide-react'
 import type { Venue } from '@/lib/types'
 import { productions, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
-import { Picture } from '../picture'
 import { CAT } from './categories'
+import { EventCard, type Relation } from './event-card'
 import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 
@@ -28,6 +27,8 @@ export type SeasonTimelineProps = {
   to: string
   planIds: Set<string>
   onToggle: (id: string) => void
+  /** How an event relates to the picks of its own day, for the event card. */
+  relationOf: (it: Item) => Relation
 }
 
 /** Months ahead: one line per production, one square per performance. */
@@ -197,15 +198,8 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
       {tip && !pop && <div className="x-tip" style={{ left: tip.x, top: tip.y }}>{tip.body}</div>}
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
-          <button className="x-popclose" aria-label={t.close} onClick={() => setPop(null)}><X size={15} /></button>
-          <div className="x-popphoto"><Picture image={popItem.ev.image} category={popItem.category} key={popItem.id} peek={popItem.ev.title} /></div>
-          {summary(popItem)}
-          <div className="x-popbtns">
-            <button onClick={() => { p.onToggle(popItem.id); setPop(null) }}>
-              <Bookmark size={15} fill={p.planIds.has(popItem.id) ? 'currentColor' : 'none'} />{p.planIds.has(popItem.id) ? t.removeShort : t.save}
-            </button>
-            {popItem.ev.url && <a href={popItem.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
-          </div>
+          <EventCard it={popItem} rel={p.relationOf(popItem)} picked={p.planIds.has(popItem.id)} later
+            onToggle={() => { p.onToggle(popItem.id); setPop(null) }} onClose={() => setPop(null)} />
         </div>
       )}
     </div>

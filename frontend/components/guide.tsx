@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Bookmark, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music, X } from 'lucide-react'
+import { ArrowUpRight, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
-import { byStart, indexProgramme, spanLabel, toggle, upcoming, type Item, type Window } from '@/lib/plan'
+import { byStart, indexProgramme, toggle, upcoming, type Item, type Window } from '@/lib/plan'
 import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time'
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
@@ -13,6 +13,7 @@ import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
 import { SeasonTimeline } from './explorer/season-timeline'
+import { EventCard } from './explorer/event-card'
 import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
@@ -131,11 +132,12 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
       ? <>{laterPicks.length > 0 && <><b>{t.saved(laterPicks.length)}</b> </>}{view === 'timeline' ? t.hintSeasonTimeline : t.hintSeasonPoster}</>
       : <>{plan.length > 0 && <><b>{t.inEvening(plan.length)}</b> </>}{view === 'timeline' ? t.hintTimeline : t.hintPoster}</>
   }
-  // the detail dialog relates an event to the picks of its own day
-  const detailPlan = detail ? planFor(detail.day) : []
-  const detailIds = new Set(detailPlan.map(i => i.id))
-  const rel = detail ? relation(detail, detailPlan, detailIds, detail.day === now?.day ? now.min : null, t) : null
-  const detailPicked = !!detail && detailIds.has(detail.id)
+  // the event card relates an event to the picks of its own day
+  const relationOf = (it: Item) => {
+    const dayPlan = planFor(it.day)
+    return relation(it, dayPlan, new Set(dayPlan.map(i => i.id)), it.day === now?.day ? now.min : null, t)
+  }
+  const detailPicked = !!detail && planFor(detail.day).some(i => i.id === detail.id)
 
   return (
     <main id="top">
@@ -192,7 +194,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
           {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
           {isLater ? (view === 'timeline'
-            ? <SeasonTimeline venues={programme.venues} items={laterVisible} from={laterFrom} to={laterTo} planIds={laterIds} onToggle={onToggle} />
+            ? <SeasonTimeline venues={programme.venues} items={laterVisible} from={laterFrom} to={laterTo} planIds={laterIds} onToggle={onToggle} relationOf={relationOf} />
             : <SeasonPoster items={laterVisible} planIds={laterIds} onToggle={onToggle} onOpen={setDetail} />
           ) : view === 'timeline' ? <>
             <Timeline venues={programme.venues} items={visible} overviewItems={pool} win={win} nowMin={nowMin}
@@ -212,22 +214,10 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
       </>}
       <footer><span className="brand x-footbrand"><span className="burst" aria-hidden="true" />KULTURPROGRAMM</span> <span>{t.footer}</span></footer>
 
-      <dialog ref={dialog} aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
-        <div className="dialogbody">
-          <button className="dismiss" onClick={() => setDetail(null)} aria-label={t.close}><X size={18} /></button>
-          {detail && <>
-            <small>{t.cat[detail.category].tag} / {t.dateline(t.wdl[weekday(detail.day)].toUpperCase(), dayLabel(detail.day))}</small>
-            <h2>{detail.ev.title}</h2>
-            <p><b>{detail.venue.name}</b> · {detail.venue.city}<br />{spanLabel(detail, t)}{detail.ev.price && ` · ${detail.ev.price}`}</p>
-            {detail.ev.note && <p>{detail.ev.note}</p>}
-            {rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
-            <div className="x-dialogbtns">
-              {detail.ev.url && <a className="visit" href={detail.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets} <ArrowUpRight size={18} /></a>}
-              <button className="visit x-outline" onClick={() => { onToggle(detail.id); setDetail(null) }}>
-                <Bookmark size={16} fill={detailPicked ? 'currentColor' : 'none'} />{detailPicked ? t.remove : t.add}</button>
-            </div>
-          </>}
-        </div>
+      {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
+      <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
+        {detail && <EventCard it={detail} rel={relationOf(detail)} picked={detailPicked} later={!!laterFrom && detail.day >= laterFrom}
+          onToggle={() => { onToggle(detail.id); setDetail(null) }} onClose={() => setDetail(null)} />}
       </dialog>
     </main>
   )

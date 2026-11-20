@@ -158,10 +158,16 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .filters button[aria-pressed=false] .x-sw{opacity:.3}
 .filters button[aria-pressed=false]{color:#565247}
 
-/* timeline detail popover */
-.x-pop{position:fixed;z-index:21;width:min(330px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
+/* event card (event-card.tsx): the same card in the timelines' popover (.x-pop, placed beside
+   the clicked bar) and in the poster view's dialog (.x-carddialog, centred) */
+.x-card{position:relative;width:min(340px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;background:var(--ink);color:var(--paper);padding:13px 14px 14px;box-shadow:5px 5px var(--red)}
+.x-card small{display:block;margin-bottom:4px}
+.x-card .x-tm+.x-tm{margin:8px 0 0}
+.x-card .x-rel{margin:10px 0 0;color:var(--ink)}
+.x-card .x-rel-muted{color:var(--paper);border-color:var(--paper)}
+.x-pop{position:fixed;z-index:21}
+.x-carddialog{width:auto;max-height:none;padding:0;border:0;background:none;box-shadow:none;overflow:visible}
 .x-popclose{position:absolute;top:8px;right:8px;z-index:1;color:var(--paper);background:var(--ink);border:1px solid #fff5;padding:3px;display:flex}
-.x-pop .x-tt{padding-right:26px}
 /* thumbnail on click (hover shows only the text tooltip); the close button sits on it */
 .x-popphoto{height:130px;margin:-13px -14px 12px;border-bottom:1.5px solid var(--paper)}
 /* hold-to-peek: the popover photo is a button; holding it (finger, mouse or Space) shows the
@@ -177,12 +183,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-remove{display:block;margin-top:6px;color:#565247;text-decoration:underline;text-underline-offset:2px}
 .x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;text-decoration:underline;text-underline-offset:2px}
 
-/* dialog */
+/* how the event fits the evening, on the event card */
 .x-rel{background:var(--yellow);border:1px solid var(--ink);padding:5px 8px;display:inline-block}
 .x-rel-muted{background:none;border-style:dashed}
-.x-dialogbtns{display:flex;flex-wrap:wrap;gap:8px}
-.x-dialogbtns .visit{gap:8px;border:1px solid var(--ink)}
-.visit.x-outline{background:var(--paper);color:var(--ink);text-decoration:none}
 
 @media(max-width:700px){
   .navwrap{height:auto;padding:10px 0}

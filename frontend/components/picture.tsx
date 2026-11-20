@@ -78,9 +78,11 @@ export function Picture({ image, category, peek }: { image?: string; category: C
           <Maximize size={12} strokeWidth={2.5} />{t.peek}
         </span>
       </button>
+      {/* inside a modal dialog (the event card in the poster view) the peek must join the dialog:
+          a modal sits in the top layer, above anything portalled to the body */}
       {open && createPortal(
         <div className="x-peek" onContextMenu={e => e.preventDefault()}><img src={image} alt={t.posterAlt(peek)} draggable={false} /></div>,
-        document.body)}
+        btn.current?.closest('dialog') ?? document.body)}
     </div>
   )
 }
