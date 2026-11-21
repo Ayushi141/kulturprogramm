@@ -1,13 +1,14 @@
 services:
   postgres:
     image: postgres:18
+    restart: unless-stopped
     environment:
       POSTGRES_USER: kultur
       POSTGRES_DB: kultur
       POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
     volumes:
       - pgdata:/var/lib/postgresql
-      - /run/secrets/pg_password:/run/secrets/pg_password:ro
+      - /etc/kulturprogramm/pg_password:/run/secrets/pg_password:ro
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "127.0.0.1:5432:5432"
@@ -31,6 +32,7 @@ services:
 
   frontend:
     build: ../../frontend
+    restart: unless-stopped
     environment:
       PGHOST: postgres
       PGPORT: 5432
@@ -47,7 +49,7 @@ services:
       
 secrets:
   pg_password:
-    file: /run/secrets/pg_password
+    file: /etc/kulturprogramm/pg_password
 
 volumes:
   pgdata:

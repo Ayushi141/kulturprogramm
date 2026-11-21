@@ -43,8 +43,8 @@ aggregator/
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
-  `/run/secrets/pg_password`. That path is outside the repository and must
-  exist on the host before starting the services.
+  `/etc/kulturprogramm/pg_password` (not `/run`, which is emptied at boot).
+  PostgreSQL and the frontend restart with the host (`unless-stopped`).
 
 ## Database
 
@@ -130,7 +130,7 @@ scraper and frontend (the frontend also gets `PGPORT`). libpq ignores
 pass the password to `psycopg.connect()` and the `pg` `Pool`.
 
 Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`;
-PostgreSQL bind-mounts the host file there and reads it through
+PostgreSQL bind-mounts the host file to that path and reads it through
 `POSTGRES_PASSWORD_FILE`. Do not put credentials in the repository. PostgreSQL
 and frontend ports are bound to `127.0.0.1` on the host.
 
