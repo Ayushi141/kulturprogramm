@@ -8,6 +8,8 @@
 #   DEPLOY_SSH_KEY      private key of the deploy key pair
 #   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <host>` (checks the server's identity)
 #   DEPLOY_TARGET       user@host, or ssh://user@host:port for a different SSH port
+#   DEPLOY_KNOCK        port-knocking sequence for knockd, e.g. "7000 8000 9000"
+#                       (append :udp to UDP ports); leave unset without knockd
 name: Deploy
 
 on:
@@ -30,7 +32,15 @@ jobs:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           TARGET: ${{ secrets.DEPLOY_TARGET }}
+          KNOCK: ${{ secrets.DEPLOY_KNOCK }}
         run: |
+          # knockd opens the SSH port for this runner's address after the sequence
+          if [ -n "$KNOCK" ]; then
+            sudo apt-get install -y -qq knockd > /dev/null
+            host=${TARGET#*@}; host=${host%%:*}
+            knock -d 300 "$host" $KNOCK
+            sleep 1
+          fi
           install -d -m 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
