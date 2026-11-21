@@ -1,0 +1,11 @@
+# Runs update.sh once: deploys main if it has new commits.
+# Install: see aggregator-deploy.timer.
+[Unit]
+Description=Deploy new commits of the aggregator repository
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/home/deploy/aggregator/backend/deploy/update.sh

@@ -1,0 +1,17 @@
+# Starts aggregator-deploy.service one minute after each run ends, so a long
+# build never overlaps with the next check.
+#
+# Install as root:
+#   cp /home/deploy/aggregator/backend/deploy/systemd/aggregator-deploy.* /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now aggregator-deploy.timer
+# Logs: journalctl -u aggregator-deploy
+[Unit]
+Description=Check for new commits of the aggregator repository every minute
+
+[Timer]
+OnActiveSec=10s
+OnUnitInactiveSec=1min
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
