@@ -38,8 +38,8 @@ aggregator/
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
-- The event card lists its production's other upcoming dates (`DatesContext`
-  from `guide.tsx`): 14-day calendar, three rows, "see all"; a tap opens one.
+- The event card's "+N" button opens a drawer with the production's upcoming dates
+  (`DatesContext` from `guide.tsx`): a fixed 14-day or 7-month grid from the first opened date, then all rows.
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
