@@ -187,6 +187,21 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-rel{background:var(--yellow);border:1px solid var(--ink);padding:5px 8px;display:inline-block}
 .x-rel-muted{background:none;border-style:dashed}
 
+/* the production's other dates, on the event card: a yellow hint under the times, then after
+   the buttons a two-week calendar (one square per performance) and the dates as rows */
+.x-more{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;background:var(--yellow);color:var(--ink);border:1px solid var(--ink);transform:rotate(-1deg)}
+.x-dates{margin-top:16px;padding-top:12px;border-top:1px dashed #fff8}
+.x-card .x-dates small{margin-bottom:8px}
+.x-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.x-cal>*{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-height:44px;padding:3px 4px;border:1px solid #fff5;background:none;color:var(--paper);text-align:left;white-space:nowrap}
+.x-cal button{border-color:var(--paper);cursor:pointer}
+.x-cal .x-calsel{background:var(--paper);color:var(--ink)}
+.x-cal span:last-child{display:flex;flex-wrap:wrap;gap:2px}
+.x-cal i{width:8px;height:8px;border:1px solid currentColor}
+.x-daterow{display:flex;align-items:center;gap:12px;width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--paper);background:none;color:var(--paper);text-align:left;cursor:pointer}
+.x-daterow svg{margin-left:auto}
+.x-alldates{justify-content:center}
+
 @media(max-width:700px){
   .navwrap{height:auto;padding:10px 0}
   .x-stamp{font-size:8px;letter-spacing:.4px}
@@ -248,7 +263,7 @@ button,input{font:inherit;letter-spacing:inherit}
 small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker
   {font:700 calc(11 * var(--zs))/1.3 var(--mono);letter-spacing:.08em}
 
-.x-note,.x-empty,.x-emptyplan,.x-tm,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
+.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
   {font:400 calc(12 * var(--zs))/1.6 var(--mono);letter-spacing:0}
 
 .filters button,.visit,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove

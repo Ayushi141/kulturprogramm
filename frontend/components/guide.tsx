@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
-import { byStart, indexProgramme, toggle, upcoming, type Item, type Window } from '@/lib/plan'
+import { byStart, indexProgramme, productions, toggle, upcoming, type Item, type Window } from '@/lib/plan'
 import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time'
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
@@ -13,7 +13,7 @@ import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
 import { SeasonTimeline } from './explorer/season-timeline'
-import { EventCard } from './explorer/event-card'
+import { DatesContext, EventCard, type Dates } from './explorer/event-card'
 import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
@@ -41,6 +41,8 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   const t = DICTS[lang]
   const byDay = useMemo(() => indexProgramme(programme), [programme])
   const itemById = useMemo(() => new Map([...byDay.values()].flat().map(i => [i.id, i])), [byDay])
+  /** All performances of each production (same title at the same venue), keyed by performance ID. */
+  const datesById = useMemo(() => new Map(productions([...byDay.values()].flat()).flatMap(pr => pr.dates.map(d => [d.id, pr.dates]))), [byDay])
 
   const [now, setNow] = useState<Now | null>(null) // client only: avoids a server/client clock mismatch
   const [day, setDay] = useState('')
@@ -68,7 +70,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
     return () => { clearInterval(t); removeEventListener('hashchange', fromHash) }
   }, [])
   useEffect(() => { if (loaded.current) try { localStorage.setItem(STORE, JSON.stringify(plans)) } catch { /* ignore */ } }, [plans])
-  useEffect(() => { if (detail) dialog.current?.showModal(); else dialog.current?.close() }, [detail])
+  useEffect(() => { if (!detail) dialog.current?.close(); else if (!dialog.current?.open) dialog.current?.showModal() }, [detail])
 
   const setView = (v: View) => { setViewState(v); try { history.replaceState(null, '', '#' + v) } catch { /* ignore */ } }
   const flipCat = (c: Category) => setCats(cs => {
@@ -137,9 +139,15 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
     const dayPlan = planFor(it.day)
     return relation(it, dayPlan, new Set(dayPlan.map(i => i.id)), it.day === now?.day ? now.min : null, t)
   }
+  /** The event card's other dates: the upcoming performances of its production; a tap opens one in the dialog. */
+  const dates: Dates = {
+    of: it => (datesById.get(it.id) ?? [it]).filter(d => d.id === it.id || !now || d.day > now.day || (d.day === now.day && d.s >= now.min)),
+    open: setDetail,
+  }
   const detailPicked = !!detail && planFor(detail.day).some(i => i.id === detail.id)
 
   return (
+    <DatesContext value={dates}>
     <main id="top">
       <Masthead count={pickCount} showPicks={showPicks} />
       {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
@@ -216,9 +224,10 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
 
       {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
       <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
-        {detail && <EventCard it={detail} rel={relationOf(detail)} picked={detailPicked} later={!!laterFrom && detail.day >= laterFrom}
+        {detail && <EventCard key={detail.id} it={detail} rel={relationOf(detail)} picked={detailPicked} later={!!laterFrom && detail.day >= laterFrom}
           onToggle={() => { onToggle(detail.id); setDetail(null) }} onClose={() => setDetail(null)} />}
       </dialog>
     </main>
+    </DatesContext>
   )
 }

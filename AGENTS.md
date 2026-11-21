@@ -38,11 +38,13 @@ aggregator/
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
+- The event card lists its production's other upcoming dates (`DatesContext`
+  from `guide.tsx`): 14-day calendar, three rows, "see all"; a tap opens one.
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at
-  `/run/secrets/pg_password`. That path is outside the repository and must
-  exist on the host before starting the services.
+  `/etc/kulturprogramm/pg_password` (not `/run`, which is emptied at boot).
+  PostgreSQL and the frontend restart with the host (`unless-stopped`).
 
 ## Database
 
@@ -128,7 +130,7 @@ scraper and frontend (the frontend also gets `PGPORT`). libpq ignores
 pass the password to `psycopg.connect()` and the `pg` `Pool`.
 
 Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`;
-PostgreSQL bind-mounts the host file there and reads it through
+PostgreSQL bind-mounts the host file to that path and reads it through
 `POSTGRES_PASSWORD_FILE`. Do not put credentials in the repository. PostgreSQL
 and frontend ports are bound to `127.0.0.1` on the host.
 
@@ -294,9 +296,7 @@ that a venue's live page has not changed.
 
 ## Common operations
 
-Run these commands from `backend/deploy/`:
-
-Start PostgreSQL: `docker compose up -d postgres`.
+Run these commands from `backend/deploy/`. Start PostgreSQL: `docker compose up -d postgres`.
 
 Run the scraper image, rebuilding it from the current source. The run loop
 never exits, so this stays in the foreground until stopped:
@@ -314,9 +314,7 @@ FROM events
 ORDER BY starts_at;
 ```
 
-Delete all rows while keeping the table: `TRUNCATE events;`.
-
-Feature a production in the "In focus" card (title as in `events`; the card
+Delete all rows while keeping the table: `TRUNCATE events;`. Feature a production in the "In focus" card (title as in `events`; the card
 shows its next performance, from the selected day on):
 
 ```sql
@@ -326,11 +324,14 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
 
-## Deployment scheduling
+## Deployment
 
-The repository configures no systemd timer; check the server before assuming
-one. A daily oneshot service (once proposed for 06:00) does not fit the
-scraper, which loops forever; its Compose service has no `restart` policy.
+The server's `~/aggregator` is a git clone (read-only deploy key). The systemd
+timer `aggregator-deploy.timer` (files in `backend/deploy/systemd/`) runs
+`backend/deploy/update.sh` a minute after each run: when `main` has new
+commits, it resets the clone to them and rebuilds the frontend (project
+`deploy`); logs: `journalctl -u aggregator-deploy`. The scraper is not
+redeployed (no timer, loops forever): restart it by hand after changes.
 
 ## Working in this repository
 
@@ -345,6 +346,5 @@ scraper, which loops forever; its Compose service has no `restart` policy.
 
 ## Open implementation questions
 
-- `Event` inherits from `ABC`, although it has no abstract methods; it may be
-  a plain dataclass.
+- `Event` inherits from `ABC` without abstract methods; make it a dataclass?
 - Decide how to remove events saved before they were cancelled.
