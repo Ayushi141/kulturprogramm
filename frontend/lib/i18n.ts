@@ -94,10 +94,15 @@ const en = {
   // other dates of the production
   moreDates: (n: number) => `+${n} more ${n === 1 ? 'date' : 'dates'}`,
   otherDates: 'MORE DATES',
-  calendarLabel: 'Performances in the next two weeks',
+  calendarLabel: 'Performances in two weeks',
+  calendarMonthsLabel: 'Performances per month',
+  /** Heading of the day grid; `from` is its first day. */
+  calDays: (from: string) => `2 WEEKS FROM ${from}`,
+  /** Heading of the month grid; `from` is its first month. */
+  calMonths: (from: string) => `7 MONTHS FROM ${from.toUpperCase()}`,
+  selectedDate: 'SHOWN',
+  closeDates: 'Close dates',
   openDate: (when: string) => `Open ${when}`,
-  allDates: (n: number) => `See all ${n} dates`,
-  fewerDates: 'Show fewer',
 
   // how an event relates to the plan
   inYourEvening: 'In your evening',
@@ -224,10 +229,13 @@ const de: Dict = {
   open: 'offen',
   moreDates: n => `+${n} ${n === 1 ? 'weiterer Termin' : 'weitere Termine'}`,
   otherDates: 'WEITERE TERMINE',
-  calendarLabel: 'Vorstellungen der nächsten zwei Wochen',
+  calendarLabel: 'Vorstellungen in zwei Wochen',
+  calendarMonthsLabel: 'Vorstellungen pro Monat',
+  calDays: from => `2 WOCHEN AB ${from}`,
+  calMonths: from => `7 MONATE AB ${from.toUpperCase()}`,
+  selectedDate: 'GEZEIGT',
+  closeDates: 'Termine schließen',
   openDate: when => `${when} öffnen`,
-  allDates: n => `Alle ${n} Termine ansehen`,
-  fewerDates: 'Weniger anzeigen',
 
   inYourEvening: 'In deinem Abend',
   alreadyStarted: 'Hat schon begonnen',

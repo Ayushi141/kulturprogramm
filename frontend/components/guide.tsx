@@ -13,7 +13,7 @@ import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
 import { SeasonTimeline } from './explorer/season-timeline'
-import { DatesContext, EventCard, type Dates } from './explorer/event-card'
+import { DatesContext, EventCard, type Dates, type DatesView } from './explorer/event-card'
 import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
@@ -51,6 +51,10 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   const [plans, setPlans] = useState<Record<string, string[]>>({})
   const [view, setViewState] = useState<View>('timeline')
   const [detail, setDetail] = useState<Item | null>(null)
+  // set when the card was opened from another card's dates drawer
+  const [detailView, setDetailView] = useState<DatesView>()
+  /** Opens the card of `it` fresh: its dates drawer is closed and starts at its own day. */
+  const show = (it: Item) => { setDetailView(undefined); setDetail(it) }
   const dialog = useRef<HTMLDialogElement>(null)
   const loaded = useRef(false)
 
@@ -142,7 +146,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   /** The event card's other dates: the upcoming performances of its production; a tap opens one in the dialog. */
   const dates: Dates = {
     of: it => (datesById.get(it.id) ?? [it]).filter(d => d.id === it.id || !now || d.day > now.day || (d.day === now.day && d.s >= now.min)),
-    open: setDetail,
+    open: (it, view) => { setDetailView(view); setDetail(it) },
   }
   const detailPicked = !!detail && planFor(detail.day).some(i => i.id === detail.id)
 
@@ -162,7 +166,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
                 : <h1>{t.dateline(nowMin !== null ? t.today : t.wdl[weekday(day)].toUpperCase(), dayLabel(day))}<br />
                     <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>}
               {focus && (
-                <button className="feature x-focus" onClick={() => setDetail(focus)} aria-label={t.detailsFor(focus.ev.title)}>
+                <button className="feature x-focus" onClick={() => show(focus)} aria-label={t.detailsFor(focus.ev.title)}>
                   <Picture image={focus.ev.image} category={focus.category} key={focus.id} />
                   <span className="featuretop">{t.inFocus} / {t.cat[focus.category].tag}</span>
                   <span className="featurecap">
@@ -203,7 +207,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
 
           {isLater ? (view === 'timeline'
             ? <SeasonTimeline venues={programme.venues} items={laterVisible} from={laterFrom} to={laterTo} planIds={laterIds} onToggle={onToggle} relationOf={relationOf} />
-            : <SeasonPoster items={laterVisible} planIds={laterIds} onToggle={onToggle} onOpen={setDetail} />
+            : <SeasonPoster items={laterVisible} planIds={laterIds} onToggle={onToggle} onOpen={show} />
           ) : view === 'timeline' ? <>
             <Timeline venues={programme.venues} items={visible} overviewItems={pool} win={win} nowMin={nowMin}
               plan={plan} planIds={planIds} onToggle={onToggle} onWindow={setWin} />
@@ -211,7 +215,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
               <span>{t.keyZoom}</span>
             </div>
           </> : (
-            <PosterView items={ahead} started={started} plan={plan} planIds={planIds} onToggle={onToggle} onOpen={setDetail}
+            <PosterView items={ahead} started={started} plan={plan} planIds={planIds} onToggle={onToggle} onOpen={show}
               onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
@@ -224,7 +228,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
 
       {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
       <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
-        {detail && <EventCard key={detail.id} it={detail} rel={relationOf(detail)} picked={detailPicked} later={!!laterFrom && detail.day >= laterFrom}
+        {detail && <EventCard key={detail.id} it={detail} view={detailView} rel={relationOf(detail)} picked={detailPicked} later={!!laterFrom && detail.day >= laterFrom}
           onToggle={() => { onToggle(detail.id); setDetail(null) }} onClose={() => setDetail(null)} />}
       </dialog>
     </main>
