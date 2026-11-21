@@ -1,7 +1,8 @@
 # Deploys the frontend to the VPS after every push to main.
 #
-# The job connects over SSH with a key that the server restricts to
-# backend/deploy/deploy.sh. That script pulls main and rebuilds the frontend.
+# The job packs the pushed commit as a tar archive and sends it over SSH. The
+# server restricts the deploy key to one command that unpacks the archive and
+# runs backend/deploy/deploy.sh (see that file for the authorized_keys line).
 #
 # Repository secrets (Settings > Secrets and variables > Actions):
 #   DEPLOY_SSH_KEY      private key of the deploy key pair
@@ -22,7 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Run deploy.sh on the server
+      - uses: actions/checkout@v4
+
+      - name: Send the code to the server and run deploy.sh
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -32,4 +35,5 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$TARGET"
+          git archive --format=tar.gz HEAD |
+            ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$TARGET"

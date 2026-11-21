@@ -326,9 +326,10 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 
 ## Deployment
 
-Every push to `main` runs `.github/workflows/deploy.yml`: it connects over SSH
-with a key that the server restricts to `backend/deploy/deploy.sh`, which pulls
-`main` into the server's clone and rebuilds the frontend (project `deploy`).
+Every push to `main` runs `.github/workflows/deploy.yml`: it sends the commit
+as a tar archive over SSH with a key that the server restricts to unpacking it
+and running `backend/deploy/deploy.sh`, which replaces `~/aggregator` and
+rebuilds the frontend (project `deploy`). The server holds no repo credentials.
 The scraper loops forever (no `restart` policy, no systemd timer) and is not
 redeployed: restart it by hand after scraper changes.
 
