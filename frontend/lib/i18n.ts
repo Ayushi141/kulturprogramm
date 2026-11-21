@@ -100,13 +100,15 @@ const en = {
   calDays: (from: string) => `2 WEEKS FROM ${from}`,
   /** Heading of the month grid; `from` is its first month. */
   calMonths: (from: string) => `7 MONTHS FROM ${from.toUpperCase()}`,
-  selectedDate: 'SHOWN',
   closeDates: 'Close dates',
   openDate: (when: string) => `Open ${when}`,
 
   // how an event relates to the plan
   inYourEvening: 'In your evening',
-  alreadyStarted: 'Already started',
+  /** An event whose announced end has passed. */
+  alreadyOver: 'Already over',
+  /** An event that has started; its end is unknown or still ahead. */
+  startedAt: (time: string) => `Started at ${time}`,
   overlaps: (names: string) => `overlaps ${names}`,
   mayOverlap: (names: string) => `may overlap ${names}`,
   clashWithPlan: (text: string) => `${cap(text)} in your evening`,
@@ -233,12 +235,12 @@ const de: Dict = {
   calendarMonthsLabel: 'Vorstellungen pro Monat',
   calDays: from => `2 WOCHEN AB ${from}`,
   calMonths: from => `7 MONATE AB ${from.toUpperCase()}`,
-  selectedDate: 'GEZEIGT',
   closeDates: 'Termine schließen',
   openDate: when => `${when} öffnen`,
 
   inYourEvening: 'In deinem Abend',
-  alreadyStarted: 'Hat schon begonnen',
+  alreadyOver: 'Schon vorbei',
+  startedAt: time => `Begann um ${time}`,
   overlaps: names => `überschneidet sich mit ${names}`,
   mayOverlap: names => `überschneidet sich vielleicht mit ${names}`,
   clashWithPlan: text => `${cap(text)} in deinem Abend`,

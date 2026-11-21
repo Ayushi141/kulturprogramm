@@ -5,7 +5,7 @@ import { productions, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT } from './categories'
-import { EventCard, type Relation } from './event-card'
+import { EventCard } from './event-card'
 import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 
@@ -27,8 +27,6 @@ export type SeasonTimelineProps = {
   to: string
   planIds: Set<string>
   onToggle: (id: string) => void
-  /** How an event relates to the picks of its own day, for the event card. */
-  relationOf: (it: Item) => Relation
 }
 
 /** Months ahead: one line per production, one square per performance. */
@@ -198,8 +196,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
       {tip && !pop && <div className="x-tip" style={{ left: tip.x, top: tip.y }}>{tip.body}</div>}
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
-          <EventCard it={popItem} rel={p.relationOf(popItem)} picked={p.planIds.has(popItem.id)} later
-            onToggle={() => { p.onToggle(popItem.id); setPop(null) }} onClose={() => setPop(null)} />
+          <EventCard key={popItem.id} it={popItem} onToggle={id => { p.onToggle(id); setPop(null) }} onClose={() => setPop(null)} />
         </div>
       )}
     </div>

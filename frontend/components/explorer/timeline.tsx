@@ -62,7 +62,8 @@ export type TimelineProps = {
 export function relation(it: Item, plan: Item[], planIds: Set<string>, nowMin: number | null, t: Dict): { text: string; strong: boolean } | null {
   const overlap = overlapText(it, clashes(it, plan), t)
   if (planIds.has(it.id)) return { text: overlap ? `${t.inYourEvening} · ${overlap}` : t.inYourEvening, strong: true }
-  if (!upcoming(it, nowMin)) return { text: t.alreadyStarted, strong: false }
+  // say only what is sure: an unannounced end may or may not have passed
+  if (!upcoming(it, nowMin)) return { text: it.endKnown && nowMin !== null && nowMin >= it.e ? t.alreadyOver : t.startedAt(fmt(it.s)), strong: false }
   if (overlap) return { text: t.clashWithPlan(overlap), strong: false }
   return null
 }
@@ -505,8 +506,7 @@ export function Timeline(p: TimelineProps) {
       {tip && !pop && <div className="x-tip" style={{ left: tip.x, top: tip.y }}>{tip.body}</div>}
       {pop && popItem && (
         <div className="x-pop" ref={popRef} role="dialog" aria-label={popItem.ev.title} style={{ left: pop.x, top: pop.y }}>
-          <EventCard it={popItem} rel={relation(popItem, p.plan, p.planIds, p.nowMin, t)} picked={p.planIds.has(popItem.id)}
-            onToggle={() => { p.onToggle(popItem.id); setPop(null) }} onClose={() => setPop(null)} />
+          <EventCard key={popItem.id} it={popItem} onToggle={id => { p.onToggle(id); setPop(null) }} onClose={() => setPop(null)} />
         </div>
       )}
     </div>
