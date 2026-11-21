@@ -10,19 +10,19 @@ import { CAT } from './categories'
 export type Relation = { text: string; strong: boolean } | null
 
 /**
- * Set when the dates drawer of one card opens another card. The new card opens with its drawer
- * open, and the drawer's grid keeps its first day (`anchor`, the day of the performance the
- * visitor first opened). So the drawer does not move while the visitor jumps between dates.
+ * What the event card needs to know about any performance, also one on another day: the card
+ * can show any date of its production. Guide provides it; without it the card shows no dates.
  */
-export type DatesView = { anchor: string }
-
-/**
- * The other dates of a production (same title at the same venue), for the event card.
- * `of` returns its upcoming performances in time order, `it` included; `open` shows the
- * card of one of them with the given view. Guide provides it; without it the card shows no dates.
- */
-export type Dates = { of: (it: Item) => Item[]; open: (it: Item, view: DatesView) => void }
-export const DatesContext = createContext<Dates | null>(null)
+export type CardData = {
+  /** The upcoming performances of the production of `it` (same title at the same venue), in time order, `it` included. */
+  dates: (it: Item) => Item[]
+  /** How a performance relates to the picks of its own day (relation() in timeline.tsx). */
+  relation: (it: Item) => Relation
+  picked: (it: Item) => boolean
+  /** A day after the strip: picks are "saved" there rather than added to an evening. */
+  later: (it: Item) => boolean
+}
+export const CardContext = createContext<CardData | null>(null)
 
 /** Days in the day grid, from the anchor. */
 const CAL_DAYS = 14
@@ -38,25 +38,22 @@ const MIN_IN_DAYS = 3
  * The detail card of one event, the same everywhere: the timelines show it in a popover beside
  * the clicked bar, the poster view and the "In focus" card in a dialog. The container positions
  * it; picking or removing the event closes it.
+ * A date in the dates drawer changes the shown performance in place (`shown`); the card stays
+ * where it is and the drawer's grid keeps starting at the day of `it`, the clicked performance.
  */
-export function EventCard({ it, rel, picked, later, view, onToggle, onClose }: {
+export function EventCard({ it, onToggle, onClose }: {
   it: Item
-  /** How the event relates to the picks of its day (relation() in timeline.tsx). */
-  rel: Relation
-  picked: boolean
-  /** A day after the strip: picks are "saved" there rather than added to an evening. */
-  later?: boolean
-  /** Set when another card's dates drawer opened this one: opens the drawer as it was. */
-  view?: DatesView
-  onToggle: () => void
+  /** Adds or removes a performance (the shown one, which can differ from `it`). */
+  onToggle: (id: string) => void
   onClose: () => void
 }) {
   const t = useT()
-  const dates = useContext(DatesContext)
-  const all = dates ? dates.of(it) : []
-  const others = all.filter(d => d.id !== it.id)
-  const anchor = view?.anchor ?? it.day
-  const [drawer, setDrawer] = useState(!!view)
+  const data = useContext(CardContext)
+  const [shown, setShown] = useState(it)
+  const all = data ? data.dates(it) : []
+  const others = all.filter(d => d.id !== shown.id)
+  const rel = data?.relation(shown) ?? null, picked = data?.picked(shown) ?? false, later = data?.later(shown) ?? false
+  const [drawer, setDrawer] = useState(false)
   // The drawer opens beside the card if the window has room for it, else over the card.
   const [over, setOver] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -75,28 +72,28 @@ export function EventCard({ it, rel, picked, later, view, onToggle, onClose }: {
     <div className="x-cardwrap" ref={wrap}>
       <div className="x-card">
         <button className="x-popclose" aria-label={t.close} onClick={onClose}><X size={15} /></button>
-        <div className="x-popphoto"><Picture image={it.ev.image} category={it.category} key={it.id} peek={it.ev.title} /></div>
-        <small>{t.cat[it.category].tag} / {t.dateline(t.wdl[weekday(it.day)].toUpperCase(), dayLabel(it.day))}</small>
-        <div className="x-tt">{it.ev.title}</div>
-        <div className="x-tm">{spanLabel(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}</div>
+        <div className="x-popphoto"><Picture image={shown.ev.image} category={shown.category} key={it.id} peek={shown.ev.title} /></div>
+        <small>{t.cat[shown.category].tag} / {t.dateline(t.wdl[weekday(shown.day)].toUpperCase(), dayLabel(shown.day))}</small>
+        <div className="x-tt">{shown.ev.title}</div>
+        <div className="x-tm">{spanLabel(shown, t)}<br />{shown.venue.name} · {shown.venue.city}{shown.ev.price && <> · {shown.ev.price}</>}</div>
         {others.length > 0 && (
           <button className="x-more" onClick={() => setDrawer(d => !d)} aria-expanded={drawer}>
             {t.moreDates(others.length)} <ArrowRight size={13} />
           </button>
         )}
-        {it.ev.note && <p className="x-tm">{it.ev.note}</p>}
+        {shown.ev.note && <p className="x-tm">{shown.ev.note}</p>}
         {rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
         <div className="x-popbtns">
-          <button onClick={onToggle}>
+          <button onClick={() => onToggle(shown.id)}>
             <Bookmark size={15} fill={picked ? 'currentColor' : 'none'} />{later ? (picked ? t.removeShort : t.save) : picked ? t.remove : t.add}
           </button>
-          {it.ev.url && <a href={it.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
+          {shown.ev.url && <a href={shown.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
         </div>
       </div>
-      {dates && drawer && others.length > 0 && (
+      {data && drawer && others.length > 0 && (
         <section className={over ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.otherDates}>
           <button className="x-popclose" ref={closeBtn} aria-label={t.closeDates} onClick={() => setDrawer(false)}><X size={15} /></button>
-          <OtherDates it={it} all={all} anchor={anchor} onOpen={d => { onClose(); dates.open(d, { anchor }) }} />
+          <OtherDates shown={shown} all={all} anchor={it.day} onShow={setShown} />
         </section>
       )}
     </div>
@@ -104,37 +101,47 @@ export function EventCard({ it, rel, picked, later, view, onToggle, onClose }: {
 }
 
 /**
- * The drawer: a grid that starts at the anchor and never moves, then all dates as rows (the shown one marked).
+ * The drawer: a grid that starts at the anchor and never moves, then all dates as rows (the shown one highlighted).
  * The grid shows 14 days if they hold at least MIN_IN_DAYS performances (or all of them), else
  * 7 months. The choice depends on the production and the anchor only, never on the shown date.
  */
-function OtherDates({ it, all, anchor, onOpen }: {
-  it: Item
-  /** All upcoming performances of the production, `it` included, in time order. */
+function OtherDates({ shown, all, anchor, onShow }: {
+  shown: Item
+  /** All upcoming performances of the production, `shown` included, in time order. */
   all: Item[]
+  /** First day of the grid: the day of the performance the visitor clicked. */
   anchor: string
-  onOpen: (d: Item) => void
+  onShow: (d: Item) => void
 }) {
   const t = useT()
-  const color = CAT[it.category].color
+  const color = CAT[shown.category].color
+  const rowsBox = useRef<HTMLDivElement>(null)
+  // a grid tap can select a row that is scrolled away: bring it into the list's view
+  useEffect(() => {
+    const box = rowsBox.current, row = box?.querySelector<HTMLElement>('.x-datesel')
+    if (!box || !row) return
+    if (row.offsetTop < box.scrollTop) box.scrollTop = row.offsetTop
+    else if (row.offsetTop + row.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = row.offsetTop + row.offsetHeight - box.clientHeight
+  }, [shown.id])
   const when = (d: Item) => `${t.wd[weekday(d.day)]} ${dayLabel(d.day)}`
   const fromAnchor = all.filter(d => d.day >= anchor)
   const lastDay = shiftDate(anchor, CAL_DAYS - 1)
   const byDays = fromAnchor.filter(d => d.day <= lastDay).length >= Math.min(MIN_IN_DAYS, fromAnchor.length)
 
-  /** One grid cell: the shown date's cell is highlighted, other cells with performances open their first one. */
-  const cell = (key: string, label: React.ReactNode, on: Item[], selected: boolean) => {
-    const target = on.find(d => d.id !== it.id)
+  /** One grid cell with one square per performance. The shown date's cell is highlighted; another cell shows its first performance. */
+  const cell = (key: string, name: React.ReactNode, on: Item[], selected: boolean) => {
+    const label = <><span>{name}</span><span>{on.map(d => <i key={d.id} style={{ background: color }} />)}</span></>
+    const target = on.find(d => d.id !== shown.id)
     return selected || !target
       ? <div key={key} className={selected ? 'x-calsel' : undefined}>{label}</div>
-      : <button key={key} onClick={() => onOpen(target)} aria-label={t.openDate(`${when(target)} ${fmt(target.s)}`)}>{label}</button>
+      : <button key={key} onClick={() => onShow(target)} aria-label={t.openDate(`${when(target)} ${fmt(target.s)}`)}>{label}</button>
   }
 
   let grid: React.ReactNode
   if (byDays) {
     grid = Array.from({ length: CAL_DAYS }, (_, i) => shiftDate(anchor, i)).map(day => {
       const on = fromAnchor.filter(d => d.day === day)
-      return cell(day, <><span>{t.wd[weekday(day)]}<br />{+day.slice(8)}</span><span>{on.map(d => <i key={d.id} style={{ background: color }} />)}</span></>, on, day === it.day)
+      return cell(day, <>{t.wd[weekday(day)]}<br />{+day.slice(8)}</>, on, day === shown.day)
     })
   } else {
     const [y0, m0] = anchor.split('-').map(Number)
@@ -142,19 +149,17 @@ function OtherDates({ it, all, anchor, onOpen }: {
       const y = y0 + Math.floor((m0 - 1 + i) / 12), m = (m0 - 1 + i) % 12 + 1
       const key = `${y}-${String(m).padStart(2, '0')}`
       const on = fromAnchor.filter(d => d.day.startsWith(key))
-      // the short year (’27) on the first cell and on January
-      const label = <><span>{t.months[m - 1]}<br />{i === 0 || m === 1 ? `’${String(y).slice(2)}` : '\u00a0'}</span><span>{on.length > 0 && `${on.length}×`}</span></>
-      return cell(key, label, on, it.day >= anchor && it.day.startsWith(key))
+      return cell(key, t.months[m - 1], on, shown.day >= anchor && shown.day.startsWith(key))
     })
   }
 
   return <>
     <small>{t.otherDates}<br />{byDays ? t.calDays(dayLabel(anchor)) : t.calMonths(t.months[+anchor.slice(5, 7) - 1])}</small>
     <div className="x-cal" role="group" aria-label={byDays ? t.calendarLabel : t.calendarMonthsLabel}>{grid}</div>
-    <div className="x-daterows">
-    {all.map(d => d.id === it.id
-      ? <div key={d.id} className="x-daterow x-datesel"><span>{when(d)}</span><span>{fmt(d.s)}</span><span className="x-seltag">{t.selectedDate}</span></div>
-      : <button key={d.id} className="x-daterow" onClick={() => onOpen(d)}>
+    <div className="x-daterows" ref={rowsBox}>
+    {all.map(d => d.id === shown.id
+      ? <button key={d.id} className="x-daterow x-datesel" aria-current="true"><span>{when(d)}</span><span>{fmt(d.s)}</span></button>
+      : <button key={d.id} className="x-daterow" onClick={() => onShow(d)}>
           <span>{when(d)}</span><span>{fmt(d.s)}</span><ArrowRight size={15} />
         </button>)}
     </div>

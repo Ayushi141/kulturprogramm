@@ -24,7 +24,7 @@ footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
 
 /* hero: the headline is the answer for the selected day */
 .x-hero{padding:18px 0;position:relative;overflow:hidden}
-.x-hero>.x-wrap{position:relative;z-index:1}
+.x-hero>.x-wrap{position:relative;z-index:1;display:flow-root}  /* flow-root: the headline's top margin stays inside, so the halftone starts at the header line */
 
 /* ── Print shop: the page as a printer's layout sheet ─────────────────────────
    Base layer under everything: faint baselines (full width, every 34px) and six
@@ -197,7 +197,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-drawer-over{left:0;border-left:0}
 .x-drawer small{display:block;margin:0 30px 10px 0}
 /* the heading and the grid stay, the rows scroll */
-.x-daterows{flex:1;min-height:0;overflow:auto;margin:0 -14px -14px;padding:0 14px 14px}
+.x-daterows{position:relative;flex:1;min-height:0;overflow:auto;margin:0 -14px -14px;padding:0 14px 14px}
 .x-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:10px}
 .x-cal>*{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-height:44px;padding:3px 4px;border:1px solid #fff5;background:none;color:var(--paper);text-align:left;white-space:nowrap}
 .x-cal button{border-color:var(--paper);cursor:pointer}
@@ -205,8 +205,17 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-cal span:last-child{display:flex;flex-wrap:wrap;gap:2px}
 .x-cal i{width:8px;height:8px;border:1px solid currentColor}
 .x-daterow{display:flex;align-items:center;gap:12px;width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--paper);background:none;color:var(--paper);text-align:left;cursor:pointer}
-.x-daterow svg,.x-seltag{margin-left:auto}
+.x-daterow svg{margin-left:auto}
 .x-datesel{background:var(--paper);color:var(--ink);cursor:default}
+/* slim square scrollbars on the dark card and drawer instead of the system ones */
+.x-card,.x-daterows{scrollbar-width:thin;scrollbar-color:var(--paper) transparent}
+@supports selector(::-webkit-scrollbar){
+  .x-card,.x-daterows{scrollbar-width:auto;scrollbar-color:auto}
+  .x-card::-webkit-scrollbar,.x-daterows::-webkit-scrollbar{width:4px}
+  .x-card::-webkit-scrollbar-track,.x-daterows::-webkit-scrollbar-track{background:transparent}
+  .x-card::-webkit-scrollbar-thumb,.x-daterows::-webkit-scrollbar-thumb{background:var(--paper)}
+  .x-card::-webkit-scrollbar-button,.x-daterows::-webkit-scrollbar-button{display:none}
+}
 
 @media(max-width:700px){
   .navwrap{height:auto;padding:10px 0}
@@ -266,7 +275,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 :root{--zs:clamp(1px,.092vw,1.5px);--sans:Arial,Helvetica,sans-serif}
 button,input{font:inherit;letter-spacing:inherit}
 
-small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-seltag
+small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker
   {font:700 calc(11 * var(--zs))/1.3 var(--mono);letter-spacing:.08em}
 
 .x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
