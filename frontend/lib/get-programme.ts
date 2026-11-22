@@ -38,8 +38,8 @@ export async function getProgramme(): Promise<Programme> {
     // Cities appear in the order of their first venue. Alphabetical happens to
     // be north to south for Duisburg, Düsseldorf and Köln.
     db.query<Venue>('SELECT id, name, city FROM venues ORDER BY city, name'),
-    db.query<{ id: string; title: string; category: string; venue_id: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }>(
-      `SELECT id, title, category, venue_id, starts_at, ends_at, url, image_key
+    db.query<EventRow>(
+      `SELECT ${EVENT_COLUMNS}
        FROM events
        WHERE starts_at > now() - interval '6 hours'
          AND starts_at < now() + interval '183 days'
@@ -55,22 +55,53 @@ export async function getProgramme(): Promise<Programme> {
 
   return {
     venues: venues.rows,
-    events: events.rows.flatMap((r): Event[] => {
-      const category = CATEGORY[r.category]
-      if (!category) return []
-      return [{
-        id: String(r.id),
-        title: r.title,
-        category,
-        venueId: r.venue_id,
-        start: r.starts_at.toISOString(),
-        end: r.ends_at?.toISOString(),
-        url: r.url ?? undefined,
-        image: r.image_key ? `/img/${r.image_key}` : undefined,
-      }]
-    }),
+    events: events.rows.flatMap(toEvent),
     generatedAt: new Date().toISOString(),
     updatedAt: updated.rows[0].max?.toISOString() ?? null,
     featured: featured.rows.map(r => r.title),
   }
+}
+
+type EventRow = { id: string; title: string; category: string; venue_id: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
+const EVENT_COLUMNS = 'id, title, category, venue_id, starts_at, ends_at, url, image_key'
+
+/** One `events` row as an `Event`, or none when its category is not shown. */
+function toEvent(r: EventRow): Event[] {
+  const category = CATEGORY[r.category]
+  if (!category) return []
+  return [{
+    id: String(r.id),
+    title: r.title,
+    category,
+    venueId: r.venue_id,
+    start: r.starts_at.toISOString(),
+    end: r.ends_at?.toISOString(),
+    url: r.url ?? undefined,
+    image: r.image_key ? `/img/${r.image_key}` : undefined,
+  }]
+}
+
+/**
+ * Gets one event and its venue for a shared link (`/e/<id>`), at any time: also
+ * one that has already ended and so is not in the programme. Returns null when
+ * no shown event has the ID.
+ */
+export async function getEvent(id: string): Promise<{ event: Event; venue: Venue } | null> {
+  const db = getPool()
+  if (!db) {
+    const demo = demoProgramme()
+    const event = demo.events.find(e => e.id === id)
+    const venue = event && demo.venues.find(v => v.id === event.venueId)
+    return event && venue ? { event, venue } : null
+  }
+  if (!/^\d{1,18}$/.test(id)) return null // database IDs are bigint
+  const res = await db.query<EventRow & { name: string; city: string }>(
+    `SELECT ${EVENT_COLUMNS.split(', ').map(c => 'e.' + c).join(', ')}, v.name, v.city
+     FROM events e JOIN venues v ON v.id = e.venue_id
+     WHERE e.id = $1`,
+    [id],
+  )
+  const r = res.rows[0]
+  const event = r && toEvent(r)[0]
+  return event ? { event, venue: { id: r.venue_id, name: r.name, city: r.city } } : null
 }

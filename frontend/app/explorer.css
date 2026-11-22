@@ -180,6 +180,8 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-popbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .x-popbtns button,.x-popbtns a{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--paper);text-decoration:none;color:var(--paper)}
 .x-popbtns a{background:var(--paper);color:var(--ink)}
+/* the share button for 2 s after copying the link */
+.x-popbtns .x-copied{background:var(--yellow);color:var(--ink);border-color:var(--ink);transform:rotate(-1deg)}
 .x-remove{display:block;margin-top:6px;color:#565247;text-decoration:underline;text-underline-offset:2px}
 .x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;text-decoration:underline;text-underline-offset:2px}
 
@@ -207,6 +209,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-daterow{display:flex;align-items:center;gap:12px;width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--paper);background:none;color:var(--paper);text-align:left;cursor:pointer}
 .x-daterow svg{margin-left:auto}
 .x-datesel{background:var(--paper);color:var(--ink);cursor:default}
+.x-dateover span{text-decoration:line-through}
 /* slim square scrollbars on the dark card and drawer instead of the system ones */
 .x-card,.x-daterows{scrollbar-width:thin;scrollbar-color:var(--paper) transparent}
 @supports selector(::-webkit-scrollbar){

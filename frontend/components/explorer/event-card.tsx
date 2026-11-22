@@ -1,9 +1,10 @@
 'use client'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { ArrowRight, ArrowUpRight, Bookmark, X } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Bookmark, Check, Share, X } from 'lucide-react'
 import { spanLabel, type Item } from '@/lib/plan'
 import { dayLabel, fmt, shiftDate, weekday } from '@/lib/time'
-import { useT } from '../i18n'
+import { shareLine, sharePath } from '@/lib/share'
+import { useLang, useT } from '../i18n'
 import { Picture } from '../picture'
 import { CAT } from './categories'
 
@@ -21,6 +22,8 @@ export type CardData = {
   picked: (it: Item) => boolean
   /** A day after the strip: picks are "saved" there rather than added to an evening. */
   later: (it: Item) => boolean
+  /** On a past day: only a shared link opens such a card. */
+  over: (it: Item) => boolean
 }
 export const CardContext = createContext<CardData | null>(null)
 
@@ -47,15 +50,32 @@ export function EventCard({ it, onToggle, onClose }: {
   onToggle: (id: string) => void
   onClose: () => void
 }) {
-  const t = useT()
+  const t = useT(), lang = useLang()
   const data = useContext(CardContext)
   const [shown, setShown] = useState(it)
   const all = data ? data.dates(it) : []
   const others = all.filter(d => d.id !== shown.id)
+  const over = (d: Item) => data?.over(d) ?? false
   const rel = data?.relation(shown) ?? null, picked = data?.picked(shown) ?? false, later = data?.later(shown) ?? false
-  const [drawer, setDrawer] = useState(false)
+  // a past performance (from a shared link) opens with its next dates, the grid starting at the first of them
+  const [drawer, setDrawer] = useState(() => over(it) && all.length > 1)
+  const anchor = over(it) ? (all.find(d => !over(d))?.day ?? it.day) : it.day
+  const [copied, setCopied] = useState(false)
+  /** Phones open their share menu; elsewhere the link is copied. */
+  const share = async () => {
+    const url = location.origin + sharePath(lang, shown.id)
+    if ('share' in navigator && matchMedia('(pointer: coarse)').matches) {
+      try { await navigator.share({ title: shown.ev.title, text: `${shown.ev.title} – ${shareLine(t, shown.day, shown.s, shown.venue)}`, url }) } catch { /* closed */ }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* clipboard blocked: nothing to show */ }
+  }
   // The drawer opens beside the card if the window has room for it, else over the card.
-  const [over, setOver] = useState(false)
+  const [onTop, setOnTop] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -63,7 +83,7 @@ export function EventCard({ it, onToggle, onClose }: {
     // measure in the next frame: a dialog shows the card only after this effect, still before that frame is painted
     const id = requestAnimationFrame(() => {
       const r = wrap.current?.getBoundingClientRect()
-      if (r) setOver(r.right + r.width + 8 > window.innerWidth)
+      if (r) setOnTop(r.right + r.width + 8 > window.innerWidth)
       closeBtn.current?.focus()
     })
     return () => cancelAnimationFrame(id)
@@ -82,18 +102,25 @@ export function EventCard({ it, onToggle, onClose }: {
           </button>
         )}
         {shown.ev.note && <p className="x-tm">{shown.ev.note}</p>}
-        {rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
+        {over(shown)
+          ? <p className="x-rel">{others.length ? t.overNextDates : t.over}</p>
+          : rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
         <div className="x-popbtns">
-          <button onClick={() => onToggle(shown.id)}>
-            <Bookmark size={15} fill={picked ? 'currentColor' : 'none'} />{later ? (picked ? t.removeShort : t.save) : picked ? t.remove : t.add}
-          </button>
+          {!over(shown) && (
+            <button onClick={() => onToggle(shown.id)}>
+              <Bookmark size={15} fill={picked ? 'currentColor' : 'none'} />{later ? (picked ? t.removeShort : t.save) : picked ? t.remove : t.add}
+            </button>
+          )}
           {shown.ev.url && <a href={shown.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
+          <button className={copied ? 'x-copied' : undefined} onClick={share} aria-live="polite">
+            {copied ? <Check size={15} /> : <Share size={15} />}{copied ? t.linkCopied : t.share}
+          </button>
         </div>
       </div>
       {data && drawer && others.length > 0 && (
-        <section className={over ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.otherDates}>
+        <section className={onTop ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.otherDates}>
           <button className="x-popclose" ref={closeBtn} aria-label={t.closeDates} onClick={() => setDrawer(false)}><X size={15} /></button>
-          <OtherDates shown={shown} all={all} anchor={it.day} onShow={setShown} />
+          <OtherDates shown={shown} all={all} anchor={anchor} over={over} onShow={setShown} />
         </section>
       )}
     </div>
@@ -105,12 +132,13 @@ export function EventCard({ it, onToggle, onClose }: {
  * The grid shows 14 days if they hold at least MIN_IN_DAYS performances (or all of them), else
  * 7 months. The choice depends on the production and the anchor only, never on the shown date.
  */
-function OtherDates({ shown, all, anchor, onShow }: {
+function OtherDates({ shown, all, anchor, over, onShow }: {
   shown: Item
   /** All upcoming performances of the production, `shown` included, in time order. */
   all: Item[]
-  /** First day of the grid: the day of the performance the visitor clicked. */
+  /** First day of the grid: the day of the performance the visitor clicked (if past, of the next one). */
   anchor: string
+  over: (d: Item) => boolean
   onShow: (d: Item) => void
 }) {
   const t = useT()
@@ -158,7 +186,7 @@ function OtherDates({ shown, all, anchor, onShow }: {
     <div className="x-cal" role="group" aria-label={byDays ? t.calendarLabel : t.calendarMonthsLabel}>{grid}</div>
     <div className="x-daterows" ref={rowsBox}>
     {all.map(d => d.id === shown.id
-      ? <button key={d.id} className="x-daterow x-datesel" aria-current="true"><span>{when(d)}</span><span>{fmt(d.s)}</span></button>
+      ? <button key={d.id} className={over(d) ? 'x-daterow x-datesel x-dateover' : 'x-daterow x-datesel'} aria-current="true"><span>{when(d)}</span><span>{fmt(d.s)}</span></button>
       : <button key={d.id} className="x-daterow" onClick={() => onShow(d)}>
           <span>{when(d)}</span><span>{fmt(d.s)}</span><ArrowRight size={15} />
         </button>)}

@@ -33,11 +33,12 @@ const EVENING: Window = [17 * 60, 25 * 60]
 /** What the timeline shows after a page load: afternoon to evening, 15:00–21:30. */
 const DEFAULT_WIN: Window = [15 * 60, 21 * 60 + 30]
 
-export default function Guide({ programme, lang }: { programme: Programme; lang: Lang }) {
-  return <LangProvider lang={lang}><GuideBody programme={programme} lang={lang} /></LangProvider>
+/** `sharedId`: a shared link's performance (`/e/<id>`); the page opens on its day with its card open. */
+export default function Guide({ programme, lang, sharedId }: { programme: Programme; lang: Lang; sharedId?: string }) {
+  return <LangProvider lang={lang}><GuideBody programme={programme} lang={lang} sharedId={sharedId} /></LangProvider>
 }
 
-function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
+function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: Lang; sharedId?: string }) {
   const t = DICTS[lang]
   const byDay = useMemo(() => indexProgramme(programme), [programme])
   const itemById = useMemo(() => new Map([...byDay.values()].flat().map(i => [i.id, i])), [byDay])
@@ -58,6 +59,12 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
   useEffect(() => {
     const n = cultureDay(new Date())
     setNow(n); setDay(n.day)
+    // a shared link: its day (a past one shows today; its card offers the next dates), then its card
+    const shared = sharedId ? itemById.get(sharedId) : undefined
+    if (shared) {
+      setDay(shared.day <= n.day ? n.day : shared.day < shiftDate(n.day, STRIP_DAYS) ? shared.day : LATER)
+      setDetail(shared)
+    }
     try {
       const saved = JSON.parse(localStorage.getItem(STORE) ?? '{}') as Record<string, string[]>
       setPlans(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= n.day)))
@@ -145,6 +152,7 @@ function GuideBody({ programme, lang }: { programme: Programme; lang: Lang }) {
     relation: relationOf,
     picked: it => planFor(it.day).some(i => i.id === it.id),
     later: it => !!laterFrom && it.day >= laterFrom,
+    over: it => !!now && it.day < now.day,
   }
 
   return (

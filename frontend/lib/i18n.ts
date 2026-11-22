@@ -107,6 +107,11 @@ const en = {
   inYourEvening: 'In your evening',
   /** An event whose announced end has passed. */
   alreadyOver: 'Already over',
+  /** A shared link to a performance on a past day. */
+  over: 'This performance is over.',
+  overNextDates: 'This performance is over. Next dates →',
+  share: 'Share',
+  linkCopied: 'Link copied',
   /** An event that has started; its end is unknown or still ahead. */
   startedAt: (time: string) => `Started at ${time}`,
   overlaps: (names: string) => `overlaps ${names}`,
@@ -240,6 +245,10 @@ const de: Dict = {
 
   inYourEvening: 'In deinem Abend',
   alreadyOver: 'Schon vorbei',
+  over: 'Diese Vorstellung ist vorbei.',
+  overNextDates: 'Diese Vorstellung ist vorbei. Nächste Termine →',
+  share: 'Teilen',
+  linkCopied: 'Link kopiert',
   startedAt: time => `Begann um ${time}`,
   overlaps: names => `überschneidet sich mit ${names}`,
   mayOverlap: names => `überschneidet sich vielleicht mit ${names}`,
