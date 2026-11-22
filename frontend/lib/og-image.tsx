@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import sharp from 'sharp'
 import { CAT } from '@/components/explorer/categories'
 import { getEvent, getPool } from './get-programme'
 import { DICTS, type Lang } from './i18n'
@@ -10,7 +11,7 @@ import type { Category } from './types'
 /**
  * The link preview image of a shared performance (1200×630 PNG), drawn like a
  * poster: logo, category tag, title, a yellow date stamp, venue, and on the
- * right the event photo (PNG, JPEG or GIF) or else the category block of the card.
+ * right the event photo (any format sharp reads) or else the category block of the card.
  * ImageResponse renders flexbox only (no grid) and needs every font as a file.
  */
 export const OG_SIZE = { width: 1200, height: 630 }
@@ -35,22 +36,25 @@ const BAR = ['#00a0e3', '#e4007c', YELLOW, INK, RED, '#2646c8', PAPER]
 const file = (name: string) => readFile(join(process.cwd(), 'public', name))
 const FONTS = Promise.all([file('anton.ttf'), file('fonts/courier-prime-latin-400-normal.woff'), file('fonts/courier-prime-latin-700-normal.woff')])
 
-/** The photo as a data URL, or null if there is none or it cannot be read. */
+/**
+ * The photo as a JPEG data URL, cropped to the panel at twice its size, or null
+ * if there is none or sharp cannot read it. The renderer decodes only PNG, JPEG
+ * and GIF (a WebP comes out blank), and a small JPEG also renders faster than
+ * the multi-megabyte original.
+ */
 async function photo(src?: string): Promise<string | null> {
   try {
-    let type: string, data: Buffer
+    let data: Buffer
     const key = src?.match(/^\/img\/([0-9a-f]{32})$/)?.[1]
-    const local = src?.match(/^\/images\/[\w-]+\.(webp|png|jpg|jpeg)$/)
     if (key) {
-      const { rows } = await getPool()?.query<{ content_type: string; data: Buffer }>('SELECT content_type, data FROM images WHERE key = $1', [key]) ?? { rows: [] }
+      const { rows } = await getPool()?.query<{ data: Buffer }>('SELECT data FROM images WHERE key = $1', [key]) ?? { rows: [] }
       if (!rows.length) return null
-      ;({ content_type: type, data } = rows[0])
-    } else if (local) {
-      data = await file(local[0].slice(1))
-      type = 'image/' + local[1].replace('jpg', 'jpeg')
+      data = rows[0].data
+    } else if (src && /^\/images\/[\w-]+\.(webp|png|jpe?g|avif)$/.test(src)) {
+      data = await file(src.slice(1)) // the demo programme's images
     } else return null
-    // the renderer decodes PNG, JPEG and GIF only; a WebP would come out blank
-    return /^image\/(png|jpeg|gif)$/.test(type) ? `data:${type};base64,${data.toString('base64')}` : null
+    const jpeg = await sharp(data).rotate().resize(940, 1260, { fit: 'cover' }).jpeg({ quality: 82 }).toBuffer()
+    return `data:image/jpeg;base64,${jpeg.toString('base64')}`
   } catch {
     return null
   }
