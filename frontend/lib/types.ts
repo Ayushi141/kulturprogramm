@@ -26,6 +26,8 @@ export type Venue = {
 export type Event = {
   /** Stable ID of this one session (not of the production or the film). */
   id: string
+  /** ID of the production: all sessions of one staging, film run or concert programme share it. */
+  productionId: string
   title: string
   category: Category
   venueId: string
@@ -50,6 +52,9 @@ export type Event = {
   note?: string
 }
 
+/** The context note of one production. Null texts: the enricher found nothing; the card then says so. */
+export type Context = { de: string | null; en: string | null }
+
 export type Programme = {
   venues: Venue[]
   events: Event[]
@@ -57,8 +62,13 @@ export type Programme = {
   generatedAt: string
   /** ISO 8601 time of the last scraper run (newest `updated_at`), or null when there are no events. */
   updatedAt?: string | null
-  /** Titles picked for the "In focus" card (table `featured`). The card shows the next performance of one of them. */
+  /** Production IDs picked for the "In focus" card (table `featured`). The card shows the next performance of one of them. */
   featured?: string[]
+  /**
+   * Context notes by production ID, for productions the enricher has looked up.
+   * A production without an entry has not been looked up: its card offers no context.
+   */
+  contexts?: Record<string, Context>
   /** True when the data is the built-in demo fixture. The UI then shows a notice. */
   demo?: boolean
 }

@@ -256,31 +256,32 @@ class Source(ABC):
         Sets image_key on the events and returns the newly downloaded images.
         Never raises: a failing image is logged and the event keeps none.
 
-        Images already stored for an event page are reused, so a daily run
-        only fetches pages of new productions. Events with the same title
-        share one lookup (Dhaus has one page per performance).
+        Images already stored for a production (this source, this title) are
+        reused, so a daily run only looks up new productions. Events with the
+        same title share one lookup (Dhaus has one page per performance).
         """
         try:
             with connect() as conn:
                 known = dict(
                     conn.execute(
                         """
-                        SELECT DISTINCT ON (url) url, image_key FROM events
-                        WHERE image_key IS NOT NULL AND url = ANY(%s)
+                        SELECT title, image_key FROM productions
+                        WHERE source = %s AND image_key IS NOT NULL
+                          AND title = ANY(%s)
                         """,
-                        [list({e.url for e in events if e.url})],
+                        [self.name, list({e.title for e in events})],
                     ).fetchall()
                 )
         except Exception as error:
             print(f"{self.name}: could not read stored images: {error!r}")
             known = {}
-        debug(f"{self.name}: {len(known)} event pages already have an image")
+        debug(f"{self.name}: {len(known)} productions already have an image")
 
         new: dict[str, StoredImage] = {}
         by_title: dict[str, str | None] = {}
         for event in events:
-            if event.url in known:
-                event.image_key = known[event.url]
+            if event.title in known:
+                event.image_key = known[event.title]
                 continue
             if event.title not in by_title:
                 by_title[event.title] = None
@@ -304,27 +305,26 @@ class Source(ABC):
         return list(new.values())
 
     def save(self, events: list[Event], images: list[StoredImage]) -> None:
+        """
+        Upserts the events' venues, new images and productions, then the
+        events. Writes only the scraper's columns of `productions`: the
+        enricher's notes stay as they are.
+        """
         venues = {e.venue for e in events}
         venue_rows = [(v.id, v.name, v.city) for v in venues]
         image_rows = [
             (i.key, i.source_url, i.content_type, i.data) for i in images
         ]
-        event_rows = [
-            (
-                e.title,
-                e.venue.id,
-                e.category.value,
-                e.starts_at,
-                e.ends_at,
-                e.url,
-                e.image_key,
-            )
+        # one row per title; the last event of a title wins
+        productions = {
+            e.title: (self.name, e.title, e.category.value, e.image_key)
             for e in events
-        ]
+        }
 
         debug(
             f"{self.name}: saving {len(venue_rows)} venues,"
-            f" {len(image_rows)} images, {len(event_rows)} events"
+            f" {len(image_rows)} images, {len(productions)} productions,"
+            f" {len(events)} events"
         )
         with connect() as conn:
             cursor = conn.cursor()
@@ -347,22 +347,36 @@ class Source(ABC):
                 """,
                 image_rows,
             )
+            production_ids = {}
+            for row in productions.values():
+                production_ids[row[1]] = cursor.execute(
+                    """
+                    INSERT INTO productions (source, title, category, image_key)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (source, title)
+                    DO UPDATE SET
+                        category = EXCLUDED.category,
+                        -- a failed image lookup keeps the image found earlier
+                        image_key = COALESCE(EXCLUDED.image_key, productions.image_key)
+                    RETURNING id
+                    """,
+                    row,
+                ).fetchone()[0]
             cursor.executemany(
                 """
                 INSERT INTO events
-                    (title, venue_id, category, starts_at, ends_at, url,
-                     image_key)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (title, venue_id, starts_at)
+                    (production_id, venue_id, starts_at, ends_at, url)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (production_id, venue_id, starts_at)
                 DO UPDATE SET
-                    category = EXCLUDED.category,
                     ends_at = EXCLUDED.ends_at,
                     url = EXCLUDED.url,
-                    -- a failed image lookup keeps the image found earlier
-                    image_key = COALESCE(EXCLUDED.image_key, events.image_key),
                     updated_at = now()
                 """,
-                event_rows,
+                [
+                    (production_ids[e.title], e.venue.id, e.starts_at, e.ends_at, e.url)
+                    for e in events
+                ],
             )
         debug(f"{self.name}: saved")
 

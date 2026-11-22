@@ -59,7 +59,7 @@ function dayProgramme(day: string, i: number): Event[] {
     if (category === 'movies' ? i >= CINEMA_DAYS : run && (week < run[0] || week > run[1])) return
     const sm = tm(s), em = e === null ? null : typeof e === 'number' ? sm + e : tm(e)
     out.push({
-      id: `demo-${day}-${out.length}`, title, category, venueId, price,
+      id: `demo-${day}-${out.length}`, productionId: `${venueId}|${title}`, title, category, venueId, price,
       start: fromCultureDay(day, sm).toISOString(), end: em === null ? undefined : fromCultureDay(day, em).toISOString(),
       url: VENUES.find(v => v.id === venueId)!.url,
       image: category === 'theatre' && title !== 'Der Hobbit' ? undefined : IMAGES[category],
@@ -121,5 +121,5 @@ function dayProgramme(day: string, i: number): Event[] {
 export function demoProgramme(now = new Date()): Programme {
   const today = cultureDay(now).day
   const events = Array.from({ length: HORIZON }, (_, i) => dayProgramme(shiftDate(today, i), i)).flat()
-  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['Der Hobbit'], demo: true }
+  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['schauspiel|Der Hobbit'], demo: true }
 }

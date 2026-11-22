@@ -116,7 +116,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   // selected day if there is one, otherwise the next upcoming one
   const featured = new Set(programme.featured ?? [])
   const focusAll = featured.size && now ? [...byDay.keys()].filter(d => d >= now.day).sort().flatMap(d => (byDay.get(d) ?? [])
-    .filter(i => featured.has(i.ev.title) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
+    .filter(i => featured.has(i.ev.productionId) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
   const focus = focusAll.find(i => i.day === day) ?? focusAll[0]
   const suggestion = ahead.filter(i => i.s >= EVENING[0]).sort((a, b) => a.s - b.s)[0] ?? ahead[0]
 

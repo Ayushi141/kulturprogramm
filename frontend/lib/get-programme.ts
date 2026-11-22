@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { Pool } from 'pg'
-import type { Category, Event, Programme, Venue } from './types'
+import type { Category, Context, Event, Programme, Venue } from './types'
 import { demoProgramme } from './demo-programme'
 
 /** Category values the scraper writes (`Category` in backend/scraper/main.py) → frontend categories. Rows with other values are not shown. */
@@ -34,22 +34,30 @@ export async function getProgramme(): Promise<Programme> {
   const db = getPool()
   if (!db) return demoProgramme()
 
-  const [venues, events, updated, featured] = await Promise.all([
+  const [venues, events, updated, featured, contexts] = await Promise.all([
     // Cities appear in the order of their first venue. Alphabetical happens to
     // be north to south for Duisburg, Düsseldorf and Köln.
     db.query<Venue>('SELECT id, name, city FROM venues ORDER BY city, name'),
     db.query<EventRow>(
       `SELECT ${EVENT_COLUMNS}
-       FROM events
-       WHERE starts_at > now() - interval '6 hours'
-         AND starts_at < now() + interval '183 days'
-       ORDER BY starts_at`,
+       FROM ${EVENT_TABLES}
+       WHERE e.starts_at > now() - interval '6 hours'
+         AND e.starts_at < now() + interval '183 days'
+       ORDER BY e.starts_at`,
     ),
     // every run sets updated_at on the events it saves, so the newest one is the last run
     db.query<{ max: Date | null }>('SELECT max(updated_at) FROM events'),
-    db.query<{ title: string }>(
-      `SELECT title FROM featured
+    db.query<{ production_id: string }>(
+      `SELECT production_id FROM featured
        WHERE until IS NULL OR until >= (now() AT TIME ZONE 'Europe/Berlin')::date`,
+    ),
+    // looked-up productions with dates in the window; the notes are NULL when nothing was found
+    db.query<{ id: string; note_de: string | null; note_en: string | null }>(
+      `SELECT p.id, p.note_de, p.note_en FROM productions p
+       WHERE p.enriched_at IS NOT NULL
+         AND EXISTS (SELECT 1 FROM events e WHERE e.production_id = p.id
+                     AND e.starts_at > now() - interval '6 hours'
+                     AND e.starts_at < now() + interval '183 days')`,
     ),
   ])
 
@@ -58,12 +66,14 @@ export async function getProgramme(): Promise<Programme> {
     events: events.rows.flatMap(toEvent),
     generatedAt: new Date().toISOString(),
     updatedAt: updated.rows[0].max?.toISOString() ?? null,
-    featured: featured.rows.map(r => r.title),
+    featured: featured.rows.map(r => String(r.production_id)),
+    contexts: Object.fromEntries(contexts.rows.map(r => [String(r.id), { de: r.note_de, en: r.note_en } satisfies Context])),
   }
 }
 
-type EventRow = { id: string; title: string; category: string; venue_id: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
-const EVENT_COLUMNS = 'id, title, category, venue_id, starts_at, ends_at, url, image_key'
+type EventRow = { id: string; production_id: string; title: string; category: string; venue_id: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
+const EVENT_COLUMNS = 'e.id, e.production_id, p.title, p.category, e.venue_id, e.starts_at, e.ends_at, e.url, p.image_key'
+const EVENT_TABLES = 'events e JOIN productions p ON p.id = e.production_id'
 
 /** One `events` row as an `Event`, or none when its category is not shown. */
 function toEvent(r: EventRow): Event[] {
@@ -71,6 +81,7 @@ function toEvent(r: EventRow): Event[] {
   if (!category) return []
   return [{
     id: String(r.id),
+    productionId: String(r.production_id),
     title: r.title,
     category,
     venueId: r.venue_id,
@@ -96,8 +107,8 @@ export async function getEvent(id: string): Promise<{ event: Event; venue: Venue
   }
   if (!/^\d{1,18}$/.test(id)) return null // database IDs are bigint
   const res = await db.query<EventRow & { name: string; city: string }>(
-    `SELECT ${EVENT_COLUMNS.split(', ').map(c => 'e.' + c).join(', ')}, v.name, v.city
-     FROM events e JOIN venues v ON v.id = e.venue_id
+    `SELECT ${EVENT_COLUMNS}, v.name, v.city
+     FROM ${EVENT_TABLES} JOIN venues v ON v.id = e.venue_id
      WHERE e.id = $1`,
     [id],
   )

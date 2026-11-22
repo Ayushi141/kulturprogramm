@@ -80,7 +80,8 @@ export type Production = { key: string; title: string; venue: Venue; category: C
 export function productions(items: Item[]): Production[] {
   const map = new Map<string, Production>()
   for (const it of items) {
-    const key = it.venue.id + '|' + it.ev.title
+    // a production on two stages gets one lane (and one list of dates) per stage
+    const key = it.ev.productionId + '|' + it.venue.id
     if (!map.has(key)) map.set(key, { key, title: it.ev.title, venue: it.venue, category: it.category, dates: [] })
     map.get(key)!.dates.push(it)
   }
