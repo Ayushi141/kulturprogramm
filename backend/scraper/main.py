@@ -904,22 +904,23 @@ class OperWuppertal(Source):
 
     def scrape_image(self, event: Event) -> str | None:
         """
-        The performance page shows its picture as img.teaser-big__image (an
-        original from the API's media server); og:image if it has none.
+        The production image from the API's single performance: neither the
+        list above nor the page's HTML has it (the page loads it with
+        JavaScript). The page URL ends with the performance id, e.g.
+        .../schostakowitsch-acht/5878 -> /api/performances/5878.
         """
-        if not event.url:
+        match = re.search(r"/(\d+)/?$", event.url or "")
+        if not match:
             return None
-        debug(f"{self.name}: image lookup on", event.url)
-        response = httpx.get(event.url, follow_redirects=True, timeout=60)
+        url = f"{self.API}/{match[1]}"
+        debug(f"{self.name}: image lookup on", url)
+        response = httpx.get(
+            url, headers={"Accept": "application/ld+json"}, timeout=60
+        )
         debug("  ->", response.status_code)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        tag = soup.select_one("img.teaser-big__image[src]") or soup.select_one(
-            'meta[property="og:image"][content]'
-        )
-        if not tag:
-            return None
-        return absolute_url(response.url, tag.get("src") or tag["content"])
+        image = response.json()["production"].get("image") or {}
+        return image.get("src")
 
 
 class TheaterEssen(Source):
