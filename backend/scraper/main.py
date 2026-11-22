@@ -868,6 +868,25 @@ class OperWuppertal(Source):
         debug(f"{self.name}: {len(events)} qualifying performances")
         return events
 
+    def scrape_image(self, event: Event) -> str | None:
+        """
+        The performance page shows its picture as img.teaser-big__image (an
+        original from the API's media server); og:image if it has none.
+        """
+        if not event.url:
+            return None
+        debug(f"{self.name}: image lookup on", event.url)
+        response = httpx.get(event.url, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        tag = soup.select_one("img.teaser-big__image[src]") or soup.select_one(
+            'meta[property="og:image"][content]'
+        )
+        if not tag:
+            return None
+        return absolute_url(response.url, tag.get("src") or tag["content"])
+
 
 class TheaterEssen(Source):
     # by the first category the card lists
