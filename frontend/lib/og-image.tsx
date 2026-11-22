@@ -9,7 +9,7 @@ import { cultureDay, dayLabel, fmt, weekday } from './time'
 import type { Category } from './types'
 
 /**
- * The link preview image of a shared performance (1200×630 PNG), drawn like a
+ * The link preview image of a shared performance (1200×630 JPEG), drawn like a
  * poster: logo, category tag, title, a yellow date stamp, venue, and on the
  * right the event photo (any format sharp reads) or else the category block of the card.
  * ImageResponse renders flexbox only (no grid) and needs every font as a file.
@@ -149,5 +149,8 @@ export async function ogImage(lang: Lang, id: string): Promise<Response> {
   } catch {
     png = await render({ ...card, image: null })
   }
-  return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' } })
+  // The renderer only writes PNG (about 500 KB with a photo). WhatsApp shows the large
+  // preview only for small files, and chat apps read only JPEG, PNG and GIF: send JPEG.
+  const jpeg = await sharp(Buffer.from(png)).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
+  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' } })
 }
