@@ -1,8 +1,7 @@
 # AGENTS.md
 
-Repository notes for coding agents. Verify operational details against the
-server before relying on them; only files in this repository were checked for
-this document.
+Repository notes for coding agents. Verify operational details against the server before relying on
+them; only files in this repository were checked for this document.
 
 ## Purpose and layout
 
@@ -20,9 +19,8 @@ aggregator/
 
 ## Runtime and services
 
-- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, and frontend
-  services with paths relative to `backend/deploy/`; run Compose from there
-  (project name `deploy`) or pass the Compose file explicitly.
+- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, frontend and pgAdmin services
+  (paths relative to `backend/deploy/`; run Compose there, project `deploy`).
 - PostgreSQL uses `postgres:18`; the configured database and user are both
   `kultur`.
 - The scraper image uses `python:3.15-slim`. Its dependencies are `httpx`,
@@ -86,16 +84,15 @@ CREATE TABLE featured (
 );
 ```
 
-`init.sql` runs when PostgreSQL initializes an empty data volume; changing it
-does not update an existing database. Recreate the database (see `docker
-compose down -v` below) or migrate it by hand, e.g. for the category check and
-index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE INDEX ...`.
+`init.sql` runs when PostgreSQL initializes an empty data volume; changing it does not update an
+existing database. Recreate the database (see `docker compose down -v` below) or migrate it by hand,
+e.g. for the category check and index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE
+INDEX ...`.
 
-Each row is one event at one start time; `ends_at` is NULL when the source
-lists no end. `save()` upserts venues and new images, then on a key conflict
-updates `category`, `ends_at`, `url`, `image_key` (kept when the new lookup
-found none) and `updated_at`. Events that disappear from a program are not
-removed, so cancelled or expired rows can remain.
+Each row is one event at one start time; `ends_at` is NULL when the source lists no end. `save()`
+upserts venues and new images, then on a key conflict updates `category`, `ends_at`, `url`,
+`image_key` (kept when the new lookup found none) and `updated_at`. Events that disappear from a
+program are not removed, so cancelled or expired rows can remain.
 
 ## Frontend typography
 
@@ -124,15 +121,13 @@ instead of adding new sizes or weights:
 
 ## Configuration and secrets
 
-Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, and `PGPASSWORD_FILE` for the
-scraper and frontend (the frontend also gets `PGPORT`). libpq ignores
-`PGPASSWORD_FILE`, so the scraper and frontend read that file themselves and
-pass the password to `psycopg.connect()` and the `pg` `Pool`.
+Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, and `PGPASSWORD_FILE` for the scraper and frontend
+(the frontend also gets `PGPORT`). libpq ignores `PGPASSWORD_FILE`, so the scraper and frontend read
+that file themselves and pass the password to `psycopg.connect()` and the `pg` `Pool`.
 
-Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`;
-PostgreSQL bind-mounts the host file to that path and reads it through
-`POSTGRES_PASSWORD_FILE`. Do not put credentials in the repository. PostgreSQL
-and frontend ports are bound to `127.0.0.1` on the host.
+Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`; PostgreSQL bind-mounts
+the host file to that path and reads it through `POSTGRES_PASSWORD_FILE`. Do not put credentials in
+the repository. PostgreSQL and frontend ports are bound to `127.0.0.1` on the host.
 
 ## Scraper code model
 
@@ -200,8 +195,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 
 ## Scraper sources
 
-The notes below describe the parser implementation. They are not a guarantee
-that a venue's live page has not changed.
+The notes below describe the parser implementation. They are not a guarantee that a venue's live
+page has not changed.
 
 ### Filmkunstkinos
 - `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and
@@ -298,15 +293,14 @@ that a venue's live page has not changed.
 
 Run these commands from `backend/deploy/`. Start PostgreSQL: `docker compose up -d postgres`.
 
-Run the scraper image, rebuilding it from the current source. The run loop
-never exits, so this stays in the foreground until stopped:
+Run the scraper image, rebuilt from the current source (the loop never exits; stops with Ctrl+C):
 
 ```bash
 docker compose run --rm --build scraper
 ```
 
-Query the database (`docker compose exec postgres psql -U kultur -d kultur`),
-for example event times in Berlin time:
+Query the database (`docker compose exec postgres psql -U kultur -d kultur`), for example event
+times in Berlin time:
 
 ```sql
 SELECT title, starts_at AT TIME ZONE 'Europe/Berlin'
@@ -324,14 +318,20 @@ DELETE FROM featured WHERE title = 'Der Hobbit';
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
 
+pgAdmin (database admin in the browser) listens only on the server, `127.0.0.1:5050`; never publish
+it (it has had remote-code-execution bugs for logged-in users). Once: `sudo install -o 5050 -g 5050
+-m 600 /dev/null /etc/kulturprogramm/pgadmin_password` (5050: the container user), write a password
+into it, `docker compose -p deploy up -d pgadmin`. Use: `ssh -L 5050:127.0.0.1:5050 <user>@<server>`,
+`http://localhost:5050`, login `admin@kulturprogramm.eu`; connection "kulturprogramm" asks for the
+`kultur` password. Update: `docker compose -p deploy pull pgadmin`, then `up -d pgadmin` again.
+
 ## Deployment
 
-The server's `~/aggregator` is a git clone (read-only deploy key). The systemd
-timer `aggregator-deploy.timer` (files in `backend/deploy/systemd/`) runs
-`backend/deploy/update.sh` a minute after each run: when `main` has new
-commits, it resets the clone to them and rebuilds the frontend (project
-`deploy`); logs: `journalctl -u aggregator-deploy`. The scraper is not
-redeployed (no timer, loops forever): restart it by hand after changes.
+The server's `~/aggregator` is a git clone (read-only deploy key). The systemd timer
+`aggregator-deploy.timer` (files in `backend/deploy/systemd/`) runs `backend/deploy/update.sh` a
+minute after each run: when `main` has new commits, it resets the clone to them and rebuilds the
+frontend (project `deploy`); logs: `journalctl -u aggregator-deploy`. The scraper is not redeployed
+(no timer, loops forever): restart it by hand after changes.
 
 ## Working in this repository
 
