@@ -38,8 +38,8 @@ aggregator/
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
-- The event card's "+N" button opens a drawer with the production's upcoming dates
-  (`CardContext` from `guide.tsx`): a 14-day or 7-month grid from the clicked date, then all rows; a tap switches the card in place.
+- Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
+  "Teilen" shares `/e/<id>` (`components/share-page.tsx`); preview image `lib/og-image.tsx` (photos only PNG/JPEG/GIF).
 - Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
   English at `/en`. Programme data is not translated.
 - The Compose configuration expects the host password file at

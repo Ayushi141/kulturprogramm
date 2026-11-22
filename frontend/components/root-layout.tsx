@@ -9,8 +9,12 @@ import '@/app/explorer.css'
  * (`app/(de)/layout.tsx` for `/`, `app/(en)/en/layout.tsx` for `/en`)
  * so that `<html lang>` is right in the server-rendered page.
  */
+/** The public address: link previews need absolute URLs (og:image, og:url). */
+const SITE = 'https://kulturprogramm.eu'
+
 export function metadataFor(lang: Lang): Metadata {
   return {
+    metadataBase: new URL(SITE),
     title: DICTS[lang].title,
     description: DICTS[lang].description,
     alternates: { canonical: HOME[lang], languages: { de: HOME.de, en: HOME.en } },
