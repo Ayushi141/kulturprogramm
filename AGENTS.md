@@ -152,8 +152,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the
   default returns `event.image_url`, else the `og:image` of `event.url`.
   `Source.add_images(events)` calls it once per title and stores the image's
-  original bytes (no resizing or re-encoding; Pillow only checks the format),
-  keyed by a hash of the bytes. It never raises: a failure is logged in
+  original bytes (Pillow checks the format; over `MAX_SIDE` 2000 px it is shrunk
+  to JPEG, or PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is logged in
   one line and the event keeps no image. Images already stored for an event
   page are reused, so a run only fetches pages of new productions. The
   frontend serves images at `/img/<key>` from the database.

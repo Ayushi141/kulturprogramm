@@ -13,7 +13,7 @@ from enum import StrEnum
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageOps
 from zoneinfo import ZoneInfo
 from time import sleep
 
@@ -67,11 +67,23 @@ def connect() -> psycopg.Connection:
     return psycopg.connect(password=password)
 
 
+# Longest side of a stored image. Larger ones are shrunk: the site shows them
+# at a few hundred pixels, and serves the stored bytes to every visitor.
+MAX_SIDE = 2000
+# Pillow refuses images above about 179 megapixels (decompression bombs);
+# download_image() checks sizes itself and decodes large JPEGs at reduced size.
+Image.MAX_IMAGE_PIXELS = None
+# A non-JPEG must be decoded at full size to shrink it: refuse larger ones.
+MAX_FULL_DECODE_PIXELS = 100_000_000
+
+
 def download_image(source_url: str) -> StoredImage:
     """
-    Downloads an image and keeps its original bytes and resolution (no
-    re-encoding, which causes compression artifacts). Pillow only checks
-    that the bytes are an image and names the format.
+    Downloads an image. Up to MAX_SIDE pixels on the long side it keeps the
+    original bytes (no re-encoding, which causes compression artifacts);
+    Pillow only checks that the bytes are an image and names the format.
+    A larger image is shrunk to MAX_SIDE and stored as JPEG (PNG if it has
+    transparency). Example: a 14000 x 20000 px, 11 MB poster at Krefeld.
     """
     debug("download image", source_url)
     # some sites (UCI) answer 403 to httpx's default User-Agent
@@ -87,10 +99,32 @@ def download_image(source_url: str) -> StoredImage:
     with Image.open(io.BytesIO(data)) as image:
         content_type = Image.MIME[image.format]
         image.verify()
+    with Image.open(io.BytesIO(data)) as image:
+        if max(image.size) > MAX_SIDE:
+            data, content_type = shrink(image)
+            debug("  shrunk to", len(data), "bytes")
     # The key is a hash of the content, so a changed image gets a new URL
     # and never collides with an old copy in a browser cache.
     key = hashlib.sha256(data).hexdigest()[:32]
     return StoredImage(key, source_url, content_type, data)
+
+
+def shrink(image: Image.Image) -> tuple[bytes, str]:
+    """The image at MAX_SIDE pixels on its long side, as bytes and content type."""
+    size = image.size
+    if image.format == "JPEG":
+        # decode at 1/2, 1/4 or 1/8 scale, still at least MAX_SIDE: little memory
+        image.draft("RGB", (MAX_SIDE, MAX_SIDE))
+    elif size[0] * size[1] > MAX_FULL_DECODE_PIXELS:
+        raise ValueError(f"{image.format} image of {size[0]} x {size[1]} px is too large to shrink")
+    image = ImageOps.exif_transpose(image)  # the saved file drops EXIF orientation
+    image.thumbnail((MAX_SIDE, MAX_SIDE))
+    out = io.BytesIO()
+    if image.mode in ("RGBA", "LA") or "transparency" in image.info:
+        image.save(out, "PNG", optimize=True)
+        return out.getvalue(), "image/png"
+    image.convert("RGB").save(out, "JPEG", quality=88, optimize=True)
+    return out.getvalue(), "image/jpeg"
 
 
 def slugify(text: str) -> str:
