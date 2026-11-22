@@ -37,9 +37,9 @@ aggregator/
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
-  "Teilen" shares `/e/<id>` (`components/share-page.tsx`); preview image `lib/og-image.tsx` (photos via sharp, so WebP too).
-- Interface texts are in `frontend/lib/i18n.ts`: German at `/` (default),
-  English at `/en`. Programme data is not translated.
+  "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
+  (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
+- Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
 - The Compose configuration expects the host password file at
   `/etc/kulturprogramm/pg_password` (not `/run`, which is emptied at boot).
   PostgreSQL and the frontend restart with the host (`unless-stopped`).

@@ -5,7 +5,7 @@ import { dayLabel, fmt, weekday } from './time'
 /**
  * Shared links: `/e/<id>` (German) and `/en/e/<id>` open the site with the
  * card of that performance. Chat apps fetch the page for its preview
- * (`generateMetadata` and `opengraph-image.tsx` in those routes).
+ * (`generateMetadata`) and then `<link>/preview.jpg` for its image.
  */
 export const sharePath = (lang: Lang, id: string) => `${HOME[lang] === '/' ? '' : HOME[lang]}/e/${encodeURIComponent(id)}`
 
