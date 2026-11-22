@@ -46,10 +46,34 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      
+
+  # Database admin in the browser. Only reachable on the server itself (not
+  # from the internet): open an SSH tunnel, then http://localhost:5050 (see
+  # AGENTS.md). Started by hand; update.sh rebuilds only the frontend.
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@kulturprogramm.eu  # the login name, no mail is sent
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/pgadmin_password
+    secrets:
+      - pgadmin_password
+    volumes:
+      - pgadmin:/var/lib/pgadmin  # account, settings, saved connections
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 secrets:
   pg_password:
     file: /etc/kulturprogramm/pg_password
+  # read by the container user pgadmin (UID 5050): chown 5050 on the host
+  pgadmin_password:
+    file: /etc/kulturprogramm/pgadmin_password
 
 volumes:
   pgdata:
+  pgadmin:

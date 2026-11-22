@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "kulturprogramm",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "kultur",
+      "Username": "kultur",
+      "SSLMode": "prefer"
+    }
+  }
+}
