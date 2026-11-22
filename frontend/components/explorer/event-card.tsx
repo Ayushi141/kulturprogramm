@@ -64,6 +64,8 @@ export function EventCard({ it, onToggle, onClose }: {
   /** Phones open their share menu; elsewhere the link is copied. */
   const share = async () => {
     const url = location.origin + sharePath(lang, shown.id)
+    // draw the link preview now, so it is ready when the chat app asks for it
+    fetch(`${sharePath(lang, shown.id)}/preview.jpg`).catch(() => {})
     if ('share' in navigator && matchMedia('(pointer: coarse)').matches) {
       try { await navigator.share({ title: shown.ev.title, text: `${shown.ev.title} – ${shareLine(t, shown.day, shown.s, shown.venue)}`, url }) } catch { /* closed */ }
       return

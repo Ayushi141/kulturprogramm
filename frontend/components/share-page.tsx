@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Guide from '@/components/guide'
 import { getEvent, getProgramme } from '@/lib/get-programme'
 import { DICTS, type Lang } from '@/lib/i18n'
+import { OG_SIZE } from '@/lib/og-image'
 import { shareLine, sharePath } from '@/lib/share'
 import { cultureDay } from '@/lib/time'
 import type { Programme } from '@/lib/types'
@@ -27,7 +28,7 @@ function withEvent(p: Programme, found: Awaited<ReturnType<typeof getEvent>>): P
   }
 }
 
-/** Title and description for the link preview; the image comes from `opengraph-image.tsx` next to the page. */
+/** Title, description and image of the link preview; the image is `preview.jpg/route.ts` next to the page. */
 export async function shareMetadata(lang: Lang, id: string): Promise<Metadata> {
   const found = await getEvent(id)
   if (!found) return {}
@@ -35,11 +36,12 @@ export async function shareMetadata(lang: Lang, id: string): Promise<Metadata> {
   const { day, min } = cultureDay(new Date(found.event.start))
   const title = found.event.title
   const description = shareLine(t, day, min, found.venue)
+  const image = { url: `${sharePath(lang, id)}/preview.jpg`, width: OG_SIZE.width, height: OG_SIZE.height, type: 'image/jpeg' }
   return {
     title: `${title} · Kulturprogramm`,
     description,
     alternates: { canonical: sharePath(lang, id), languages: { de: sharePath('de', id), en: sharePath('en', id) } },
-    openGraph: { type: 'website', siteName: 'Kulturprogramm', locale: lang === 'de' ? 'de_DE' : 'en_GB', url: sharePath(lang, id), title, description },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: { type: 'website', siteName: 'Kulturprogramm', locale: lang === 'de' ? 'de_DE' : 'en_GB', url: sharePath(lang, id), title, description, images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
   }
 }

@@ -87,7 +87,7 @@ function Poster({ c, tag }: { c: Card; tag: string | null }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 20 }}>
           {c.stamp && (
-            <div style={{ display: 'flex', background: YELLOW, border: `3px solid ${INK}`, boxShadow: `7px 7px 0 ${INK}`, padding: '10px 20px 8px', transform: 'rotate(-2deg)', fontFamily: 'Poster', fontSize: 48, lineHeight: 1 }}>{c.stamp}</div>
+            <div style={{ display: 'flex', background: YELLOW, border: `3px solid ${INK}`, boxShadow: `7px 7px 0 ${INK}`, padding: '10px 20px 8px', transform: 'rotate(-2deg)', fontFamily: 'Poster', fontSize: 58, lineHeight: 1 }}>{c.stamp}</div>
           )}
           {c.venue && <div style={{ display: 'flex', fontFamily: 'Mono', fontSize: 27 }}>{c.venue}</div>}
         </div>
@@ -117,12 +117,38 @@ function Poster({ c, tag }: { c: Card; tag: string | null }) {
 }
 
 /**
- * Renders the preview of event `id` in `lang`. An unknown ID gets the site's
- * own card. A photo that the renderer cannot read falls back to the category block.
+ * Finished previews, newest last: drawing one takes about a second, and WhatsApp
+ * sends a message without preview if the image is not there in time. The key
+ * holds the event's data, so a changed time or title draws a new one. A promise
+ * is stored, so requests during the drawing wait for it instead of drawing again.
+ * 300 previews of about 100 KB: 30 MB at most. Empty after each restart; the
+ * share button refills it (it requests /e/<id>/preview.jpg when tapped).
+ */
+const CACHE = new Map<string, Promise<Buffer>>()
+const CACHE_SIZE = 300
+
+/**
+ * The preview of event `id` in `lang` as a JPEG response. An unknown ID gets the
+ * site's own card. A photo that the renderer cannot read falls back to the category block.
  */
 export async function ogImage(lang: Lang, id: string): Promise<Response> {
+  const found = await getEvent(id)
+  const key = JSON.stringify([lang, id, found])
+  let jpeg = CACHE.get(key)
+  if (jpeg) {
+    CACHE.delete(key) // move to the end: most recently used
+  } else {
+    jpeg = draw(lang, found)
+    jpeg.catch(() => CACHE.delete(key))
+    if (CACHE.size >= CACHE_SIZE) CACHE.delete(CACHE.keys().next().value!)
+  }
+  CACHE.set(key, jpeg)
+  return new Response(new Uint8Array(await jpeg), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' } })
+}
+
+async function draw(lang: Lang, found: Awaited<ReturnType<typeof getEvent>>): Promise<Buffer> {
   const t = DICTS[lang]
-  const [found, [anton, mono, monoBold]] = await Promise.all([getEvent(id), FONTS])
+  const [anton, mono, monoBold] = await FONTS
   let card: Card = { category: null, title: t.title.split('—').pop()!.trim(), stamp: null, venue: null, image: null }
   if (found) {
     const { day, min } = cultureDay(new Date(found.event.start))
@@ -151,6 +177,5 @@ export async function ogImage(lang: Lang, id: string): Promise<Response> {
   }
   // The renderer only writes PNG (about 500 KB with a photo). WhatsApp shows the large
   // preview only for small files, and chat apps read only JPEG, PNG and GIF: send JPEG.
-  const jpeg = await sharp(Buffer.from(png)).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
-  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' } })
+  return sharp(Buffer.from(png)).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
 }
