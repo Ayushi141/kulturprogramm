@@ -263,9 +263,9 @@ that a venue's live page has not changed.
 
 ### Schauspielhaus Bochum
 - Read `/de/spielplan/11/tanz` (`TANZ`), then `/de/spielplan/13/schauspiel`
-  (`THEATER`), which also lists the dance pieces; the first listing wins.
-  `.schedule__group`/`.schedule__item` provide date/title/stage/times. Skip
-  Theater Hagen and `Fällt aus`.
+  (`THEATER`, also lists dance; first listing wins). `.schedule__group`/`.schedule__item`
+  give date/title/stage/times; skip Theater Hagen, `Fällt aus`. Image (no og:image): inline
+  background of `.production__title-image`, else first `img.lazyimage[data-src]`.
 
 ### Pina Bausch
 - `https://www.pina-bausch.de/de/calendar`: season JSON in `data-page`. Keep

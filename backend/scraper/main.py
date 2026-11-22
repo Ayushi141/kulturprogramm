@@ -1133,6 +1133,29 @@ class SchauspielhausBochum(Source):
                     )
         return events
 
+    def scrape_image(self, event: Event) -> str | None:
+        """
+        The production page has no og:image. Its title image is the inline
+        background of div.production__title-image (body has a site-wide
+        ensemble background). Without one (a title video), the first gallery
+        photo: img.lazyimage, whose URL is in data-src.
+        """
+        if not event.url:
+            return None
+        debug(f"{self.name}: image lookup on", event.url)
+        response = httpx.get(event.url, follow_redirects=True, timeout=60)
+        debug("  ->", response.status_code)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        title = soup.select_one(".production__title-image[style]")
+        match = title and re.search(
+            r"background-image:\s*url\(['\"]?([^'\")]+)", title["style"]
+        )
+        if match:
+            return absolute_url(response.url, match[1])
+        gallery = soup.select_one("img.lazyimage[data-src]")
+        return absolute_url(response.url, gallery["data-src"]) if gallery else None
+
 
 class PinaBausch(Source):
     """
