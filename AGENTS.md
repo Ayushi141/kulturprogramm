@@ -241,9 +241,9 @@ page has not changed.
   concerts. Cards provide title, URL, venue, start; no end.
 
 ### Oper Wuppertal
-- `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, all pages (at most
-  50 items each). Keep Oper at Opernhaus (`OPER`) and all Sinfonieorchester
-  concerts; API provides title, URL, venue and times.
+- `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, all pages (at most 50 items each). Keep
+  Oper at Opernhaus (`OPER`) and all Sinfonieorchester concerts; API gives title, URL, venue, times.
+  Image: `img.teaser-big__image` of the performance page (it has no og:image), else og:image.
 
 ### Theater und Philharmonie Essen
 - `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the
