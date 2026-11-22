@@ -116,12 +116,13 @@ function OtherDates({ shown, all, anchor, onShow }: {
   const t = useT()
   const color = CAT[shown.category].color
   const rowsBox = useRef<HTMLDivElement>(null)
-  // a grid tap can select a row that is scrolled away: bring it into the list's view
+  // After a grid tap, the selected row becomes the first row in view, with the later dates below it.
+  // A row tap does not scroll: that row is already in view.
+  const fromGrid = useRef(false)
   useEffect(() => {
     const box = rowsBox.current, row = box?.querySelector<HTMLElement>('.x-datesel')
-    if (!box || !row) return
-    if (row.offsetTop < box.scrollTop) box.scrollTop = row.offsetTop
-    else if (row.offsetTop + row.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = row.offsetTop + row.offsetHeight - box.clientHeight
+    if (fromGrid.current && box && row) box.scrollTop = row.offsetTop - parseFloat(getComputedStyle(row).marginTop)
+    fromGrid.current = false
   }, [shown.id])
   const when = (d: Item) => `${t.wd[weekday(d.day)]} ${dayLabel(d.day)}`
   const fromAnchor = all.filter(d => d.day >= anchor)
@@ -134,7 +135,7 @@ function OtherDates({ shown, all, anchor, onShow }: {
     const target = on.find(d => d.id !== shown.id)
     return selected || !target
       ? <div key={key} className={selected ? 'x-calsel' : undefined}>{label}</div>
-      : <button key={key} onClick={() => onShow(target)} aria-label={t.openDate(`${when(target)} ${fmt(target.s)}`)}>{label}</button>
+      : <button key={key} onClick={() => { fromGrid.current = true; onShow(target) }} aria-label={t.openDate(`${when(target)} ${fmt(target.s)}`)}>{label}</button>
   }
 
   let grid: React.ReactNode
