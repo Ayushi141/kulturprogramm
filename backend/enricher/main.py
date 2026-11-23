@@ -28,8 +28,8 @@ from time import monotonic, sleep
 import httpx
 import psycopg
 
-# a model slug from openrouter.ai/models
-MODEL = os.environ.get("ENRICH_MODEL", "anthropic/claude-sonnet-5.5")
+# a model slug from openrouter.ai/models; it needs tool calling
+MODEL = os.environ.get("ENRICH_MODEL", "deepseek/deepseek-v4.1-flash")
 # OpenAI-compatible Chat Completions. eu.openrouter.ai keeps requests in the EU.
 API_URL = os.environ.get(
     "ENRICH_API_URL", "https://openrouter.ai/api/v1/chat/completions"
@@ -38,6 +38,20 @@ API_URL = os.environ.get(
 BATCH = int(os.environ.get("ENRICH_BATCH", "30"))
 # hours between batches
 INTERVAL_HOURS = float(os.environ.get("ENRICH_INTERVAL_HOURS", "6"))
+# OpenRouter runs both tools during the request. Results and fetched pages
+# are input tokens, so the limits keep the cost per production low.
+TOOLS = [
+    {
+        "type": "openrouter:web_search",
+        # Parallel in turbo mode: the cheapest engine, short excerpts
+        "parameters": {"engine": "parallel", "mode": "turbo", "max_uses": 5, "max_results": 3},
+    },
+    {
+        "type": "openrouter:web_fetch",
+        # a plain HTTP download, free; it does not run JavaScript
+        "parameters": {"engine": "openrouter", "max_uses": 3, "max_content_tokens": 10000},
+    },
+]
 # the answer when the model found nothing worth telling
 NOTHING = "NICHTS"
 
@@ -180,10 +194,7 @@ def ask(production: tuple, key: str) -> str:
                 {"role": "system", "content": SYSTEM},
                 {"role": "user", "content": "\n".join(lines)},
             ],
-            "tools": [
-                {"type": "openrouter:web_search", "parameters": {"max_uses": 5}},
-                {"type": "openrouter:web_fetch", "parameters": {"max_uses": 5}},
-            ],
+            "tools": TOOLS,
         },
         timeout=600,
     )
