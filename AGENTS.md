@@ -10,7 +10,7 @@ This project collects cultural events from venue websites, stores them in Postgr
 aggregator/
 ├── backend/
 │   ├── deploy/       # Docker Compose and database initialization SQL
-│   ├── enricher/     # writes the context notes with the Claude API (main.py, Dockerfile)
+│   ├── enricher/     # writes the context notes through OpenRouter (main.py, Dockerfile)
 │   └── scraper/      # Python scraper and its Dockerfile
 ├── frontend/         # Next.js frontend
 └── pyproject.toml    # uv project for local scraper development (with uv.lock)
@@ -311,12 +311,12 @@ DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
 
 Enricher (`backend/enricher/main.py`): for productions with upcoming dates and `enriched_at` NULL,
-one request to the Claude API with web search and fetch (model `ENRICH_MODEL`, default
-`claude-sonnet-5-5`); the answer is German, `---`, English, or `NICHTS`. The prompt (`SYSTEM`) holds
-the Souffleur's voice and rules. Once: put a Console API key into
-`/etc/kulturprogramm/anthropic_api_key`. Try it: `docker compose run --rm --build enricher python
-main.py --dry-run --limit 5` (prints only). Run: `docker compose up -d --build enricher` (a batch of
-30 every 6 hours). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
+one request through OpenRouter with its `openrouter:web_search` and `openrouter:web_fetch` server
+tools (model `ENRICH_MODEL`, default `anthropic/claude-sonnet-5.5`); the answer is German, `---`,
+English, or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
+OpenRouter key into `/etc/kulturprogramm/openrouter_api_key`. Try it: `docker compose run --rm
+--build enricher python main.py --dry-run --limit 5`. Run: `docker compose up -d --build enricher`
+(30 every 6 hours). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
 
 pgAdmin (database admin in the browser) listens only on the server, `127.0.0.1:5050`; never publish
 it (it has had remote-code-execution bugs for logged-in users). Once: `sudo install -o 5050 -g 5050

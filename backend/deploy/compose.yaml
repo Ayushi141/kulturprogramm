@@ -40,10 +40,10 @@ services:
       PGUSER: kultur
       PGDATABASE: kultur
       PGPASSWORD_FILE: /run/secrets/pg_password
-      ANTHROPIC_API_KEY_FILE: /run/secrets/anthropic_api_key
+      OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
     secrets:
       - pg_password
-      - anthropic_api_key
+      - openrouter_api_key
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,9 +91,9 @@ secrets:
   # read by the container user pgadmin (UID 5050): chown 5050 on the host
   pgadmin_password:
     file: /etc/kulturprogramm/pgadmin_password
-  # an API key of the Claude Console organization (linked to the Max plan for its credits)
-  anthropic_api_key:
-    file: /etc/kulturprogramm/anthropic_api_key
+  # an OpenRouter API key (openrouter.ai/keys); set a credit limit on the key
+  openrouter_api_key:
+    file: /etc/kulturprogramm/openrouter_api_key
 
 volumes:
   pgdata:
