@@ -16,11 +16,12 @@ Usage:
 """
 
 import argparse
+import logging
 import os
+import sys
 import re
-from datetime import datetime
 from pathlib import Path
-from time import sleep
+from time import monotonic, sleep
 
 import httpx
 import psycopg
@@ -93,9 +94,21 @@ CATEGORY_DE = {
 }
 
 
-def debug(*args) -> None:
-    """Writes a line with a timestamp. flush=True: Docker buffers stdout otherwise."""
-    print(datetime.now().strftime("%H:%M:%S"), *args, flush=True)
+# Every line: time, level, then "<production> | message" (see ctx()), like
+# the scraper's log. stdout only, so tracebacks stay in order.
+logging.basicConfig(
+    stream=sys.stdout,
+    level=os.environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)-7s %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("enricher")
+CTX_WIDTH = 22
+
+
+def ctx(label: str) -> str:
+    """The prefix of a log line: a production title or "batch" in a fixed column."""
+    return f"{label:<{CTX_WIDTH}.{CTX_WIDTH}} |"
 
 
 def secret(name: str) -> str:
@@ -139,6 +152,7 @@ def ask(production: tuple, key: str) -> str:
     Claude runs the web search and web fetch itself, on the API's side.
     """
     _, title, category, venues, city, url = production
+    started = monotonic()
     lines = [
         f"Titel: {title}",
         f"Sparte: {CATEGORY_DE.get(category, category)}",
@@ -178,9 +192,11 @@ def ask(production: tuple, key: str) -> str:
         done += body["content"]
         messages = [messages[0], {"role": "assistant", "content": done}]
     usage = body["usage"]
-    debug(
-        f"  {usage['input_tokens']} input, {usage['output_tokens']} output tokens,",
-        usage.get("server_tool_use", {}),
+    tools = usage.get("server_tool_use", {})
+    log.info(
+        f"{ctx(title)} {usage['input_tokens']} in, {usage['output_tokens']} out tokens,"
+        f" {tools.get('web_search_requests', 0)} searches,"
+        f" {tools.get('web_fetch_requests', 0)} fetches, {monotonic() - started:.0f} s"
     )
     # citations split the answer into several text blocks
     return "".join(b["text"] for b in body["content"] if b["type"] == "text").strip()
@@ -219,17 +235,34 @@ def run_batch(limit: int, title: str | None, dry_run: bool) -> None:
     """
     key = secret("ANTHROPIC_API_KEY_FILE")
     productions = pending(limit, title)
-    debug(f"{len(productions)} productions to look up")
+    log.info(f"{ctx('batch')} {len(productions)} productions to look up"
+             + (" (dry run: nothing is saved)" if dry_run else ""))
+    notes = nothing = failed = 0
     for production in productions:
-        debug(f"=== {production[1]} ({production[3]}, {production[4]})")
+        label = production[1]
+        log.info(f"{ctx(label)} looking up at {production[3]}, {production[4]}")
         try:
             note_de, note_en = parse(ask(production, key))
-        except Exception as error:
-            print(f"  failed: {error!r}", flush=True)
+        except ValueError as error:
+            # an answer in the wrong format: no traceback, the answer says it all
+            failed += 1
+            log.warning(f"{ctx(label)} tried again in the next batch: {error}")
             continue
-        print(note_de or "(nichts gefunden)", "\n  ---\n", note_en or "", flush=True)
+        except Exception:
+            failed += 1
+            # the traceback follows on the next lines
+            log.exception(f"{ctx(label)} failed, tried again in the next batch")
+            continue
+        if note_de:
+            notes += 1
+            log.info(f"{ctx(label)} DE {note_de}")
+            log.info(f"{ctx(label)} EN {note_en}")
+        else:
+            nothing += 1
+            log.info(f"{ctx(label)} nothing found")
         if not dry_run:
             save(production[0], note_de, note_en)
+    log.info(f"{ctx('batch')} {notes} notes, {nothing} nothing found, {failed} failed")
 
 
 def main() -> None:
@@ -243,6 +276,7 @@ def main() -> None:
         run_batch(args.limit, args.title, args.dry_run)
         if args.once or args.dry_run:
             return
+        log.info(f"{ctx('batch')} next batch in {INTERVAL_HOURS:g} h")
         sleep(INTERVAL_HOURS * 3600)
 
 
