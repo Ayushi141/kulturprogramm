@@ -22,6 +22,7 @@ import logging
 import os
 import sys
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from time import monotonic, sleep
 
@@ -36,6 +37,8 @@ API_URL = os.environ.get(
 )
 # productions per batch: the daily cost limit
 BATCH = int(os.environ.get("ENRICH_BATCH", "30"))
+# requests at the same time; the whole batch at once by default
+PARALLEL = int(os.environ.get("ENRICH_PARALLEL", str(BATCH)))
 # hours between batches
 INTERVAL_HOURS = float(os.environ.get("ENRICH_INTERVAL_HOURS", "6"))
 # OpenRouter runs both tools during the request. Results and fetched pages
@@ -242,41 +245,51 @@ def save(production_id: int, note_de: str | None, note_en: str | None) -> None:
         )
 
 
+def enrich(production: tuple, key: str, dry_run: bool) -> str:
+    """
+    Looks up one production and saves its notes. Returns "note", "nothing"
+    or "failed". A failed production stays not looked up, so the next batch
+    tries it again. Runs in a worker thread: it logs, but never raises.
+    """
+    label = production[1]
+    log.info(f"{ctx(label)} looking up at {production[3]}, {production[4]}")
+    try:
+        note_de, note_en = parse(ask(production, key))
+        if not dry_run:
+            save(production[0], note_de, note_en)
+    except ValueError as error:
+        # an answer in the wrong format: no traceback, the answer says it all
+        log.warning(f"{ctx(label)} tried again in the next batch: {error}")
+        return "failed"
+    except Exception:
+        # the traceback follows on the next lines
+        log.exception(f"{ctx(label)} failed, tried again in the next batch")
+        return "failed"
+    if not note_de:
+        log.info(f"{ctx(label)} nothing found")
+        return "nothing"
+    log.info(f"{ctx(label)} DE {note_de}")
+    log.info(f"{ctx(label)} EN {note_en}")
+    return "note"
+
+
 def run_batch(limit: int, title: str | None, dry_run: bool) -> None:
     """
-    Looks up one batch of productions. A failed production is logged and
-    stays not looked up, so the next batch tries it again.
+    Looks up one batch of productions, PARALLEL requests at a time. The
+    requests mostly wait for the API, so threads are enough. Each log line
+    names its production, so the interleaved lines stay readable.
     """
     key = secret("OPENROUTER_API_KEY_FILE")
     productions = pending(limit, title)
-    log.info(f"{ctx('batch')} {len(productions)} productions to look up"
+    log.info(f"{ctx('batch')} {len(productions)} productions to look up,"
+             f" {PARALLEL} at a time"
              + (" (dry run: nothing is saved)" if dry_run else ""))
-    notes = nothing = failed = 0
-    for production in productions:
-        label = production[1]
-        log.info(f"{ctx(label)} looking up at {production[3]}, {production[4]}")
-        try:
-            note_de, note_en = parse(ask(production, key))
-        except ValueError as error:
-            # an answer in the wrong format: no traceback, the answer says it all
-            failed += 1
-            log.warning(f"{ctx(label)} tried again in the next batch: {error}")
-            continue
-        except Exception:
-            failed += 1
-            # the traceback follows on the next lines
-            log.exception(f"{ctx(label)} failed, tried again in the next batch")
-            continue
-        if note_de:
-            notes += 1
-            log.info(f"{ctx(label)} DE {note_de}")
-            log.info(f"{ctx(label)} EN {note_en}")
-        else:
-            nothing += 1
-            log.info(f"{ctx(label)} nothing found")
-        if not dry_run:
-            save(production[0], note_de, note_en)
-    log.info(f"{ctx('batch')} {notes} notes, {nothing} nothing found, {failed} failed")
+    with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
+        results = list(pool.map(lambda p: enrich(p, key, dry_run), productions))
+    log.info(
+        f"{ctx('batch')} {results.count('note')} notes,"
+        f" {results.count('nothing')} nothing found, {results.count('failed')} failed"
+    )
 
 
 def main() -> None:

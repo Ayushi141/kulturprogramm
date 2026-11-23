@@ -316,7 +316,7 @@ plain HTTP; model `ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`); the a
 English, or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
 OpenRouter key into `/etc/kulturprogramm/openrouter_api_key`. Try it: `docker compose run --rm
 --build enricher python main.py --dry-run --limit 5`. Run: `docker compose up -d --build enricher`
-(30 every 6 hours). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
+(30 every 6 hours, sent at once; `ENRICH_PARALLEL`). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
 
 pgAdmin (database admin in the browser) listens only on the server, `127.0.0.1:5050`; never publish
 it (it has had remote-code-execution bugs for logged-in users). Once: `sudo install -o 5050 -g 5050
