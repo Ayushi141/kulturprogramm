@@ -4,9 +4,10 @@ from dataclasses import dataclass
 import hashlib
 import io
 import json
+import logging
 import os
 import re
-import traceback
+import sys
 import httpx
 import psycopg
 from enum import StrEnum
@@ -18,9 +19,23 @@ from zoneinfo import ZoneInfo
 from time import sleep
 
 
-def debug(*args) -> None:
-    """Debug output with a timestamp. flush=True: Docker buffers stdout otherwise."""
-    print(datetime.now().strftime("%H:%M:%S"), *args, flush=True)
+# Every line: time, level, then "<source> | message" (see Source.ctx), so a
+# run reads as one table. LOG_LEVEL=DEBUG adds every event and image lookup.
+# stdout only: Docker interleaves stdout and stderr, which tore tracebacks apart.
+logging.basicConfig(
+    stream=sys.stdout,
+    level=os.environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)-7s %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("scraper")
+# width of the source column (Source.ctx): the longest names but one fit
+CTX_WIDTH = 22
+
+
+def size(response: httpx.Response) -> str:
+    """The response's status and size for a log line: "200, 766 kB"."""
+    return f"{response.status_code}, {len(response.content) // 1000} kB"
 
 
 class Category(StrEnum):
@@ -77,7 +92,7 @@ Image.MAX_IMAGE_PIXELS = None
 MAX_FULL_DECODE_PIXELS = 100_000_000
 
 
-def download_image(source_url: str) -> StoredImage:
+def download_image(source_url: str, ctx: str) -> StoredImage:
     """
     Downloads an image. Up to MAX_SIDE pixels on the long side it keeps the
     original bytes (no re-encoding, which causes compression artifacts);
@@ -85,7 +100,6 @@ def download_image(source_url: str) -> StoredImage:
     A larger image is shrunk to MAX_SIDE and stored as JPEG (PNG if it has
     transparency). Example: a 14000 x 20000 px, 11 MB poster at Krefeld.
     """
-    debug("download image", source_url)
     # some sites (UCI) answer 403 to httpx's default User-Agent
     response = httpx.get(
         source_url,
@@ -93,7 +107,7 @@ def download_image(source_url: str) -> StoredImage:
         timeout=60,
         headers={"User-Agent": "Mozilla/5.0"},
     )
-    debug("  ->", response.status_code, len(response.content), "bytes")
+    log.debug(f"{ctx} image {source_url} -> {size(response)}")
     response.raise_for_status()
     data = response.content
     with Image.open(io.BytesIO(data)) as image:
@@ -102,7 +116,7 @@ def download_image(source_url: str) -> StoredImage:
     with Image.open(io.BytesIO(data)) as image:
         if max(image.size) > MAX_SIDE:
             data, content_type = shrink(image)
-            debug("  shrunk to", len(data), "bytes")
+            log.debug(f"{ctx}   shrunk to {len(data) // 1000} kB")
     # The key is a hash of the content, so a changed image gets a new URL
     # and never collides with an old copy in a browser cache.
     key = hashlib.sha256(data).hexdigest()[:32]
@@ -194,6 +208,15 @@ class Source(ABC):
         self.name = name
         self.website = website
 
+    @property
+    def ctx(self) -> str:
+        """
+        The prefix of every log line about this source: its name in a fixed
+        column, so the messages start at the same position. The longest name
+        (theater-krefeld-moenchengladbach) is cut.
+        """
+        return f"{self.name:<{CTX_WIDTH}.{CTX_WIDTH}} |"
+
     def event_category(
         self, default: Category | None, *labels: str
     ) -> Category | None:
@@ -242,13 +265,12 @@ class Source(ABC):
             return event.image_url
         if not event.url:
             return None
-        debug(f"{self.name}: image lookup on", event.url)
         response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         tag = soup.select_one('meta[property="og:image"][content]')
-        debug("  og:image:", tag["content"] if tag else None)
+        log.debug(f"{self.ctx}   og:image {tag['content'] if tag else None}")
         return str(response.url.join(tag["content"])) if tag else None
 
     def add_images(self, events: list[Event]) -> list[StoredImage]:
@@ -273,9 +295,8 @@ class Source(ABC):
                     ).fetchall()
                 )
         except Exception as error:
-            print(f"{self.name}: could not read stored images: {error!r}")
+            log.warning(f"{self.ctx} could not read stored images: {error!r}")
             known = {}
-        debug(f"{self.name}: {len(known)} productions already have an image")
 
         new: dict[str, StoredImage] = {}
         by_title: dict[str, str | None] = {}
@@ -288,19 +309,16 @@ class Source(ABC):
                 try:
                     source_url = self.scrape_image(event)
                     if source_url:
-                        image = download_image(source_url)
+                        image = download_image(source_url, self.ctx)
                         new[image.key] = image
                         by_title[event.title] = image.key
                 except Exception as error:
-                    print(
-                        f"{self.name}: no image for {event.title!r}: {error!r}",
-                        flush=True,
-                    )
+                    log.warning(f"{self.ctx} no image for {event.title!r}: {error!r}")
             event.image_key = by_title[event.title]
-        debug(
-            f"{self.name}: {len(by_title)} image lookups,"
-            f" {len(new)} downloaded,"
-            f" {sum(1 for e in events if e.image_key)}/{len(events)} events with image"
+        log.info(
+            f"{self.ctx} images: {len(known)} known, {len(by_title)} looked up,"
+            f" {len(new)} new; {sum(1 for e in events if e.image_key)}/{len(events)}"
+            " events have one"
         )
         return list(new.values())
 
@@ -321,11 +339,6 @@ class Source(ABC):
             for e in events
         }
 
-        debug(
-            f"{self.name}: saving {len(venue_rows)} venues,"
-            f" {len(image_rows)} images, {len(productions)} productions,"
-            f" {len(events)} events"
-        )
         with connect() as conn:
             cursor = conn.cursor()
             cursor.executemany(
@@ -378,7 +391,10 @@ class Source(ABC):
                     for e in events
                 ],
             )
-        debug(f"{self.name}: saved")
+        log.info(
+            f"{self.ctx} saved {len(venue_rows)} venues, {len(image_rows)} images,"
+            f" {len(productions)} productions, {len(events)} events"
+        )
 
 
 class Filmkunstkinos(Source):
@@ -386,15 +402,14 @@ class Filmkunstkinos(Source):
     CITY = "Düsseldorf"
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
         events = []
         articles = soup.select("article.col-group")
-        debug(f"{self.name}: {len(articles)} article.col-group")
+        log.info(f"{self.ctx} found {len(articles)} article.col-group")
         for article in articles:
             link = article.select_one("h2.movie-small--title a")
             title = link.find(string=True, recursive=False).strip()
@@ -420,7 +435,7 @@ class Filmkunstkinos(Source):
             category = self.screening_category(title, meta.split("•")[0])
 
             times = article.select("time[datetime]")
-            debug(f"  {title!r} at {name}: {len(times)} screenings, {runtime}")
+            log.debug(f"{self.ctx}   {title!r} at {name}: {len(times)} screenings, {runtime}")
             for time_element in times:
                 starts_at = datetime.fromisoformat(
                     time_element["datetime"]
@@ -442,16 +457,15 @@ class Filmkunstkinos(Source):
 
 class Dhaus(Source):
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         performances = soup.select("div.performance")
-        debug(f"{self.name}: {len(performances)} div.performance")
+        log.info(f"{self.ctx} found {len(performances)} div.performance")
         for performance in performances:
             if "performance--is-cancelled" in performance["class"]:
                 continue
@@ -507,7 +521,7 @@ class Dhaus(Source):
                 if ends_at <= starts_at:
                     ends_at += timedelta(days=1)
 
-            debug(f"  {title!r} at {venue.id}: {starts_at} - {ends_at}")
+            log.debug(f"{self.ctx}   {title!r} at {venue.id}: {starts_at} - {ends_at}")
             events.append(
                 Event(
                     title=title,
@@ -529,16 +543,15 @@ class OperAmRhein(Source):
     )
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         performances = soup.select("div.performance")
-        debug(f"{self.name}: {len(performances)} div.performance")
+        log.info(f"{self.ctx} found {len(performances)} div.performance")
         for performance in performances:
             if "performance--is-cancelled" in performance["class"]:
                 continue
@@ -596,7 +609,7 @@ class OperAmRhein(Source):
                 if ends_at <= starts_at:
                     ends_at += timedelta(days=1)
 
-            debug(f"  {title!r} at {self.VENUE.id}: {starts_at} - {ends_at}")
+            log.debug(f"{self.ctx}   {title!r} at {self.VENUE.id}: {starts_at} - {ends_at}")
             events.append(
                 Event(
                     title=title,
@@ -632,9 +645,8 @@ class SchauspielKoeln(Source):
         Stage, length and image from a production page. Missing details fall
         back to the general venue, no length and no image.
         """
-        debug(f"{self.name}: production page", url)
         response = httpx.get(url, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -662,26 +674,25 @@ class SchauspielKoeln(Source):
                     hours=int(match[1] or 0), minutes=int(match[2] or 0)
                 )
             else:
-                print(f"{self.name}: unknown length {text!r} on {url}")
+                log.warning(f"{self.ctx} unknown length {text!r} on {url}")
 
         image_tag = soup.select_one('meta[property="og:image"][content]')
         image_url = (
             str(response.url.join(image_tag["content"])) if image_tag else None
         )
-        debug(f"  stage {stage!r} -> {venue.id}, length {length}, image {image_url}")
+        log.debug(f"{self.ctx}   stage {stage!r} -> {venue.id}, length {length}, image {image_url}")
         return Production(venue, length, image_url)
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
         events = []
         productions: dict[str, Production] = {}  # one fetch per production page
         activities = soup.select("li.s-bko-activity")
-        debug(f"{self.name}: {len(activities)} li.s-bko-activity")
+        log.info(f"{self.ctx} found {len(activities)} li.s-bko-activity")
         for activity in activities:
             ticket = activity.select_one(".field--name-ticket")
             if ticket and ticket.get_text(strip=True) == "Entfällt":
@@ -693,7 +704,7 @@ class SchauspielKoeln(Source):
             title = link.get_text(strip=True)
             category = self.event_category(Category.THEATER, title, label)
             if not category:
-                debug(f"  skip {title!r} [{label}]")
+                log.debug(f"{self.ctx}   skip {title!r} [{label}]")
                 continue
             url = str(response.url.join(link["href"]))
 
@@ -708,10 +719,10 @@ class SchauspielKoeln(Source):
                     productions[url] = self.production(url)
                 except Exception as error:
                     # the calendar entry is still valid without the details
-                    print(f"{self.name}: no details for {title!r}: {error!r}")
+                    log.warning(f"{self.ctx} no details for {title!r}: {error!r}")
                     productions[url] = Production(self.VENUE, None, None)
             details = productions[url]
-            debug(f"  {title!r} [{label}] {starts_at}")
+            log.debug(f"{self.ctx}   {title!r} [{label}] {starts_at}")
             events.append(
                 Event(
                     title=title,
@@ -742,16 +753,15 @@ class TheaterKrefeldMoenchengladbach(Source):
     }
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         performances = soup.select("article.performance")
-        debug(f"{self.name}: {len(performances)} article.performance")
+        log.info(f"{self.ctx} found {len(performances)} article.performance")
         for performance in performances:
             # badge "Entfällt"
             if "performance--canceled" in performance["class"]:
@@ -834,14 +844,13 @@ class OperWuppertal(Source):
                 "itemsPerPage": 50,
                 "page": page,
             }
-            debug(f"{self.name}: GET", self.API, "page", page)
             response = httpx.get(
                 self.API,
                 params=params,
                 headers={"Accept": "application/ld+json"},
                 timeout=60,
             )
-            debug("  ->", response.status_code, len(response.text), "chars")
+            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
             response.raise_for_status()
             data = response.json()
             performances += data["hydra:member"]
@@ -913,7 +922,7 @@ class OperWuppertal(Source):
                 )
             )
 
-        debug(f"{self.name}: {len(events)} qualifying performances")
+        log.info(f"{self.ctx} found {len(events)} qualifying performances")
         return events
 
     def scrape_image(self, event: Event) -> str | None:
@@ -927,11 +936,10 @@ class OperWuppertal(Source):
         if not match:
             return None
         url = f"{self.API}/{match[1]}"
-        debug(f"{self.name}: image lookup on", url)
         response = httpx.get(
             url, headers={"Accept": "application/ld+json"}, timeout=60
         )
-        debug("  ->", response.status_code)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
         response.raise_for_status()
         image = response.json()["production"].get("image") or {}
         return image.get("src")
@@ -948,16 +956,15 @@ class TheaterEssen(Source):
     }
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         performances = soup.select("div.performance")
-        debug(f"{self.name}: {len(performances)} div.performance")
+        log.info(f"{self.ctx} found {len(performances)} div.performance")
         for performance in performances:
             if "performance--is-cancelled" in performance["class"]:
                 continue
@@ -1037,16 +1044,15 @@ class OperKoeln(Source):
     )
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         activities = soup.select("li.s-bko-activity--schedule")
-        debug(f"{self.name}: {len(activities)} .s-bko-activity")
+        log.info(f"{self.ctx} found {len(activities)} .s-bko-activity")
         for activity in activities:
             time_string = activity.select_one(".s-time-string")
             time_text = time_string.get_text(" ", strip=True)
@@ -1128,13 +1134,12 @@ class SchauspielhausBochum(Source):
             (self.DANCE_URL, Category.TANZ),
             (self.website, Category.THEATER),
         ):
-            debug(f"{self.name}: GET", url)
             response = httpx.get(url, follow_redirects=True, timeout=60)
-            debug("  ->", response.status_code, len(response.text), "chars")
+            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             groups = soup.select(".schedule__group[data-groupdate]")
-            debug(f"{self.name}: {len(groups)} schedule groups")
+            log.info(f"{self.ctx} found {len(groups)} schedule groups")
 
             for group in groups:
                 for item in group.select(".schedule__item"):
@@ -1210,9 +1215,8 @@ class SchauspielhausBochum(Source):
         """
         if not event.url:
             return None
-        debug(f"{self.name}: image lookup on", event.url)
         response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         title = soup.select_one(".production__title-image[style]")
@@ -1235,14 +1239,13 @@ class PinaBausch(Source):
     CITY = "Wuppertal"
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(
             self.website,
             follow_redirects=True,
             timeout=60,
             headers={"User-Agent": "Mozilla/5.0"},
         )
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         page = json.loads(soup.select_one("[data-page]")["data-page"])
@@ -1250,7 +1253,7 @@ class PinaBausch(Source):
 
         events = []
         dates = [d for month in page["props"]["months"] for d in month["dates"]]
-        debug(f"{self.name}: {len(dates)} dates")
+        log.info(f"{self.ctx} found {len(dates)} dates")
         for date in dates:
             piece = date["event"]
             place = piece["place"]
@@ -1285,14 +1288,13 @@ class PinaBausch(Source):
 
     def scrape_image(self, event: Event) -> str | None:
         """The share image from the event page's data-page (no og:image)."""
-        debug(f"{self.name}: image lookup on", event.url)
         response = httpx.get(
             event.url,
             follow_redirects=True,
             timeout=60,
             headers={"User-Agent": "Mozilla/5.0"},
         )
-        debug("  ->", response.status_code)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         page = json.loads(soup.select_one("[data-page]")["data-page"])
@@ -1324,16 +1326,15 @@ class UfaPalastDuesseldorf(Source):
         return timedelta(hours=int(hours), minutes=int(minutes or 0))
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         rows = soup.select("section.day-section article.movie-row")
-        debug(f"{self.name}: {len(rows)} article.movie-row")
+        log.info(f"{self.ctx} found {len(rows)} article.movie-row")
         for row in rows:
             link = row.select_one("a.group[href]")
             title = link.select_one("h2").get_text(" ", strip=True)
@@ -1378,7 +1379,6 @@ class UciKinowelt(Source):
     )
 
     def scrape(self) -> list[Event]:
-        debug(f"{self.name}: GET", self.website)
         # the site answers 403 to httpx's default User-Agent
         response = httpx.get(
             self.website,
@@ -1386,14 +1386,14 @@ class UciKinowelt(Source):
             timeout=60,
             headers={"User-Agent": "Mozilla/5.0"},
         )
-        debug("  ->", response.status_code, len(response.text), "chars")
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         films = soup.select("div.film-container")
-        debug(f"{self.name}: {len(films)} div.film-container")
+        log.info(f"{self.ctx} found {len(films)} div.film-container")
         for film in films:
             link = film.select_one(
                 "h2.film-container__description__text__eventtitle a[href]"
@@ -1409,7 +1409,7 @@ class UciKinowelt(Source):
             category = self.screening_category(title, *info)
             poster = film.select_one("img.film-thumb[src]")
             shows = film.select("a.badge-performance[data-date][data-time]")
-            debug(f"  {title!r}: {len(shows)} screenings, {minutes} min")
+            log.debug(f"{self.ctx}   {title!r}: {len(shows)} screenings, {minutes} min")
             for show in shows:
                 # local clock time; after midnight it is already the next date
                 starts_at = datetime.strptime(
@@ -1468,21 +1468,20 @@ sources = [
 
 if __name__ == "__main__":
     while True:
+        failed = []
         for source in sources:
-            debug(f"=== {source.name} ===")
             try:
                 events = source.scrape()
-                debug(f"{source.name}: scraped {len(events)} events")
+                log.info(f"{source.ctx} scraped {len(events)} events")
                 images = source.add_images(events)
                 source.save(events, images)
             except Exception:
-                print(f"Failed to scrape {source.name}:", flush=True)
-                traceback.print_exc()
-                continue
-            print(
-                f"Scraped {len(events)} events from {source.name}"
-                f" ({len(images)} new images)",
-                flush=True,
-            )
-        debug("run done, sleeping for 24 h")
+                failed.append(source.name)
+                # the traceback follows on the next lines
+                log.exception(f"{source.ctx} failed, nothing saved")
+        log.info(
+            f"{'run':<{CTX_WIDTH}} | {len(sources) - len(failed)}/{len(sources)} sources saved"
+            + (f", failed: {', '.join(failed)}" if failed else "")
+            + "; next run in 24 h"
+        )
         sleep(60 * 60 * 24)

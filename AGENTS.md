@@ -143,15 +143,15 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   events, and `save()` upserts their venues, new images, productions, then the events.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the
   default returns `event.image_url`, else the `og:image` of `event.url`.
-  `Source.add_images(events)` calls it once per title and stores the image's
-  original bytes (Pillow checks the format; over `MAX_SIDE` 2000 px it is shrunk
-  to JPEG, or PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is logged in
-  one line and the event keeps no image. Images already stored for a
-  production (same source and title) are reused, so a run only looks up new productions. The
-  frontend serves images at `/img/<key>` from the database.
-- The run loop scrapes each source in `sources`, adds images, saves, and sleeps
-  for one day. If a source raises, the loop prints the traceback and continues
-  with the next source, so one failing source does not stop the others.
+  `Source.add_images(events)` calls it once per title and stores the original bytes (Pillow checks
+  the format; over `MAX_SIDE` 2000 px shrunk to JPEG, PNG if transparent), keyed by a hash of the
+  bytes. It never raises: a failure is a warning, the event keeps no image. A production's stored
+  image (same source and title) is reused, so a run only looks up new productions.
+- The run loop scrapes each source, adds images, saves, logs which sources failed, sleeps one day.
+  A raising source is logged with its traceback; the others continue.
+- Logging (scraper and enricher): `log.info(f"{self.ctx} …")`, every line `time LEVEL <source or
+  production, fixed column> | message`, stdout only. INFO: a few lines per source; per-event detail
+  is `log.debug` (`LOG_LEVEL=DEBUG`). Keep this format; no `print()`.
 
 ### Scraper implementation rules
 
