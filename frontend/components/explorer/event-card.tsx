@@ -220,17 +220,19 @@ function OtherDates({ shown, all, anchor, over, onShow }: {
 
 /**
  * The context drawer: the note as a whispered speech bubble, its narrator below it. Films get the
- * Abriss, everything else the Souffleur. Without a note (the enricher found nothing) the narrator
- * says one of the fixed lines, the same one for a production every time.
+ * Abriss, everything else the Souffleur. A note is labelled as AI-generated. Without a note (the
+ * enricher found nothing) the narrator says one of the fixed lines, the same one for a production
+ * every time; those are written by hand and carry no label.
  */
 function ContextNote({ context, movie, productionId }: { context: Context; movie: boolean; productionId: string }) {
   const t = useT(), lang = useLang()
   const pick = [...productionId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % t.contextNothing.length
-  const text = context[lang] ?? t.contextNothing[pick]
+  const note = context[lang]
   return <>
     <small>{t.contextHead}</small>
     <div className="x-bubble">
-      <p>{text}</p>
+      <p>{note ?? t.contextNothing[pick]}</p>
+      {note && <small className="x-ai">{t.aiGenerated}</small>}
       <Tail to={MOUTH[movie ? 'abriss' : 'souffleur']} />
     </div>
     <div className="x-narrator">

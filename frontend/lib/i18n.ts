@@ -105,6 +105,8 @@ const en = {
   // the context drawer: a note by the Souffleur (the Abriss for films)
   context: 'Context',
   contextHead: 'CONTEXT',
+  /** Below a note the enricher wrote; the fixed lines are written by hand and carry no label. */
+  aiGenerated: 'AI-GENERATED, MAY CONTAIN ERRORS',
   closeContext: 'Close context',
   souffleur: 'The Souffleur',
   souffleurAbout: 'Sits at the front of the stage and whispers what you should know.',
@@ -258,6 +260,7 @@ const de: Dict = {
   openDate: when => `${when} öffnen`,
   context: 'Kontext',
   contextHead: 'KONTEXT',
+  aiGenerated: 'KI-GENERIERT, KANN FEHLER ENTHALTEN',
   closeContext: 'Kontext schließen',
   souffleur: 'Der Souffleur',
   souffleurAbout: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.',
