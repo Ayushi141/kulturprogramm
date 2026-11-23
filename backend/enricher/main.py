@@ -1,8 +1,10 @@
 """
 Writes the context notes for productions (the speech bubble in the card's
 drawer). For each production that has upcoming dates and was not looked up
-yet, the enricher sends one request to the Claude API. Claude searches the
-web, reads the pages it finds and writes the note in German and English.
+yet, the enricher sends one request through OpenRouter. The model searches
+the web, reads the pages it finds and writes the note in German and English.
+OpenRouter runs the search and the page fetches itself (its server tools),
+so any model with tool calling works: change ENRICH_MODEL to switch.
 
 The enricher writes only the columns note_de, note_en and enriched_at of
 `productions`. The scraper writes the other columns.
@@ -26,14 +28,17 @@ from time import monotonic, sleep
 import httpx
 import psycopg
 
-MODEL = os.environ.get("ENRICH_MODEL", "claude-sonnet-5-5")
-API_URL = "https://api.anthropic.com/v1/messages"
-API_VERSION = "2026-10-21"
+# a model slug from openrouter.ai/models
+MODEL = os.environ.get("ENRICH_MODEL", "anthropic/claude-sonnet-5.5")
+# OpenAI-compatible Chat Completions. eu.openrouter.ai keeps requests in the EU.
+API_URL = os.environ.get(
+    "ENRICH_API_URL", "https://openrouter.ai/api/v1/chat/completions"
+)
 # productions per batch: the daily cost limit
 BATCH = int(os.environ.get("ENRICH_BATCH", "30"))
 # hours between batches
 INTERVAL_HOURS = float(os.environ.get("ENRICH_INTERVAL_HOURS", "6"))
-# the answer when Claude found nothing worth telling
+# the answer when the model found nothing worth telling
 NOTHING = "NICHTS"
 
 SYSTEM = """\
@@ -148,8 +153,8 @@ def pending(limit: int, title: str | None) -> list[tuple]:
 
 def ask(production: tuple, key: str) -> str:
     """
-    Sends one production to Claude and returns the text of the answer.
-    Claude runs the web search and web fetch itself, on the API's side.
+    Sends one production to the model and returns the text of the answer.
+    OpenRouter runs the web searches and page fetches during the request.
     """
     _, title, category, venues, city, url = production
     started = monotonic()
@@ -159,47 +164,45 @@ def ask(production: tuple, key: str) -> str:
         f"Spielstätte: {venues}, {city}",
     ]
     if url:
-        # web fetch can only read URLs that appear in a user message
         lines.append(f"Seite der Spielstätte: {url}")
-    messages = [{"role": "user", "content": "\n".join(lines)}]
-    tools = [
-        {"type": "web_search_20250305", "name": "web_search", "max_uses": 5},
-        {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 5},
-    ]
-    done = []  # content of paused requests, sent back to continue the turn
-    while True:
-        response = httpx.post(
-            API_URL,
-            headers={
-                "x-api-key": key,
-                "anthropic-version": API_VERSION,
-                "content-type": "application/json",
-            },
-            json={
-                "model": MODEL,
-                "max_tokens": 16000,
-                "system": SYSTEM,
-                "messages": messages,
-                "tools": tools,
-            },
-            timeout=600,
-        )
-        response.raise_for_status()
-        body = response.json()
-        # a long search can pause the turn: send the content back to continue it
-        if body["stop_reason"] != "pause_turn":
-            break
-        done += body["content"]
-        messages = [messages[0], {"role": "assistant", "content": done}]
-    usage = body["usage"]
-    tools = usage.get("server_tool_use", {})
-    log.info(
-        f"{ctx(title)} {usage['input_tokens']} in, {usage['output_tokens']} out tokens,"
-        f" {tools.get('web_search_requests', 0)} searches,"
-        f" {tools.get('web_fetch_requests', 0)} fetches, {monotonic() - started:.0f} s"
+    response = httpx.post(
+        API_URL,
+        headers={
+            "Authorization": f"Bearer {key}",
+            # attribution shown in the OpenRouter dashboard
+            "HTTP-Referer": "https://kulturprogramm.eu",
+            "X-Title": "kulturprogramm enricher",
+        },
+        json={
+            "model": MODEL,
+            "max_tokens": 16000,
+            "messages": [
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": "\n".join(lines)},
+            ],
+            "tools": [
+                {"type": "openrouter:web_search", "parameters": {"max_uses": 5}},
+                {"type": "openrouter:web_fetch", "parameters": {"max_uses": 5}},
+            ],
+        },
+        timeout=600,
     )
-    # citations split the answer into several text blocks
-    return "".join(b["text"] for b in body["content"] if b["type"] == "text").strip()
+    response.raise_for_status()
+    body = response.json()
+    choice = body["choices"][0]
+    usage = body.get("usage", {})
+    tools = usage.get("server_tool_use_details", {})
+    log.info(
+        f"{ctx(title)} {usage.get('prompt_tokens', 0)} in,"
+        f" {usage.get('completion_tokens', 0)} out tokens,"
+        f" {tools.get('web_search_requests', 0)} searches,"
+        f" {tools.get('tool_calls_executed', 0)} tool calls,"
+        f" ${usage.get('cost', 0):.3f}, {monotonic() - started:.0f} s"
+    )
+    # "length": max_tokens reached, the note may be cut off
+    if choice.get("finish_reason") not in ("stop", None):
+        raise ValueError(f"answer ended early: {choice.get('finish_reason')}")
+    return (choice["message"].get("content") or "").strip()
 
 
 def parse(text: str) -> tuple[str | None, str | None]:
@@ -233,7 +236,7 @@ def run_batch(limit: int, title: str | None, dry_run: bool) -> None:
     Looks up one batch of productions. A failed production is logged and
     stays not looked up, so the next batch tries it again.
     """
-    key = secret("ANTHROPIC_API_KEY_FILE")
+    key = secret("OPENROUTER_API_KEY_FILE")
     productions = pending(limit, title)
     log.info(f"{ctx('batch')} {len(productions)} productions to look up"
              + (" (dry run: nothing is saved)" if dry_run else ""))
