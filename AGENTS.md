@@ -46,53 +46,52 @@ aggregator/
 
 ## Database
 
-The current schema is in `backend/deploy/init.sql`:
+The schema, in short (full: `backend/deploy/init.sql`):
 
 ```sql
-CREATE TABLE venues (
-    id   text PRIMARY KEY,
-    name text NOT NULL,
-    city text NOT NULL
+-- venues (id, name, city); images (key: first 32 hex digits of the bytes' sha256,
+-- source_url, content_type, data, fetched_at), served at /img/<key>
+CREATE TABLE productions (  -- one per title per source (Source.name)
+    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source      text NOT NULL,
+    title       text NOT NULL,
+    category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
+    image_key   text REFERENCES images (key),
+    note_de     text,          -- context note (enricher); NULL with enriched_at set: nothing found
+    note_en     text,
+    enriched_at timestamptz,   -- NULL: not looked up yet
+    UNIQUE (source, title)
 );
 
-CREATE TABLE images (
-    key          text PRIMARY KEY,  -- sha256 of the image bytes (first 32 hex digits)
-    source_url   text        NOT NULL,
-    content_type text        NOT NULL,
-    data         bytea       NOT NULL,
-    fetched_at   timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE events (
-    id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    title      text        NOT NULL,
-    venue_id   text        NOT NULL REFERENCES venues (id),
-    category   text        NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
-    starts_at  timestamptz NOT NULL,
-    ends_at    timestamptz,
-    url        text,
-    image_key  text REFERENCES images (key),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (title, venue_id, starts_at)
+CREATE TABLE events (  -- one dated performance or screening
+    id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    production_id bigint      NOT NULL REFERENCES productions (id),
+    venue_id      text        NOT NULL REFERENCES venues (id),
+    starts_at     timestamptz NOT NULL,
+    ends_at       timestamptz,
+    url           text,
+    updated_at    timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (production_id, venue_id, starts_at)
 );
 CREATE INDEX events_starts_at ON events (starts_at);  -- the frontend's window
+CREATE INDEX events_production_id ON events (production_id);
 
-CREATE TABLE featured (
-    title    text PRIMARY KEY,  -- event title shown in the "In focus" card
-    until    date,              -- last day (inclusive); NULL = until deleted
-    added_at timestamptz NOT NULL DEFAULT now()
+CREATE TABLE featured (  -- productions shown in the "In focus" card
+    production_id bigint PRIMARY KEY REFERENCES productions (id) ON DELETE CASCADE,
+    until         date,  -- last day (inclusive); NULL = until deleted
+    added_at      timestamptz NOT NULL DEFAULT now()
 );
 ```
 
 `init.sql` runs when PostgreSQL initializes an empty data volume; changing it does not update an
-existing database. Recreate the database (see `docker compose down -v` below) or migrate it by hand,
-e.g. for the category check and index: `ALTER TABLE events ADD CHECK (category IN (...))`, `CREATE
-INDEX ...`.
+existing database. Recreate the database (`docker compose down -v`, then start PostgreSQL and run
+the scraper; it refills everything in minutes). No migration files.
 
-Each row is one event at one start time; `ends_at` is NULL when the source lists no end. `save()`
-upserts venues and new images, then on a key conflict updates `category`, `ends_at`, `url`,
-`image_key` (kept when the new lookup found none) and `updated_at`. Events that disappear from a
-program are not removed, so cancelled or expired rows can remain.
+Title, category and image live once per production; events hold only the date data. `save()`
+upserts venues and new images, then productions (category, `image_key` kept when the new lookup
+found none), then events (`ends_at`, `url`, `updated_at` on a conflict). Two writers share
+`productions`: the scraper and the enricher each update only their own columns, never whole rows.
+Events that disappear from a program are not removed, so cancelled or expired rows can remain.
 
 ## Frontend typography
 
@@ -148,14 +147,14 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   optional `image_url` (set by `scrape()` when the program page shows one) and
   `image_key` (set by `add_images()`).
 - `Source` stores a key and URL; its abstract `scrape()` fetches and parses
-  events, and `save()` upserts their venues, new images, then the events.
+  events, and `save()` upserts their venues, new images, productions, then the events.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the
   default returns `event.image_url`, else the `og:image` of `event.url`.
   `Source.add_images(events)` calls it once per title and stores the image's
   original bytes (Pillow checks the format; over `MAX_SIDE` 2000 px it is shrunk
   to JPEG, or PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is logged in
-  one line and the event keeps no image. Images already stored for an event
-  page are reused, so a run only fetches pages of new productions. The
+  one line and the event keeps no image. Images already stored for a
+  production (same source and title) are reused, so a run only looks up new productions. The
   frontend serves images at `/img/<key>` from the database.
 - The run loop scrapes each source in `sources`, adds images, saves, and sleeps
   for one day. If a source raises, the loop prints the traceback and continues
@@ -303,17 +302,18 @@ Query the database (`docker compose exec postgres psql -U kultur -d kultur`), fo
 times in Berlin time:
 
 ```sql
-SELECT title, starts_at AT TIME ZONE 'Europe/Berlin'
-FROM events
-ORDER BY starts_at;
+SELECT p.title, e.starts_at AT TIME ZONE 'Europe/Berlin'
+FROM events e JOIN productions p ON p.id = e.production_id
+ORDER BY e.starts_at;
 ```
 
-Delete all rows while keeping the table: `TRUNCATE events;`. Feature a production in the "In focus" card (title as in `events`; the card
-shows its next performance, from the selected day on):
+Feature a production in the "In focus" card (the card shows its next performance, from the
+selected day on):
 
 ```sql
-INSERT INTO featured (title, until) VALUES ('Der Hobbit', '2026-11-30');
-DELETE FROM featured WHERE title = 'Der Hobbit';
+INSERT INTO featured (production_id, until)
+SELECT id, '2026-11-30' FROM productions WHERE title = 'Der Hobbit';
+DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title = 'Der Hobbit';
 ```
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
