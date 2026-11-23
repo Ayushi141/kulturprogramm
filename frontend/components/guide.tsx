@@ -153,6 +153,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
     picked: it => planFor(it.day).some(i => i.id === it.id),
     later: it => !!laterFrom && it.day >= laterFrom,
     over: it => !!now && it.day < now.day,
+    context: it => programme.contexts?.[it.ev.productionId],
   }
 
   return (

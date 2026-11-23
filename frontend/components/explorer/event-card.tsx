@@ -5,8 +5,10 @@ import { spanLabel, type Item } from '@/lib/plan'
 import { dayLabel, fmt, shiftDate, weekday } from '@/lib/time'
 import { shareLine, sharePath } from '@/lib/share'
 import { useLang, useT } from '../i18n'
+import type { Context } from '@/lib/types'
 import { Picture } from '../picture'
 import { CAT } from './categories'
+import { Abriss, MOUTH, Souffleur } from './mascots'
 
 export type Relation = { text: string; strong: boolean } | null
 
@@ -24,6 +26,8 @@ export type CardData = {
   later: (it: Item) => boolean
   /** On a past day: only a shared link opens such a card. */
   over: (it: Item) => boolean
+  /** The context note of the production; undefined when it was not looked up yet. */
+  context: (it: Item) => Context | undefined
 }
 export const CardContext = createContext<CardData | null>(null)
 
@@ -57,8 +61,10 @@ export function EventCard({ it, onToggle, onClose }: {
   const others = all.filter(d => d.id !== shown.id)
   const over = (d: Item) => data?.over(d) ?? false
   const rel = data?.relation(shown) ?? null, picked = data?.picked(shown) ?? false, later = data?.later(shown) ?? false
-  // a past performance (from a shared link) opens with its next dates, the grid starting at the first of them
-  const [drawer, setDrawer] = useState(() => over(it) && all.length > 1)
+  const context = data?.context(shown)
+  // one drawer at a time; a past performance (from a shared link) opens with its next dates, the grid starting at the first of them
+  const [drawer, setDrawer] = useState<'dates' | 'context' | null>(() => over(it) && all.length > 1 ? 'dates' : null)
+  const toggle = (d: 'dates' | 'context') => setDrawer(open => open === d ? null : d)
   const anchor = over(it) ? (all.find(d => !over(d))?.day ?? it.day) : it.day
   const [copied, setCopied] = useState(false)
   /** Phones open their share menu; elsewhere the link is copied. */
@@ -98,10 +104,19 @@ export function EventCard({ it, onToggle, onClose }: {
         <small>{t.cat[shown.category].tag} / {t.dateline(t.wdl[weekday(shown.day)].toUpperCase(), dayLabel(shown.day))}</small>
         <div className="x-tt">{shown.ev.title}</div>
         <div className="x-tm">{spanLabel(shown, t)}<br />{shown.venue.name} · {shown.venue.city}{shown.ev.price && <> · {shown.ev.price}</>}</div>
-        {others.length > 0 && (
-          <button className="x-more" onClick={() => setDrawer(d => !d)} aria-expanded={drawer}>
-            {t.moreDates(others.length)} <ArrowRight size={13} />
-          </button>
+        {(others.length > 0 || context) && (
+          <div className="x-tags">
+            {others.length > 0 && (
+              <button className="x-more" onClick={() => toggle('dates')} aria-expanded={drawer === 'dates'}>
+                {t.moreDates(others.length)} <ArrowRight size={13} />
+              </button>
+            )}
+            {context && (
+              <button className="x-more" onClick={() => toggle('context')} aria-expanded={drawer === 'context'}>
+                {t.context} <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
         )}
         {shown.ev.note && <p className="x-tm">{shown.ev.note}</p>}
         {over(shown)
@@ -119,10 +134,16 @@ export function EventCard({ it, onToggle, onClose }: {
           </button>
         </div>
       </div>
-      {data && drawer && others.length > 0 && (
+      {data && drawer === 'dates' && others.length > 0 && (
         <section className={onTop ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.otherDates}>
-          <button className="x-popclose" ref={closeBtn} aria-label={t.closeDates} onClick={() => setDrawer(false)}><X size={15} /></button>
+          <button className="x-popclose" ref={closeBtn} aria-label={t.closeDates} onClick={() => setDrawer(null)}><X size={15} /></button>
           <OtherDates shown={shown} all={all} anchor={anchor} over={over} onShow={setShown} />
+        </section>
+      )}
+      {drawer === 'context' && context && (
+        <section className={onTop ? 'x-drawer x-drawer-over x-drawer-grow' : 'x-drawer x-drawer-grow'} aria-label={t.context}>
+          <button className="x-popclose" ref={closeBtn} aria-label={t.closeContext} onClick={() => setDrawer(null)}><X size={15} /></button>
+          <ContextNote context={context} movie={shown.category === 'movies'} productionId={shown.ev.productionId} />
         </section>
       )}
     </div>
@@ -195,4 +216,43 @@ function OtherDates({ shown, all, anchor, over, onShow }: {
         </button>)}
     </div>
   </>
+}
+
+/**
+ * The context drawer: the note as a whispered speech bubble, its narrator below it. Films get the
+ * Abriss, everything else the Souffleur. Without a note (the enricher found nothing) the narrator
+ * says one of the fixed lines, the same one for a production every time.
+ */
+function ContextNote({ context, movie, productionId }: { context: Context; movie: boolean; productionId: string }) {
+  const t = useT(), lang = useLang()
+  const pick = [...productionId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % t.contextNothing.length
+  const text = context[lang] ?? t.contextNothing[pick]
+  return <>
+    <small>{t.contextHead}</small>
+    <div className="x-bubble">
+      <p>{text}</p>
+      <Tail to={MOUTH[movie ? 'abriss' : 'souffleur']} />
+    </div>
+    <div className="x-narrator">
+      {movie ? <Abriss /> : <Souffleur />}
+      <div><b>{movie ? t.abriss : t.souffleur}</b><span>{movie ? t.abrissAbout : t.souffleurAbout}</span></div>
+    </div>
+  </>
+}
+
+/**
+ * The dashed tail of the speech bubble, from the bubble's bottom edge to the narrator's mouth.
+ * `to` is the mouth in the narrator drawing, which starts 6 px above the bubble's bottom edge
+ * (`.x-narrator` in explorer.css) at the bubble's left edge.
+ */
+function Tail({ to: [x, y] }: { to: readonly [number, number] }) {
+  // the tail starts 1.5 px above the bubble edge (it covers the border) and ends at the mouth
+  const base = [x + 6, x + 26], tip = y - 6 + 1.5
+  return (
+    <svg className="x-tail" width={base[1] + 2} height={tip + 2} aria-hidden="true">
+      <path d={`M${base[0]} 0 L${x} ${tip} L${base[1]} 0 Z`} fill="var(--yellow)" />
+      <path d={`M${base[0]} 0 L${x} ${tip} L${base[1]} 0`} fill="none" stroke="var(--ink)" strokeWidth="1.5" strokeDasharray="4 3" />
+      <path d={`M${base[0] + 1} .75 H${base[1] - 1}`} stroke="var(--yellow)" strokeWidth="3" />
+    </svg>
+  )
 }

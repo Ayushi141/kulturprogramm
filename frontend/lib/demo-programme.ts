@@ -5,7 +5,7 @@
  * links point to the venue home pages.
  * Used by `getProgramme()` when no database is configured.
  */
-import type { Category, Event, Programme, Venue } from './types'
+import type { Category, Context, Event, Programme, Venue } from './types'
 import { cultureDay, fromCultureDay, shiftDate, weekday } from './time'
 
 // north to south: Duisburg → Düsseldorf → Köln
@@ -118,8 +118,21 @@ function dayProgramme(day: string, i: number): Event[] {
   return out
 }
 
+/** Context notes as the enricher writes them; a null note shows a fixed line. */
+const DEMO_CONTEXTS: Record<string, Context> = {
+  'oper|Die Zauberflöte': {
+    de: 'Mozarts letzte Oper, uraufgeführt im September 1791, gut zwei Monate vor seinem Tod. Den Text schrieb Emanuel Schikaneder, und den Papageno hat er gleich selbst gesungen.',
+    en: "Mozart's last opera, first performed in September 1791, barely two months before he died. Emanuel Schikaneder wrote the libretto, then sang Papageno himself.",
+  },
+  'oper-k|Hänsel und Gretel': { de: null, en: null },
+  'blackbox|Metropolis (Stummfilm + Live-Klavier)': {
+    de: 'Fritz Lang, 1927. Jahrzehntelang fehlte ein Viertel des Films, bis 2008 in Buenos Aires eine fast vollständige Kopie auftauchte.',
+    en: 'Fritz Lang, 1927. For decades a quarter of the film was missing, until a nearly complete print turned up in Buenos Aires in 2008.',
+  },
+}
+
 export function demoProgramme(now = new Date()): Programme {
   const today = cultureDay(now).day
   const events = Array.from({ length: HORIZON }, (_, i) => dayProgramme(shiftDate(today, i), i)).flat()
-  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['schauspiel|Der Hobbit'], demo: true }
+  return { venues: VENUES.map(({ url, ...v }) => v), events, generatedAt: now.toISOString(), updatedAt: now.toISOString(), featured: ['schauspiel|Der Hobbit'], contexts: DEMO_CONTEXTS, demo: true }
 }
