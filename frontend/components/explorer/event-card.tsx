@@ -141,7 +141,7 @@ export function EventCard({ it, onToggle, onClose }: {
         </section>
       )}
       {drawer === 'context' && context && (
-        <section className={onTop ? 'x-drawer x-drawer-over x-drawer-grow' : 'x-drawer x-drawer-grow'} aria-label={t.context}>
+        <section className={onTop ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.context}>
           <button className="x-popclose" ref={closeBtn} aria-label={t.closeContext} onClick={() => setDrawer(null)}><X size={15} /></button>
           <ContextNote context={context} movie={shown.category === 'movies'} productionId={shown.ev.productionId} />
         </section>
