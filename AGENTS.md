@@ -1,17 +1,16 @@
 # AGENTS.md
 
-Repository notes for coding agents. Verify operational details against the server before relying on
-them; only files in this repository were checked for this document.
+Repository notes for coding agents. Verify operational details against the server before relying on them.
 
 ## Purpose and layout
 
-This project collects cultural events from venue websites, stores them in
-PostgreSQL, and displays upcoming events in a Next.js frontend.
+This project collects cultural events from venue websites, stores them in PostgreSQL, and displays upcoming events in a Next.js frontend.
 
 ```text
 aggregator/
 ├── backend/
 │   ├── deploy/       # Docker Compose and database initialization SQL
+│   ├── enricher/     # writes the context notes with the Claude API (main.py, Dockerfile)
 │   └── scraper/      # Python scraper and its Dockerfile
 ├── frontend/         # Next.js frontend
 └── pyproject.toml    # uv project for local scraper development (with uv.lock)
@@ -19,13 +18,11 @@ aggregator/
 
 ## Runtime and services
 
-- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, frontend and pgAdmin services
+- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, enricher, frontend and pgAdmin services
   (paths relative to `backend/deploy/`; run Compose there, project `deploy`).
-- PostgreSQL uses `postgres:18`; the configured database and user are both
-  `kultur`.
-- The scraper image uses `python:3.15-slim`. Its dependencies are `httpx`,
-  `beautifulsoup4`, `psycopg[binary]` 3, and `pillow`, installed unpinned in
-  `backend/scraper/Dockerfile`.
+- PostgreSQL uses `postgres:18`; the configured database and user are both `kultur`.
+- Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `psycopg[binary]` 3 (scraper
+  also `beautifulsoup4`, `pillow`).
 - The frontend is a Next.js application (`node:22-alpine` image, built from
   `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
   reads `venues` and events from 6 hours ago to 183 days ahead, and maps
@@ -37,6 +34,8 @@ aggregator/
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
+  "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
+  speaks, the Abriss for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
@@ -95,10 +94,8 @@ Events that disappear from a program are not removed, so cancelled or expired ro
 
 ## Frontend typography
 
-All text styles are in the "Type system" block at the end of
-`frontend/app/explorer.css`; the timeline SVG uses the same styles through `T`
-in `frontend/components/explorer/timeline.tsx`. Use one of these seven styles
-instead of adding new sizes or weights:
+All text styles are in the "Type system" block at the end of `frontend/app/explorer.css`; the
+timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no new sizes or weights:
 
 | Style | Font | Use |
 |---|---|---|
@@ -110,21 +107,17 @@ instead of adding new sizes or weights:
 | title-m | Poster 22 | card, step and tooltip titles |
 | title-l | Poster 32 | section headings |
 
-- Sizes are written as `calc(N * var(--zs))`. `--zs` scales from 1px to 1.5px
-  with the page, like the timeline's zoom `Z`, so chart and page text match.
+- Sizes are `calc(N * var(--zs))`; `--zs` scales 1–1.5px with the page, like the timeline's zoom `Z`.
 - Secondary text is grey (`#565247`), never smaller or lighter.
-- Exceptions with fixed sizes: the logo, the hero headline, the view toggle
-  and category buttons (Poster 18px, upper case, 15px on phones), the day-card dates (Poster 24px), and the
-  small day-card and "In focus" lines (mono 11px), and the hint, "Stand" and
-  zoom-hint lines around the chart (mono 12px). `globals.css` holds v0 template leftovers; do not set fonts there.
+- Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
+  on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
+  "Stand" and zoom-hint lines (mono 12px). `globals.css` holds v0 leftovers; set no fonts there.
 
 ## Configuration and secrets
 
-Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, and `PGPASSWORD_FILE` for the scraper and frontend
-(the frontend also gets `PGPORT`). libpq ignores `PGPASSWORD_FILE`, so the scraper and frontend read
-that file themselves and pass the password to `psycopg.connect()` and the `pg` `Pool`.
-
-Both receive the `pg_password` Compose secret at `/run/secrets/pg_password`; PostgreSQL bind-mounts
+Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, `PGPASSWORD_FILE` (frontend also `PGPORT`). libpq
+ignores `PGPASSWORD_FILE`: scraper, enricher and frontend read the file and pass the password on.
+All receive the `pg_password` Compose secret at `/run/secrets/pg_password`; PostgreSQL bind-mounts
 the host file to that path and reads it through `POSTGRES_PASSWORD_FILE`. Do not put credentials in
 the repository. PostgreSQL and frontend ports are bound to `127.0.0.1` on the host.
 
@@ -285,8 +278,7 @@ page has not changed.
   screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
 
 ### Rheinisches Landestheater
-- Supplied page currently has filters but no `.performance` records or feed;
-  it is not registered until dated event data is served.
+- Not registered: its page has filters but no dated events yet.
 
 ## Common operations
 
@@ -318,6 +310,14 @@ DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title 
 
 `docker compose down -v` deletes the PostgreSQL data volume and its data.
 
+Enricher (`backend/enricher/main.py`): for productions with upcoming dates and `enriched_at` NULL,
+one request to the Claude API with web search and fetch (model `ENRICH_MODEL`, default
+`claude-sonnet-5-5`); the answer is German, `---`, English, or `NICHTS`. The prompt (`SYSTEM`) holds
+the Souffleur's voice and rules. Once: put a Console API key into
+`/etc/kulturprogramm/anthropic_api_key`. Try it: `docker compose run --rm --build enricher python
+main.py --dry-run --limit 5` (prints only). Run: `docker compose up -d --build enricher` (a batch of
+30 every 6 hours). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
+
 pgAdmin (database admin in the browser) listens only on the server, `127.0.0.1:5050`; never publish
 it (it has had remote-code-execution bugs for logged-in users). Once: `sudo install -o 5050 -g 5050
 -m 600 /dev/null /etc/kulturprogramm/pgadmin_password` (5050: the container user), write a password
@@ -330,8 +330,8 @@ into it, `docker compose -p deploy up -d pgadmin`. Use: `ssh -L 5050:127.0.0.1:5
 The server's `~/aggregator` is a git clone (read-only deploy key). The systemd timer
 `aggregator-deploy.timer` (files in `backend/deploy/systemd/`) runs `backend/deploy/update.sh` a
 minute after each run: when `main` has new commits, it resets the clone to them and rebuilds the
-frontend (project `deploy`); logs: `journalctl -u aggregator-deploy`. The scraper is not redeployed
-(no timer, loops forever): restart it by hand after changes.
+frontend (project `deploy`); logs: `journalctl -u aggregator-deploy`. Scraper and enricher are not
+redeployed (they loop forever): rebuild them by hand after changes.
 
 ## Working in this repository
 
@@ -346,5 +346,5 @@ frontend (project `deploy`); logs: `journalctl -u aggregator-deploy`. The scrape
 
 ## Open implementation questions
 
-- `Event` inherits from `ABC` without abstract methods; make it a dataclass?
-- Decide how to remove events saved before they were cancelled.
+- `Event` inherits from `ABC` without abstract methods; make it a dataclass? Removing events saved
+  before they were cancelled?

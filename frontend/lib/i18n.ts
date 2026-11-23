@@ -102,6 +102,22 @@ const en = {
   calMonths: (from: string) => `7 MONTHS FROM ${from.toUpperCase()}`,
   closeDates: 'Close dates',
   openDate: (when: string) => `Open ${when}`,
+  // the context drawer: a note by the Souffleur (the Abriss for films)
+  context: 'Context',
+  contextHead: 'CONTEXT',
+  /** Below a note the enricher wrote; the fixed lines are written by hand and carry no label. */
+  aiGenerated: 'AI-GENERATED, MAY CONTAIN ERRORS',
+  closeContext: 'Close context',
+  souffleur: 'The Souffleur',
+  souffleurAbout: 'Sits at the front of the stage and whispers what you should know.',
+  abriss: 'The Stub',
+  abrissAbout: 'The part of the ticket you keep.',
+  /** Said when the enricher found nothing; one is picked per production. */
+  contextNothing: [
+    'I looked. Nothing that the listing does not already say.',
+    'Honestly: about this one I know no more than the programme does.',
+    'No prizes, no scandals, no anecdotes. Sometimes an evening is just an evening.',
+  ],
 
   // how an event relates to the plan
   inYourEvening: 'In your evening',
@@ -242,6 +258,19 @@ const de: Dict = {
   calMonths: from => `7 MONATE AB ${from.toUpperCase()}`,
   closeDates: 'Termine schließen',
   openDate: when => `${when} öffnen`,
+  context: 'Kontext',
+  contextHead: 'KONTEXT',
+  aiGenerated: 'KI-GENERIERT, KANN FEHLER ENTHALTEN',
+  closeContext: 'Kontext schließen',
+  souffleur: 'Der Souffleur',
+  souffleurAbout: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.',
+  abriss: 'Der Abriss',
+  abrissAbout: 'Der Teil der Karte, den man behält.',
+  contextNothing: [
+    'Hab gesucht. Nichts gefunden, was nicht schon im Programm steht.',
+    'Ehrlich: Zu diesem Abend weiß ich auch nicht mehr als das Programmheft.',
+    'Keine Preise, keine Skandale, keine Anekdoten. Manchmal ist ein Abend einfach ein Abend.',
+  ],
 
   inYourEvening: 'In deinem Abend',
   alreadyOver: 'Schon vorbei',

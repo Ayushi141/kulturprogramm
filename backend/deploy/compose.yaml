@@ -30,6 +30,24 @@ services:
       postgres:
         condition: service_healthy
 
+  # Writes the context notes (see backend/enricher/main.py). Started by hand,
+  # like the scraper; update.sh rebuilds only the frontend.
+  enricher:
+    build: ../enricher
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: kultur
+      PGDATABASE: kultur
+      PGPASSWORD_FILE: /run/secrets/pg_password
+      ANTHROPIC_API_KEY_FILE: /run/secrets/anthropic_api_key
+    secrets:
+      - pg_password
+      - anthropic_api_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend:
     build: ../../frontend
     restart: unless-stopped
@@ -73,6 +91,9 @@ secrets:
   # read by the container user pgadmin (UID 5050): chown 5050 on the host
   pgadmin_password:
     file: /etc/kulturprogramm/pgadmin_password
+  # an API key of the Claude Console organization (linked to the Max plan for its credits)
+  anthropic_api_key:
+    file: /etc/kulturprogramm/anthropic_api_key
 
 volumes:
   pgdata:
