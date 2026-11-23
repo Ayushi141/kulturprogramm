@@ -52,6 +52,10 @@ TOOLS = [
         "parameters": {"engine": "openrouter", "max_uses": 3, "max_content_tokens": 10000},
     },
 ]
+# Which provider serves the model (many host DeepSeek): always the cheapest
+# one that supports every parameter of the request, so tool calling too.
+# Data collection is allowed: the notes are about public facts.
+PROVIDER = {"sort": "price", "require_parameters": True}
 # the answer when the model found nothing worth telling
 NOTHING = "NICHTS"
 
@@ -195,6 +199,7 @@ def ask(production: tuple, key: str) -> str:
                 {"role": "user", "content": "\n".join(lines)},
             ],
             "tools": TOOLS,
+            "provider": PROVIDER,
         },
         timeout=600,
     )
@@ -208,7 +213,8 @@ def ask(production: tuple, key: str) -> str:
         f" {usage.get('completion_tokens', 0)} out tokens,"
         f" {tools.get('web_search_requests', 0)} searches,"
         f" {tools.get('tool_calls_executed', 0)} tool calls,"
-        f" ${usage.get('cost', 0):.3f}, {monotonic() - started:.0f} s"
+        f" ${usage.get('cost', 0):.3f}, {monotonic() - started:.0f} s,"
+        f" via {body.get('provider', '?')}"
     )
     # "length": max_tokens reached, the note may be cut off
     if choice.get("finish_reason") not in ("stop", None):
