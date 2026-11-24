@@ -102,7 +102,7 @@ const en = {
   calMonths: (from: string) => `7 MONTHS FROM ${from.toUpperCase()}`,
   closeDates: 'Close dates',
   openDate: (when: string) => `Open ${when}`,
-  // the context drawer: a note by the Souffleur (the Abriss for films)
+  // the context drawer: a note by the Souffleur (the Ticket for films)
   context: 'Context',
   contextHead: 'CONTEXT',
   /** Below a note the enricher wrote; the fixed lines are written by hand and carry no label. */
@@ -110,8 +110,8 @@ const en = {
   closeContext: 'Close context',
   souffleur: 'The Souffleur',
   souffleurAbout: 'Sits at the front of the stage and whispers what you should know.',
-  abriss: 'The Stub',
-  abrissAbout: 'The part of the ticket you keep.',
+  ticket: 'The Ticket',
+  ticketAbout: 'Gets into every film and knows what it is about.',
   /** Said when the enricher found nothing; one is picked per production. */
   contextNothing: [
     'I looked. Nothing that the listing does not already say.',
@@ -264,8 +264,8 @@ const de: Dict = {
   closeContext: 'Kontext schließen',
   souffleur: 'Der Souffleur',
   souffleurAbout: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.',
-  abriss: 'Der Abriss',
-  abrissAbout: 'Der Teil der Karte, den man behält.',
+  ticket: 'Das Ticket',
+  ticketAbout: 'Kommt in jeden Film und weiß, worum es geht.',
   contextNothing: [
     'Hab gesucht. Nichts gefunden, was nicht schon im Programm steht.',
     'Ehrlich: Zu diesem Abend weiß ich auch nicht mehr als das Programmheft.',

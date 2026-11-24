@@ -1,10 +1,10 @@
 /**
  * The two narrators of the context drawer, as drawn on the design canvas: the Souffleur in his
- * prompter's box (stage) and the Abriss, a ticket stub (films). Both whisper. `MOUTH` is where
+ * prompter's box (stage) and the Ticket, a torn-off cinema ticket (films). Both whisper. `MOUTH` is where
  * each mouth sits at the default width of 84 px, from the top left corner: the tail of the speech
  * bubble above points there.
  */
-export const MOUTH = { souffleur: [46, 57], abriss: [59, 52] } as const
+export const MOUTH = { souffleur: [46, 57], ticket: [59, 52] } as const
 
 const INK = '#201f1a', PAPER = '#f7f3e8', YELLOW = '#ffde5b', RED = '#b8281c'
 const line = { stroke: INK, strokeWidth: 3, strokeLinejoin: 'round', strokeLinecap: 'round' } as const
@@ -35,7 +35,7 @@ export function Souffleur({ width = 84 }: { width?: number }) {
   )
 }
 
-export function Abriss({ width = 84 }: { width?: number }) {
+export function Ticket({ width = 84 }: { width?: number }) {
   return (
     <svg width={width} height={(width * 110) / 120} viewBox="0 0 120 110" fill="none" aria-hidden="true">
       <g transform="rotate(-15 60 58)">
