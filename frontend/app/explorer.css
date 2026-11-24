@@ -95,7 +95,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-later[aria-pressed=true]{background:var(--ink);color:var(--yellow)}
 
 
-.x-day strong{font:400 24px/1.1 var(--display);letter-spacing:-.02em}
+/* the date's line box ends at its baseline and a fixed margin follows, so the gap to the count
+   below is the same for every size of date ("BIS 24.05." is smaller on phones) and every browser */
+.x-day strong{font:400 24px/1.1 var(--display);letter-spacing:-.02em;text-box:trim-end cap alphabetic;margin-bottom:3px}
 .x-day small{font:700 11px var(--mono);letter-spacing:.08em;opacity:.75}
 .x-day span{font:11px var(--mono)}
 .x-day svg{display:block;margin-top:6px;width:100%;height:22px}
@@ -193,9 +195,10 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
    the buttons a two-week calendar (one square per performance) and the dates as rows */
 .x-more{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;background:var(--yellow);color:var(--ink);border:1px solid var(--ink);transform:rotate(-1deg)}
 /* the dates drawer: as tall as the card, beside it on the right, or over it if the window has
-   no room for both; it scrolls by itself, so the card does not get taller */
+   no room for both (z-index: above the card's close button); it scrolls by itself, so the card does
+   not get taller */
 .x-cardwrap{position:relative}
-.x-drawer{position:absolute;top:0;bottom:0;left:100%;width:100%;display:flex;flex-direction:column;background:var(--ink);color:var(--paper);padding:13px 14px 14px;border-left:1.5px dashed var(--paper);box-shadow:5px 5px var(--red)}
+.x-drawer{position:absolute;z-index:2;top:0;bottom:0;left:100%;width:100%;display:flex;flex-direction:column;background:var(--ink);color:var(--paper);padding:13px 14px 14px;border-left:1.5px dashed var(--paper);box-shadow:5px 5px var(--red)}
 .x-drawer-over{left:0;border-left:0}
 /* the drawer's heading only (a direct child), not the AI label inside the bubble */
 .x-drawer>small{display:block;margin:0 30px 10px 0}
@@ -249,6 +252,10 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
   .x-day[aria-pressed=true]{box-shadow:3px 3px var(--red)}
   /* "BIS 19.05." / "UNTIL 19.05." is longer than a date and the double rule takes 5px */
   .x-later strong{font-size:clamp(13px,3.9vw,20px)}
+  /* the context drawer leaves the card: a sheet along the bottom of the screen, as tall as its note
+     needs, at most the screen (then the note scrolls); 8px margins plus the 5px shadow */
+  .x-drawer-context{position:fixed;top:auto;left:8px;right:13px;bottom:calc(13px + env(safe-area-inset-bottom));width:auto;
+    max-height:calc(100dvh - 21px - env(safe-area-inset-top) - env(safe-area-inset-bottom));border-left:0}
   .x-bandrow{gap:8px;flex-wrap:wrap}
   /* globals.css gives .filters a 13px top margin on phones; the band's padding is enough */
   .x-cats{width:100%;margin-top:0}

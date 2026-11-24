@@ -35,7 +35,7 @@ aggregator/
   each performance.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
   "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
-  speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`.
+  speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: a sheet at the bottom.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
