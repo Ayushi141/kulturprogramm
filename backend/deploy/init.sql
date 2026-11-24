@@ -26,6 +26,9 @@ CREATE TABLE productions (
     -- the values of the scraper's Category enum
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     image_key   text REFERENCES images (key),
+    -- set once, when the scraper first saves the production (its upsert
+    -- never writes it); the id gives the same order
+    imported_at timestamptz NOT NULL DEFAULT now(),
     -- written by the enricher: the context note in the card's drawer.
     -- enriched_at NULL: not looked up yet. Set with NULL notes: nothing found.
     note_de     text,

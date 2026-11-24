@@ -121,11 +121,18 @@ function dayProgramme(day: string, i: number): Event[] {
 /** Context notes as the enricher writes them; a null note shows a fixed line. */
 const DEMO_CONTEXTS: Record<string, Context> = {
   'oper|Die Zauberflöte': {
+    rank: 1, isNew: true,
     de: 'Mozarts letzte Oper, uraufgeführt im September 1791, gut zwei Monate vor seinem Tod. Den Text schrieb Emanuel Schikaneder, und den Papageno hat er gleich selbst gesungen.',
     en: "Mozart's last opera, first performed in September 1791, barely two months before he died. Emanuel Schikaneder wrote the libretto, then sang Papageno himself.",
   },
-  'oper-k|Hänsel und Gretel': { de: null, en: null },
+  'oper-k|Hänsel und Gretel': { de: null, en: null, rank: 3, isNew: false },
+  'schauspiel|Der Hobbit': {
+    rank: 2, isNew: false,
+    de: 'Tolkien hat den Hobbit 1937 veröffentlicht. Angefangen hat er als Geschichte, die er seinen Kindern vorgelesen hat.',
+    en: 'Tolkien published The Hobbit in 1937. It began as a story he told his own children.',
+  },
   'blackbox|Metropolis (Stummfilm + Live-Klavier)': {
+    rank: 0, isNew: true,
     de: 'Fritz Lang, 1927. Jahrzehntelang fehlte ein Viertel des Films, bis 2008 in Buenos Aires eine fast vollständige Kopie auftauchte.',
     en: 'Fritz Lang, 1927. For decades a quarter of the film was missing, until a nearly complete print turned up in Buenos Aires in 2008.',
   },

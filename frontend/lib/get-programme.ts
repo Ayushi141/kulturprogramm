@@ -52,12 +52,15 @@ export async function getProgramme(): Promise<Programme> {
        WHERE until IS NULL OR until >= (now() AT TIME ZONE 'Europe/Berlin')::date`,
     ),
     // looked-up productions with dates in the window; the notes are NULL when nothing was found
-    db.query<{ id: string; note_de: string | null; note_en: string | null }>(
-      `SELECT p.id, p.note_de, p.note_en FROM productions p
+    // newest in the programme first: ids count up as the scraper adds productions
+    db.query<{ id: string; note_de: string | null; note_en: string | null; is_new: boolean }>(
+      `SELECT p.id, p.note_de, p.note_en, p.imported_at > now() - interval '7 days' AS is_new
+       FROM productions p
        WHERE p.enriched_at IS NOT NULL
          AND EXISTS (SELECT 1 FROM events e WHERE e.production_id = p.id
                      AND e.starts_at > now() - interval '6 hours'
-                     AND e.starts_at < now() + interval '183 days')`,
+                     AND e.starts_at < now() + interval '183 days')
+       ORDER BY p.id DESC`,
     ),
   ])
 
@@ -67,7 +70,8 @@ export async function getProgramme(): Promise<Programme> {
     generatedAt: new Date().toISOString(),
     updatedAt: updated.rows[0].max?.toISOString() ?? null,
     featured: featured.rows.map(r => String(r.production_id)),
-    contexts: Object.fromEntries(contexts.rows.map(r => [String(r.id), { de: r.note_de, en: r.note_en } satisfies Context])),
+    contexts: Object.fromEntries(contexts.rows.map((r, rank) =>
+      [String(r.id), { de: r.note_de, en: r.note_en, rank, isNew: r.is_new } satisfies Context])),
   }
 }
 

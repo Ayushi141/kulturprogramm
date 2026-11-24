@@ -52,8 +52,11 @@ export type Event = {
   note?: string
 }
 
-/** The context note of one production. Null texts: the enricher found nothing; the card then says so. */
-export type Context = { de: string | null; en: string | null }
+/**
+ * The context note of one production. Null texts: the enricher found nothing; the card then says so.
+ * `rank`: 0 for the production added to the programme last, then counting up. `isNew`: added in the last 7 days.
+ */
+export type Context = { de: string | null; en: string | null; rank: number; isNew: boolean }
 
 export type Programme = {
   venues: Venue[]
