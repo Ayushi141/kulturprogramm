@@ -105,10 +105,9 @@ der Aufhänger.
 Produktion läuft. Keine Termine und keine Zahl der restlichen Vorstellungen.
 - Schreib in eigenen Worten, übernimm keine Sätze aus den Quellen.
 
-Antwortformat, ohne Überschriften, Quellen oder sonstigen Text:
-Zuerst der deutsche Text. Dann eine Zeile nur mit drei Bindestrichen (---). Dann der \
-englische Text, im selben Ton neu geschrieben, nicht wörtlich übersetzt.
-Oder nur: NICHTS
+Antwortformat: der deutsche Text zwischen <de> und </de>, dann der englische Text \
+zwischen <en> und </en>, im selben Ton neu geschrieben, nicht wörtlich übersetzt. \
+Ohne Überschriften oder Quellen. Wenn du nichts gefunden hast: nur NICHTS.
 """
 
 CATEGORY_DE = {
@@ -227,15 +226,20 @@ def ask(production: tuple, key: str) -> str:
 
 def parse(text: str) -> tuple[str | None, str | None]:
     """
-    The German and English note from an answer. NICHTS gives two Nones.
-    Raises ValueError when the answer has another format.
+    The German and English note from an answer: the text inside <de>…</de>
+    and <en>…</en>. Text outside the markers is dropped, such as a sentence
+    the model writes before it searches. NICHTS without markers gives two
+    Nones. Raises ValueError when the answer has neither.
     """
-    if text.strip(" .\n") == NOTHING:
+    notes = [
+        re.search(rf"<{lang}>(.*?)</{lang}>", text, flags=re.DOTALL)
+        for lang in ("de", "en")
+    ]
+    if all(notes) and all(n.group(1).strip() for n in notes):
+        return notes[0].group(1).strip(), notes[1].group(1).strip()
+    if re.search(rf"\b{NOTHING}\b", text):
         return None, None
-    parts = re.split(r"^\s*---\s*$", text, flags=re.MULTILINE)
-    if len(parts) != 2 or not all(p.strip() for p in parts):
-        raise ValueError(f"answer is not 'German --- English': {text!r}")
-    return parts[0].strip(), parts[1].strip()
+    raise ValueError(f"answer has no <de> and <en> note and no {NOTHING}: {text!r}")
 
 
 def save(production_id: int, note_de: str | None, note_en: str | None) -> None:

@@ -312,8 +312,8 @@ DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title 
 
 Enricher (`backend/enricher/main.py`): for productions with upcoming dates and `enriched_at` NULL,
 one request through OpenRouter with its server tools (`TOOLS`: search via Parallel turbo, fetch via
-plain HTTP; model `ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`); the answer is German, `---`,
-English, or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
+plain HTTP; model `ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`); the answer is
+`<de>…</de><en>…</en>` (text outside is dropped) or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
 OpenRouter key into `/etc/kulturprogramm/openrouter_api_key`. Try it: `docker compose run --rm
 --build enricher python main.py --dry-run --limit 5`. Run: `docker compose up -d --build enricher`
 (30 every 6 hours, sent at once; `ENRICH_PARALLEL`). Look up again: `UPDATE productions SET enriched_at = NULL WHERE …`.
