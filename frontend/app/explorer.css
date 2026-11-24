@@ -194,9 +194,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* the production's other dates, on the event card: a yellow hint under the times, then after
    the buttons a two-week calendar (one square per performance) and the dates as rows */
 .x-more{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 9px;background:var(--yellow);color:var(--ink);border:1px solid var(--ink);transform:rotate(-1deg)}
-/* the dates drawer: as tall as the card, beside it on the right, or over it if the window has
-   no room for both (z-index: above the card's close button); it scrolls by itself, so the card does
-   not get taller */
+/* both drawers (dates, context): as tall as the card, beside it on the right, or over it if the
+   window has no room for both (z-index: above the card's close button); each scrolls by itself, so
+   the card does not get taller. Phones: a sheet at the bottom of the screen instead (media query) */
 .x-cardwrap{position:relative}
 .x-drawer{position:absolute;z-index:2;top:0;bottom:0;left:100%;width:100%;display:flex;flex-direction:column;background:var(--ink);color:var(--paper);padding:13px 14px 14px;border-left:1.5px dashed var(--paper);box-shadow:5px 5px var(--red)}
 .x-drawer-over{left:0;border-left:0}
@@ -252,9 +252,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
   .x-day[aria-pressed=true]{box-shadow:3px 3px var(--red)}
   /* "BIS 19.05." / "UNTIL 19.05." is longer than a date and the double rule takes 5px */
   .x-later strong{font-size:clamp(13px,3.9vw,20px)}
-  /* the context drawer leaves the card: a sheet along the bottom of the screen, as tall as its note
-     needs, at most the screen (then the note scrolls); 8px margins plus the 5px shadow */
-  .x-drawer-context{position:fixed;top:auto;left:8px;right:13px;bottom:calc(13px + env(safe-area-inset-bottom));width:auto;
+  /* both drawers leave the card: a sheet along the bottom of the screen, as tall as its content
+     needs, at most the screen (then the note or the date rows scroll); 8px margins plus the 5px shadow */
+  .x-drawer{position:fixed;top:auto;left:8px;right:13px;bottom:calc(13px + env(safe-area-inset-bottom));width:auto;
     max-height:calc(100dvh - 21px - env(safe-area-inset-top) - env(safe-area-inset-bottom));border-left:0}
   .x-bandrow{gap:8px;flex-wrap:wrap}
   /* globals.css gives .filters a 13px top margin on phones; the band's padding is enough */
