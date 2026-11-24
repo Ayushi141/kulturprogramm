@@ -101,7 +101,7 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 |---|---|---|
 | label | mono 700 11, tracked `.08em` | tags, badges, kickers, axis times |
 | mark | mono 400 11 | small timeline marks only (overview ticks, times in bars) |
-| text | mono 400 12 | every sentence and meta line |
+| text | mono 400 12 | every sentence and meta line; the context note in IBM Plex Mono (sturdier) |
 | ui | Arial 700 13 | buttons, controls, venue names |
 | title-s | Poster 15 | timeline bar titles |
 | title-m | Poster 22 | card, step and tooltip titles |
@@ -111,7 +111,7 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 - Secondary text is grey (`#565247`), never smaller or lighter.
 - Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
   on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
-  "Stand" and zoom-hint lines (mono 12px). `globals.css` holds v0 leftovers; set no fonts there.
+  "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.
 
 ## Configuration and secrets
 
