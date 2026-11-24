@@ -41,9 +41,9 @@ export function Abriss({ width = 84 }: { width?: number }) {
       <g transform="rotate(-15 60 58)">
         <path d="M22 14 h76 v30 a8 8 0 0 0 0 16 v40 h-76 v-40 a8 8 0 0 0 0 -16 z" fill={PAPER} {...line} />
         <rect x="23.5" y="15.5" width="73" height="14" fill={RED} />
-        <text x="60" y="26" fontFamily="'Courier New', monospace" fontWeight="700" fontSize="9" letterSpacing="1.5" fill={PAPER} textAnchor="middle">EINLASS</text>
+        <text x="60" y="26" fontFamily="'Courier New', 'Courier Prime', monospace" fontWeight="700" fontSize="9" letterSpacing="1.5" fill={PAPER} textAnchor="middle">EINLASS</text>
         <path d="M32 52 h56" stroke={INK} strokeWidth={2} strokeDasharray="4 4" />
-        <text x="60" y="95" fontFamily="'Courier New', monospace" fontWeight="700" fontSize="7" fill={INK} textAnchor="middle">Nº 0047</text>
+        <text x="60" y="95" fontFamily="'Courier New', 'Courier Prime', monospace" fontWeight="700" fontSize="7" fill={INK} textAnchor="middle">Nº 0047</text>
         <circle cx="51" cy="70" r="3.4" fill={INK} />
         <circle cx="73" cy="70" r="3.4" fill={INK} />
         <path d="M44 67h10M66 67h10" stroke={INK} strokeWidth={2.5} />

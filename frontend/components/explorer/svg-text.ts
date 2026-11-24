@@ -3,7 +3,7 @@
  * and canvas-based measurement, since SVG has no text-overflow.
  */
 
-export const MONO = "'Courier New', monospace"
+export const MONO = "'Courier New', 'Courier Prime', monospace"
 export const SANS = 'Arial, Helvetica, sans-serif'
 export const DISPLAY = 'Poster, Impact, sans-serif'
 
