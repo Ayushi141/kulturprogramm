@@ -280,7 +280,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 
 /* ── Reading view: every production with a context note, newest first ── */
 .x-read{max-width:680px;margin:0 auto;padding:0 16px}
-.x-readhead{display:flex;flex-direction:column;gap:6px;padding:8px 0 4px}.x-readhead h2,.x-readhead p{margin:0}
+.x-readhead{display:flex;flex-direction:column;gap:6px;padding:8px 0 4px}.x-readhead p{margin:0}
 .x-readai{display:flex;align-items:flex-start;gap:10px;margin-top:6px;padding:8px 10px;background:var(--yellow);border:1.5px dashed var(--ink)}.x-readai svg{flex:none}
 .x-readitem{display:flex;flex-direction:column;gap:6px;padding:18px 0 16px;border-bottom:1.5px solid var(--ink)}
 .x-readkicker{display:flex;align-items:center;gap:7px}.x-readkicker .x-sw{border:1px solid var(--ink)}
@@ -326,10 +326,10 @@ small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step smal
 
 .x-tt,.x-step h3,.x-readtitle h3,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
   {font:400 calc(22 * var(--zs))/1.05 var(--display);letter-spacing:0}
-.x-gh,.x-readhead h2,.x-plan h2,.dialogbody h2,.typeprint strong
+.x-gh,.x-plan h2,.dialogbody h2,.typeprint strong
   {font:400 calc(32 * var(--zs))/1 var(--display);letter-spacing:-.02em}
 .x-hero h1{letter-spacing:-.03em}
 
 /* secondary text is grey, never smaller or lighter */
-.x-updated,.x-note,.x-readvenue,.x-readai-label,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
+.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
 

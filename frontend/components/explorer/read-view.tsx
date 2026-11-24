@@ -18,7 +18,8 @@ type Props = {
 
 /**
  * The reading view: every production with a context note, newest in the programme first.
- * Each entry shows the next performance; its card has the other dates and the tickets.
+ * Each entry shows the next performance; its card has the other dates and the tickets. The AI notice
+ * at the top covers all notes, so the entries carry no label of their own.
  */
 export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) {
   const t = useT(), lang = useLang()
@@ -33,7 +34,6 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
   return (
     <div className="x-read">
       <header className="x-readhead">
-        <h2>{t.readHead}</h2>
         <p>{t.readSort}</p>
         <div className="x-readai"><Souffleur width={26} /><p>{t.readAi}</p></div>
       </header>
@@ -55,7 +55,6 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
             </div>
             <p className="x-readvenue">{next.venue.name}</p>
             <p className="x-readnote">{ctx[lang]}</p>
-            <small className="x-readai-label">{t.aiLabel}</small>
             <div className="x-readactions">
               <button className="x-more" onClick={() => onOpen(next)}>{t.readMore(dates.length - 1)} <ArrowRight size={13} /></button>
               <button className="x-readsave" aria-pressed={planned} aria-label={(planned ? t.removeFrom : t.addTo)(next.ev.title)} onClick={() => onToggle(next.id)}>
