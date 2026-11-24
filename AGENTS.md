@@ -347,5 +347,4 @@ redeployed (they loop forever): rebuild them by hand after changes.
 
 ## Open implementation questions
 
-- `Event` inherits from `ABC` without abstract methods; make it a dataclass? Removing events saved
-  before they were cancelled?
+- `Event` inherits from `ABC` without abstract methods: make it a dataclass? Remove cancelled events?
