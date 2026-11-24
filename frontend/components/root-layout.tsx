@@ -26,6 +26,8 @@ export function metadataFor(lang: Lang): Metadata {
       ],
       apple: '/apple-icon.png',
     },
+    // iPhone home screen: the short name under the icon (else the long page title)
+    appleWebApp: { capable: true, title: 'Kulturprogramm', statusBarStyle: 'default' },
   }
 }
 

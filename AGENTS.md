@@ -39,9 +39,9 @@ aggregator/
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
-- The Compose configuration expects the host password file at
-  `/etc/kulturprogramm/pg_password` (not `/run`, which is emptied at boot).
-  PostgreSQL and the frontend restart with the host (`unless-stopped`).
+- Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
+- Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
+  at boot). PostgreSQL and the frontend restart with the host (`unless-stopped`).
 
 ## Database
 
