@@ -278,6 +278,20 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-group .poster{aspect-ratio:1/1.414}
 .x-group .cat-movies img{object-position:center}
 
+/* ── Reading view: every production with a context note, newest first ── */
+.x-read{max-width:680px;margin:0 auto;padding:0 16px}
+.x-readhead{display:flex;flex-direction:column;gap:6px;padding:8px 0 4px}.x-readhead p{margin:0}
+.x-readai{display:flex;align-items:flex-start;gap:10px;margin-top:6px;padding:8px 10px;background:var(--yellow);border:1.5px dashed var(--ink)}.x-readai svg{flex:none}
+.x-readitem{display:flex;flex-direction:column;gap:6px;padding:18px 0 16px;border-bottom:1.5px solid var(--ink)}
+.x-readkicker{display:flex;align-items:center;gap:7px}.x-readkicker .x-sw{border:1px solid var(--ink)}
+.x-readnew{padding:1px 5px;background:var(--ink);color:var(--yellow)}
+.x-readtitle{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.x-readtitle h3{margin:0}.x-readtitle svg{flex:none}
+.x-readtitle button{padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.x-readtitle button:hover{text-decoration:underline}
+.x-readvenue,.x-readnote{margin:0}
+.x-readactions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}.x-readactions .x-more{margin-top:0}
+.x-readsave{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:6px 9px;border:1.5px solid var(--ink);background:none;color:var(--ink);cursor:pointer}
+.x-readsave[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+
 /* ── Type system ─────────────────────────────────────────────────────────────
    The shared text styles. Seven styles, each with one job:
      label    mono 700 11, tracked   tags, badges, kickers, counts
@@ -298,24 +312,24 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 :root{--zs:clamp(1px,.092vw,1.5px);--sans:Arial,Helvetica,sans-serif}
 button,input{font:inherit;letter-spacing:inherit}
 
-small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker
+small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-readnew
   {font:700 calc(11 * var(--zs))/1.3 var(--mono);letter-spacing:.08em}
 
-.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-narrator span,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
+.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-narrator span,.x-readhead p,.x-readvenue,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
   {font:400 calc(12 * var(--zs))/1.6 var(--mono);letter-spacing:0}
 
-.x-bubble p
+.x-bubble p,.x-readnote
   {font:400 calc(12 * var(--zs))/1.6 'IBM Plex Mono',var(--mono);letter-spacing:0}
 
-.filters button,.visit,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove
+.filters button,.visit,.x-readsave,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove
   {font:700 calc(13 * var(--zs))/1.2 var(--sans);letter-spacing:0}
 
-.x-tt,.x-step h3,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
+.x-tt,.x-step h3,.x-readtitle h3,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
   {font:400 calc(22 * var(--zs))/1.05 var(--display);letter-spacing:0}
 .x-gh,.x-plan h2,.dialogbody h2,.typeprint strong
   {font:400 calc(32 * var(--zs))/1 var(--display);letter-spacing:-.02em}
 .x-hero h1{letter-spacing:-.03em}
 
 /* secondary text is grey, never smaller or lighter */
-.x-updated,.x-note,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
+.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
 

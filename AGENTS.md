@@ -23,12 +23,10 @@ aggregator/
 - PostgreSQL uses `postgres:18`; the configured database and user are both `kultur`.
 - Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `psycopg[binary]` 3 (scraper
   also `beautifulsoup4`, `pillow`).
-- The frontend is a Next.js application (`node:22-alpine` image, built from
-  `frontend/Dockerfile`). `getProgramme()` in `frontend/lib/get-programme.ts`
-  reads `venues` and events from 6 hours ago to 183 days ahead, and maps
-  categories `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`,
-  `dance`, `concerts`, `movies`; others are not shown. Without `PGPASSWORD_FILE`
-  it shows a demo programme. The data contract is `frontend/lib/types.ts`.
+- The frontend is a Next.js application (`node:22-alpine` image, `frontend/Dockerfile`). `getProgramme()`
+  (`frontend/lib/get-programme.ts`) reads venues and events from 6 hours ago to 183 days ahead and maps
+  `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`, `dance`, `concerts`, `movies`.
+  Without `PGPASSWORD_FILE` it shows a demo programme. Data contract: `frontend/lib/types.ts`.
 - The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
@@ -38,6 +36,8 @@ aggregator/
   speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
+- "Lesen" view (`read-view.tsx`): every upcoming production with a note, newest first (`id` desc), NEU
+  when `imported_at` is under 7 days old; independent of the selected day.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
 - Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
@@ -56,6 +56,7 @@ CREATE TABLE productions (  -- one per title per source (Source.name)
     title       text NOT NULL,
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     image_key   text REFERENCES images (key),
+    imported_at timestamptz NOT NULL DEFAULT now(),  -- first save; never updated (order: id)
     note_de     text,          -- context note (enricher); NULL with enriched_at set: nothing found
     note_en     text,
     enriched_at timestamptz,   -- NULL: not looked up yet
@@ -346,5 +347,4 @@ redeployed (they loop forever): rebuild them by hand after changes.
 
 ## Open implementation questions
 
-- `Event` inherits from `ABC` without abstract methods; make it a dataclass? Removing events saved
-  before they were cancelled?
+- `Event` inherits from `ABC` without abstract methods: make it a dataclass? Remove cancelled events?

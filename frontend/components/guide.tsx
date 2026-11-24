@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music } from 'lucide-react'
+import { ArrowUpRight, BookOpenText, ChartGantt, Clapperboard, Drama, Footprints, LayoutGrid, MicVocal, Music } from 'lucide-react'
 import { CATEGORIES, type Category, type Programme } from '@/lib/types'
 import { byStart, indexProgramme, productions, toggle, upcoming, type Item, type Window } from '@/lib/plan'
 import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time'
@@ -12,12 +12,14 @@ import { CAT } from './explorer/categories'
 import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { LaterPanel, PlanPanel } from './explorer/plan-panel'
+import { ReadView } from './explorer/read-view'
 import { SeasonTimeline } from './explorer/season-timeline'
 import { CardContext, EventCard, type CardData } from './explorer/event-card'
 import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
-type View = 'timeline' | 'poster'
+/** `read`: the context notes of all upcoming productions, whatever day is selected. */
+type View = 'timeline' | 'poster' | 'read'
 type Now = { day: string; min: number }
 
 const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
@@ -70,7 +72,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
       setPlans(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= n.day)))
     } catch { /* storage unavailable: start empty */ }
     loaded.current = true
-    const fromHash = () => { const v = location.hash.slice(1); if (v === 'poster' || v === 'timeline') setViewState(v) }
+    const fromHash = () => { const v = location.hash.slice(1); if (v === 'poster' || v === 'timeline' || v === 'read') setViewState(v) }
     fromHash()
     const t = setInterval(() => setNow(cultureDay(new Date())), 60000)
     addEventListener('hashchange', fromHash)
@@ -118,6 +120,9 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const focusAll = featured.size && now ? [...byDay.keys()].filter(d => d >= now.day).sort().flatMap(d => (byDay.get(d) ?? [])
     .filter(i => featured.has(i.ev.productionId) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
   const focus = focusAll.find(i => i.day === day) ?? focusAll[0]
+  /** The reading view: every upcoming performance in the chosen categories, from now to the horizon. */
+  const readItems = useMemo(() => !now || view !== 'read' ? [] : [...byDay].filter(([d]) => d >= now.day).sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([d, its]) => its.filter(i => inCat(i) && upcoming(i, d === now.day ? now.min : null)).sort(byStart)), [byDay, now, view, cats])
   const suggestion = ahead.filter(i => i.s >= EVENING[0]).sort((a, b) => a.s - b.s)[0] ?? ahead[0]
 
   /** Adds or removes a performance on its own day (not the selected one). */
@@ -202,16 +207,20 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
             <div className="x-views" role="group" aria-label={t.viewGroup}>
               <button aria-pressed={view === 'timeline'} onClick={() => setView('timeline')}><ChartGantt size={16} />{t.timeline}</button>
               <button aria-pressed={view === 'poster'} onClick={() => setView('poster')}><LayoutGrid size={16} />{t.poster}</button>
+              <button aria-pressed={view === 'read'} onClick={() => setView('read')}><BookOpenText size={16} />{t.read}</button>
             </div>
           </div>
         </div>
 
         <section className="directory" id="guide">
           {programme.demo && <p className="x-demo">{t.demo}</p>}
-          <p className="x-hint">{hint}</p>
+          {view !== 'read' && <p className="x-hint">{hint}</p>}
           {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
-          {isLater ? (view === 'timeline'
+          {view === 'read' ? (
+            <ReadView items={readItems} contexts={programme.contexts ?? {}} planIds={new Set(Object.values(plans).flat())}
+              onToggle={onToggle} onOpen={setDetail} />
+          ) : isLater ? (view === 'timeline'
             ? <SeasonTimeline venues={programme.venues} items={laterVisible} from={laterFrom} to={laterTo} planIds={laterIds} onToggle={onToggle} />
             : <SeasonPoster items={laterVisible} planIds={laterIds} onToggle={onToggle} onOpen={setDetail} />
           ) : view === 'timeline' ? <>
@@ -225,7 +234,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
               onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
-          {isLater
+          {view === 'read' ? null : isLater
             ? <LaterPanel items={laterPicks} onToggle={onToggle} />
             : <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />}
         </section>
