@@ -8,7 +8,7 @@ import { useLang, useT } from '../i18n'
 import type { Context } from '@/lib/types'
 import { Picture } from '../picture'
 import { CAT } from './categories'
-import { Abriss, MOUTH, Souffleur } from './mascots'
+import { MOUTH, Souffleur, Ticket } from './mascots'
 
 export type Relation = { text: string; strong: boolean } | null
 
@@ -220,7 +220,7 @@ function OtherDates({ shown, all, anchor, over, onShow }: {
 
 /**
  * The context drawer: the note as a whispered speech bubble, its narrator below it. Films get the
- * Abriss, everything else the Souffleur. A note is labelled as AI-generated. Without a note (the
+ * Ticket, everything else the Souffleur. A note is labelled as AI-generated. Without a note (the
  * enricher found nothing) the narrator says one of the fixed lines, the same one for a production
  * every time; those are written by hand and carry no label.
  */
@@ -233,11 +233,11 @@ function ContextNote({ context, movie, productionId }: { context: Context; movie
     <div className="x-bubble">
       <p>{note ?? t.contextNothing[pick]}</p>
       {note && <small className="x-ai">{t.aiGenerated}</small>}
-      <Tail to={MOUTH[movie ? 'abriss' : 'souffleur']} />
+      <Tail to={MOUTH[movie ? 'ticket' : 'souffleur']} />
     </div>
     <div className="x-narrator">
-      {movie ? <Abriss /> : <Souffleur />}
-      <div><b>{movie ? t.abriss : t.souffleur}</b><span>{movie ? t.abrissAbout : t.souffleurAbout}</span></div>
+      {movie ? <Ticket /> : <Souffleur />}
+      <div><b>{movie ? t.ticket : t.souffleur}</b><span>{movie ? t.ticketAbout : t.souffleurAbout}</span></div>
     </div>
   </>
 }
