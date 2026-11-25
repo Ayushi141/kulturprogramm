@@ -93,10 +93,9 @@ export function productions(items: Item[]): Production[] {
 export type VenueGroup = { city: string; organizers: { organizer: string; venues: { v: Venue; label: string }[] }[] }
 
 /**
- * Groups the timeline rows: city → organizer → venue. A venue's label tells the organizer's venues
- * apart, so it is empty when the organizer has only one venue in the city ("UFA Palast" under
- * "UFA Palast Düsseldorf") or when it only repeats the organizer. Counted over the whole
- * programme, not the view, so labels do not come and go while the view moves.
+ * Groups the timeline rows: city → organizer → venue. A venue's label is empty when it only
+ * repeats the organizer ("Oper Köln" at "Oper Köln"). Scrapers decide this by the name: a source
+ * whose venue is simply the organizer's house names it like the organizer.
  */
 export function groupVenues(venues: Venue[]): VenueGroup[] {
   const out: VenueGroup[] = []
@@ -108,6 +107,6 @@ export function groupVenues(venues: Venue[]): VenueGroup[] {
     o.venues.push({ v, label: v.name })
   }
   for (const c of out) for (const o of c.organizers)
-    for (const r of o.venues) if (o.venues.length === 1 || r.v.name === o.organizer) r.label = ''
+    for (const r of o.venues) if (r.v.name === o.organizer) r.label = ''
   return out
 }
