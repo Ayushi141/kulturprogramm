@@ -114,7 +114,8 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 | title-l | Poster 32 | section headings |
 
 - Sizes are `calc(N * var(--zs))`; `--zs` scales 1–1.5px with the page, like the timeline's zoom `Z`.
-- Secondary text is grey (`#565247`), never smaller or lighter.
+- Secondary text is grey (`--grey`), never smaller or lighter. Colours: only in `lib/colors.ts`
+  (palette, `CAT`, `CAT_DARK`); CSS reads them as `var(--ink)`, `var(--cat-opera)`, `var(--cat-dark-opera)`.
 - Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
   on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
   "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.
@@ -138,11 +139,10 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   checker then flags (colour, labels, icon, typical length, `.cat-*` fallback).
 - A `Source` is one website (`name`, `website`, `organizer`: who hosts its events, written out in
   full; `None` when each `Event.organizer` says it, as for the four Filmkunstkinos); a `Venue` (`name`, `city`) is one physical place. One source can list several venues
-  (Filmkunstkinos lists four cinemas). Write a venue's name the same way in every event.
-- `Event` is a dataclass with `title`, `venue`, `category`, an aware
-  `starts_at`, an optional aware `ends_at`, an optional absolute `url`, and
-  optional `image_url` (set by `scrape()` when the program page shows one) and
-  `image_key` (set by `add_images()`).
+  (Filmkunstkinos lists four cinemas). Write a venue's name the same way in every event. A house
+  orchestra (`ORCHESTRA`) organizes its branch's events itself (KR-MG, Wuppertal, Essen, Dortmund).
+- `Event`: `title`, `venue`, `category`, aware `starts_at`, optional aware `ends_at`, absolute `url`,
+  `organizer` (else the source's), `image_url` (set by `scrape()`), `image_key` (set by `add_images()`).
 - `Source` stores a key and URL; its abstract `scrape()` fetches and parses
   events, and `save()` upserts new images, productions, then the events.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the default returns

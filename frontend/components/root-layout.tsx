@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DICTS, HOME, type Lang } from '@/lib/i18n'
+import { colorVariables, PALETTE } from '@/lib/colors'
 import '@/app/globals.css'
 import '@/app/explorer.css'
 
@@ -32,12 +33,12 @@ export function metadataFor(lang: Lang): Metadata {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#f7f3e8',
+  themeColor: PALETTE.paper,
 }
 
 export function RootLayout({ lang, children }: { lang: Lang; children: React.ReactNode }) {
   return (
-    <html lang={lang}>
+    <html lang={lang} style={colorVariables()}>
       <body className="antialiased">
         {children}
       </body>

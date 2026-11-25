@@ -4,7 +4,7 @@ import type { Venue } from '@/lib/types'
 import { groupVenues, productions, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
-import { CAT } from './categories'
+import { CAT, PALETTE } from '@/lib/colors'
 import { EventCard } from './event-card'
 import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
@@ -13,7 +13,7 @@ import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 const GUTTER = 200, R = 20, TOP = 52, LANE = 24, MARK_H = 11
 /** Phones: the title sits on its own row above the marks, and each day gets at least DAY_PX. */
 const TITLE_ROW = 17, DAY_PX = 5
-const INK = '#201f1a', RED = '#df3929'
+const { ink: INK, red: RED, grey: GREY, card: CARD, rule: RULE, ruleFaint: RULE_FAINT } = PALETTE
 
 type Float = { x: number; y: number }
 type Row = { kind: 'city' | 'organizer' | 'venue' | 'lane'; label: string; y: number; h: number; alt?: boolean; x?: number }
@@ -146,9 +146,9 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
     <div className="x-chart x-overflow" ref={box}>
       <svg width={W * Z} height={H * Z} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.seasonLabel}>
         {/* grid */}
-        {mondays.map(x => <line key={x} x1={x} x2={x} y1={TOP - 8} y2={H - 12} stroke="#e6dfcf" strokeDasharray="2 3" />)}
+        {mondays.map(x => <line key={x} x1={x} x2={x} y1={TOP - 8} y2={H - 12} stroke={RULE_FAINT} strokeDasharray="2 3" />)}
         {months.map(m => <g key={m.x}>
-          <line x1={m.x} x2={m.x} y1={TOP - 26} y2={H - 12} stroke="#cfc6b2" />
+          <line x1={m.x} x2={m.x} y1={TOP - 26} y2={H - 12} stroke={RULE} />
           <text x={m.x + 5} y={TOP - 14} {...T.label} letterSpacing={TRACK}>{m.label.toUpperCase()}</text>
         </g>)}
         {!narrow && <line x1={L - 10} x2={L - 10} y1={TOP - 26} y2={H - 12} stroke={INK} />}
@@ -162,10 +162,10 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
           : r.kind === 'organizer' || r.kind === 'venue'
             // headings run across the gutter line: a card-coloured backing keeps them readable
             ? <g key={i}>
-                <rect x={8} y={r.y + 3} width={Math.min(width(r.label, r.kind === 'organizer' ? UI_FONT : TEXT_FONT), W - 24) + 8} height={r.h - 5} fill="#fbf8f1" />
+                <rect x={8} y={r.y + 3} width={Math.min(width(r.label, r.kind === 'organizer' ? UI_FONT : TEXT_FONT), W - 24) + 8} height={r.h - 5} fill={CARD} />
                 {r.kind === 'organizer'
                   ? <text x={12} y={r.y + 16} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-                  : <text x={12} y={r.y + 13} {...T.text} fill="#565247">{fitText(r.label, W - 24, TEXT_FONT)}</text>}
+                  : <text x={12} y={r.y + 13} {...T.text} fill={GREY}>{fitText(r.label, W - 24, TEXT_FONT)}</text>}
               </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
@@ -174,7 +174,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
                   : <text x={20} y={r.y + 17} {...T.title}>{fitText(r.label, L - 40, TITLE_FONT)}</text>}
               </g>)}
         {!layout.rows.length && (
-          <text x={W / 2} y={TOP + 60} textAnchor="middle" {...T.text} fill="#565247">
+          <text x={W / 2} y={TOP + 60} textAnchor="middle" {...T.text} fill={GREY}>
             {wrapText(t.seasonEmpty, Math.min(W, cw) - 40, TEXT_FONT).map((line, i) => <tspan key={i} x={Math.min(W, cw) / 2} dy={i ? 19 : 0}>{line}</tspan>)}
           </text>
         )}

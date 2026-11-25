@@ -6,7 +6,7 @@ import { clashes, groupVenues, spanLabel, surelyOverlap, upcoming, type Item, ty
 import { DAY0, DAY1, fmt } from '@/lib/time'
 import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
-import { CAT } from './categories'
+import { CAT, PALETTE } from '@/lib/colors'
 import { EventCard } from './event-card'
 import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
@@ -21,8 +21,8 @@ const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 134, LANE = 28, BAR = 24
 export const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
 /** Up to this container width (phones) the chart fits the screen, without the label gutter. */
 export const NARROW = 700
-const VENUE_HEAD = 18, ORG_H = 22, GREY = '#565247'
-const INK = '#201f1a', PAPER = '#f7f3e8', CARD = '#fbf8f1', RED = '#df3929'
+const VENUE_HEAD = 18, ORG_H = 22
+const { ink: INK, paper: PAPER, card: CARD, red: RED, grey: GREY, rule: RULE, ruleFaint: RULE_FAINT } = PALETTE
 /** Event id usable inside an SVG id and url(#…). */
 const safeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_')
 const snap = (t: number) => Math.max(DAY0, Math.min(DAY1, Math.round(t / 30) * 30))
@@ -364,13 +364,13 @@ export function Timeline(p: TimelineProps) {
           {(narrow ? [0, 1, 2, 3, 4].map(i => DAY0 + i * 360) : Array.from({ length: 9 }, (_, i) => DAY0 + i * 180)).map(m => (
             <g key={m}>
               <line x1={xo(m)} x2={xo(m)} y1={OV_Y + OV_H} y2={OV_Y + OV_H + 4} stroke={INK} />
-              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} {...T.mark} fill="#565247">{fmt(m)}</text>
+              <text x={xo(m)} y={OV_Y + OV_H + 16} textAnchor={anchorAt(xo(m), L, W - R)} {...T.mark} fill={GREY}>{fmt(m)}</text>
             </g>
           ))}
           {!narrow && <>
             <text x={12} y={OV_Y + 14} {...T.label} letterSpacing={TRACK}>{t.wholeDay}</text>
-            <text x={12} y={OV_Y + 29} {...T.mark} fill="#565247">{t.onAtOnce}</text>
-            <text x={12} y={OV_Y + 43} {...T.mark} fill="#565247">{t.dragToZoom}</text>
+            <text x={12} y={OV_Y + 29} {...T.mark} fill={GREY}>{t.onAtOnce}</text>
+            <text x={12} y={OV_Y + 43} {...T.mark} fill={GREY}>{t.dragToZoom}</text>
           </>}
           {p.nowMin !== null && <>
             {/* the label sits above the window frame (whose top edge is at OV_Y - 8) */}
@@ -406,7 +406,7 @@ export function Timeline(p: TimelineProps) {
           {ticks.map(m => {
             const major = m % labelEvery === 0
             return <g key={m}>
-              <line x1={x(m)} x2={x(m)} y1={TOP + 10} y2={H - 14} stroke={major ? '#cfc6b2' : '#e6dfcf'} strokeDasharray={major ? undefined : '2 3'} />
+              <line x1={x(m)} x2={x(m)} y1={TOP + 10} y2={H - 14} stroke={major ? RULE : RULE_FAINT} strokeDasharray={major ? undefined : '2 3'} />
               {major && !underNow(m) && <text x={x(m)} y={TOP + 4} textAnchor={anchorAt(x(m), L, W - R)} {...T.label}>{fmt(m)}</text>}
             </g>
           })}
@@ -504,7 +504,7 @@ export function Timeline(p: TimelineProps) {
 
         {/* nothing in view: centred in the chart area, wrapped to fit, above the past-time overlay */}
         {!layout.rows.length && (
-          <text x={L + (W - L - R) / 2} y={TOP + 60} textAnchor="middle" {...T.text} fill="#565247">
+          <text x={L + (W - L - R) / 2} y={TOP + 60} textAnchor="middle" {...T.text} fill={GREY}>
             {wrapText(t.nothingInView, W - L - R - 40, TEXT_FONT).map((line, i) => <tspan key={i} x={L + (W - L - R) / 2} dy={i ? 19 : 0}>{line}</tspan>)}
           </text>
         )}
@@ -534,7 +534,7 @@ function GutterLabel({ label, y, max }: { label: string; y: number; max: number 
   const words = wrapText(label, max, TEXT_FONT)
   const lines = words.length > 2 ? [words[0], fitText(words.slice(1).join(' '), max, TEXT_FONT)] : words
   return (
-    <text x={12} y={y + 4 - (lines.length - 1) * 6.5} {...T.text} fill="#565247">
+    <text x={12} y={y + 4 - (lines.length - 1) * 6.5} {...T.text} fill={GREY}>
       {lines.map((l, i) => <tspan key={i} x={12} dy={i ? 13 : 0}>{l.length && width(l, TEXT_FONT) > max ? fitText(l, max, TEXT_FONT) : l}</tspan>)}
     </text>
   )

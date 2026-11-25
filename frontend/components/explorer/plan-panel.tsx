@@ -4,7 +4,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { endLabel, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, fmt, weekday } from '@/lib/time'
 import { useT } from '../i18n'
-import { CAT } from './categories'
+import { CAT } from '@/lib/colors'
 
 /**
  * "Mein Abend": every saved performance from today on, whatever day is selected, grouped by day.

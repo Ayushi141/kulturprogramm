@@ -2,6 +2,7 @@
 import type { Item, Window } from '@/lib/plan'
 import { DAY0, dayLabel, weekday } from '@/lib/time'
 import { useT } from '../i18n'
+import { PALETTE } from '@/lib/colors'
 
 type Props = {
   days: string[]
@@ -37,7 +38,7 @@ export function DayStrip({ days, selected, win, itemsOf, countOf, onSelect, late
             <strong>{t.wd[weekday(d)]} {dayLabel(d)}</strong>
             <span>{t.events(countOf(d))}</span>
             <svg viewBox="0 0 96 22" preserveAspectRatio="none" aria-hidden="true">
-              <rect x={wa} y={0} width={wb - wa} height={22} fill="#df3929" opacity={0.28} />
+              <rect x={wa} y={0} width={wb - wa} height={22} fill={PALETTE.red} opacity={0.28} />
               {cnt.map((c, h) => c ? <rect key={h} x={h * 4 + 0.4} y={22 - c / max * 20} width={3.2} height={c / max * 20} fill="currentColor" /> : null)}
               <line x1={0} x2={96} y1={21.6} y2={21.6} stroke="currentColor" strokeWidth={0.8} />
             </svg>
