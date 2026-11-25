@@ -189,17 +189,15 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 ## Scraper sources
 
 The notes below describe the parser implementation. They are not a guarantee that a venue's live
-page has not changed.
+page has not changed. Rheinisches Landestheater is not registered: no dated events yet.
 
 ### Filmkunstkinos
-- `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and
-  cinema. Title: direct text of `h2.movie-small--title a`
-  (`find(string=True, recursive=False)` drops `span.extended-title`); URL: its
-  `href`. Venue `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`,
-  `Atelier`) in Düsseldorf. Each `time[datetime]` is a screening labelled
-  `+00:00` but local: replace the timezone, do not convert. End: start plus
-  `.movie-small--meta p.meta` (`100 Min`, without trailers). Labels: the
-  genres before its first `•`.
+- `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and cinema. Title: direct
+  text of `h2.movie-small--title a` (`find(string=True, recursive=False)` drops `span.extended-title`);
+  URL: its `href`. Venue `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`, `Atelier`) in
+  Düsseldorf. Each `time[datetime]` is a screening labelled `+00:00` but local: replace the timezone,
+  do not convert. End: start plus `.movie-small--meta p.meta` (`100 Min`, without trailers). Labels:
+  the genres before its first `•`.
 
 ### Dhaus (Düsseldorfer Schauspielhaus)
 - `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance`
@@ -278,8 +276,10 @@ page has not changed.
   posters need a browser User-Agent. Both cinemas date after-midnight
   screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
 
-### Rheinisches Landestheater
-- Not registered: its page has filters but no dated events yet.
+### Filmmuseum Düsseldorf
+- `https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm` ("Black Box" is the program), pages via
+  "Weiter" (`#` on the last). `div.event-item`: `p.mb-0` date without year ("Sa 28.11.": this or next year,
+  whichever has that weekday), time, link `a.mb-2`; series in its path. Film page: "· 83 min ·", og:image.
 
 ## Common operations
 
