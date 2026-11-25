@@ -1,14 +1,16 @@
 'use client'
 import { ArrowRight, Bookmark } from 'lucide-react'
+import { useContext } from 'react'
 import type { Context } from '@/lib/types'
 import type { Item } from '@/lib/plan'
 import { dayLabel, fmt, weekday } from '@/lib/time'
 import { useLang, useT } from '../i18n'
 import { CAT } from './categories'
+import { CardContext } from './event-card'
 import { Souffleur, Ticket } from './mascots'
 
 type Props = {
-  /** Upcoming performances of every production in the shown categories, in time order. */
+  /** The performances to show, in the order to show them (see `guide.tsx`). */
   items: Item[]
   contexts: Record<string, Context>
   planIds: Set<string>
@@ -17,28 +19,27 @@ type Props = {
 }
 
 /**
- * The reading view: every production with a context note, newest in the programme first.
- * Each entry shows the next performance; its card has the other dates and the tickets. The AI notice
+ * The reading view: one entry per production with a context note, at its first performance in `items`.
+ * The entry counts all of the production's upcoming dates; its card has them and the tickets. The AI notice
  * at the top covers all notes, so the entries carry no label of their own.
  */
 export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) {
-  const t = useT(), lang = useLang()
-  // the next performance and the number of later ones, per production with a note
-  const byProduction = new Map<string, Item[]>()
+  const t = useT(), lang = useLang(), data = useContext(CardContext)
+  // the first performance per production with a note; a Map keeps the order of `items`
+  const firsts = new Map<string, Item>()
   for (const it of items) {
-    const note = contexts[it.ev.productionId]?.[lang]
-    if (note) byProduction.set(it.ev.productionId, [...(byProduction.get(it.ev.productionId) ?? []), it])
+    const id = it.ev.productionId
+    if (contexts[id]?.[lang] && !firsts.has(id)) firsts.set(id, it)
   }
-  const entries = [...byProduction].sort(([a], [b]) => contexts[a].rank - contexts[b].rank)
 
   return (
     <div className="x-read">
       <header className="x-readhead">
         <div className="x-readai"><Souffleur width={26} /><p>{t.readAi}</p></div>
       </header>
-      {entries.length === 0 && <p className="x-empty">{t.readEmpty}</p>}
-      {entries.map(([id, dates]) => {
-        const next = dates[0], ctx = contexts[id]
+      {firsts.size === 0 && <p className="x-empty">{t.readEmpty}</p>}
+      {[...firsts].map(([id, next]) => {
+        const ctx = contexts[id], others = (data?.dates(next).length ?? 1) - 1
         const planned = planIds.has(next.id)
         const when = `${t.wd[weekday(next.day)]} ${dayLabel(next.day)} ${fmt(next.s)}`
         return (
@@ -55,7 +56,7 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
             <p className="x-readvenue">{next.venue.name}</p>
             <p className="x-readnote">{ctx[lang]}</p>
             <div className="x-readactions">
-              <button className="x-more" onClick={() => onOpen(next)}>{t.readMore(dates.length - 1)} <ArrowRight size={13} /></button>
+              <button className="x-more" onClick={() => onOpen(next)}>{t.readMore(others)} <ArrowRight size={13} /></button>
               <button className="x-readsave" aria-pressed={planned} aria-label={(planned ? t.removeFrom : t.addTo)(next.ev.title)} onClick={() => onToggle(next.id)}>
                 <Bookmark size={15} fill={planned ? 'currentColor' : 'none'} />{t.readSave}
               </button>
