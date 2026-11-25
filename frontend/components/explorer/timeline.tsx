@@ -2,7 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Venue } from '@/lib/types'
 import { CATEGORIES } from '@/lib/types'
-import { clashes, groupVenues, spanLabel, surelyOverlap, upcoming, venueLabel, type Item, type Window } from '@/lib/plan'
+import { clashes, groupVenues, spanLabel, surelyOverlap, upcoming, type Item, type Window } from '@/lib/plan'
 import { DAY0, DAY1, fmt } from '@/lib/time'
 import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
@@ -154,15 +154,15 @@ export function Timeline(p: TimelineProps) {
     let y = TOP
     for (const { city, organizers } of groupVenues(p.venues)) {
       const os = organizers
-        .map(o => ({ o, vs: o.venues.map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id) })).filter(r => r.its.length) }))
+        .map(o => ({ o, vs: o.venues.map(({ v, label }) => ({ v, label, its: inWin.filter(i => i.venue.id === v.id) })).filter(r => r.its.length) }))
         .filter(r => r.vs.length)
       if (!os.length) continue
       rows.push({ kind: 'city', label: city, y, h: 22, alt: false }); y += 22
       for (const { o, vs } of os) {
         rows.push({ kind: 'organizer', label: o.organizer, y, h: ORG_H, alt: false }); y += ORG_H
-        vs.forEach(({ v, its }, i) => {
-          // phones: the venue's name is a heading above its lanes, when it says more than the organizer
-          const label = venueLabel(v), vh = label ? head : 0
+        vs.forEach(({ v, label, its }, i) => {
+          // phones: the venue's name is a heading above its lanes, when it has one
+          const vh = label ? head : 0
           its.forEach(it => ys.set(it.id, y + vh + AIR + lanes.lane.get(it.id)! * LANE))
           const h = vh + (lanes.count.get(v.id)! - 1) * LANE + BAR + 2 * AIR
           rows.push({ kind: 'venue', label, y, h, alt: i % 2 === 1 }); y += h
@@ -395,12 +395,7 @@ export function Timeline(p: TimelineProps) {
                 <line x1={12} x2={W - R} y1={r.y + 20} y2={r.y + 20} stroke={INK} strokeWidth={1.5} />
                 <text x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
-            : r.kind === 'organizer'
-            ? <g key={i}>
-                {/* the heading runs across the gutter line: a card-coloured backing keeps it readable */}
-                {!narrow && <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />}
-                <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-              </g>
+            : r.kind === 'organizer' ? null
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow
@@ -419,6 +414,17 @@ export function Timeline(p: TimelineProps) {
             </g>
           })}
           {!narrow && <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />}
+        </g>
+
+        {/* organizer headings: above the axis lines, on a card-coloured backing, as they run across the
+            gutter line and the hour lines (their rows hold no bars) */}
+        <g>
+          {layout.rows.filter(r => r.kind === 'organizer').map((r, i) => (
+            <g key={i}>
+              <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />
+              <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+            </g>
+          ))}
         </g>
 
         {/* bars */}

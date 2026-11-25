@@ -14,11 +14,8 @@ CREATE TABLE images (
 -- own columns: never replace whole rows.
 CREATE TABLE productions (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    -- written by the scraper. source: the key of the website it came from
-    -- (Source.name). organizer: who hosts it, as visitors see it, written out
-    -- in full ("Tanztheater Wuppertal Pina Bausch").
+    -- written by the scraper. source: the key of the website it came from (Source.name).
     source      text NOT NULL,
-    organizer   text NOT NULL,
     title       text NOT NULL,
     -- the values of the scraper's Category enum
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
@@ -34,13 +31,15 @@ CREATE TABLE productions (
     UNIQUE (source, title)
 );
 
--- One dated performance or screening of a production, and where it takes
--- place: a stage or building (venue) in a city. A production can play at
--- several venues (a film in two cinemas, a staging in Krefeld and in
--- Mönchengladbach), so the venue belongs here, not to the production.
+-- One dated performance or screening of a production: who hosts it (organizer,
+-- written out in full, "Tanztheater Wuppertal Pina Bausch") and where it takes
+-- place, a stage or building (venue) in a city. A production can play at
+-- several venues and organizers (a film in three of the Filmkunstkinos, a
+-- staging in Krefeld and in Mönchengladbach), so these belong to the date.
 CREATE TABLE events (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     production_id bigint      NOT NULL REFERENCES productions (id),
+    organizer     text        NOT NULL,
     venue         text        NOT NULL,
     city          text        NOT NULL,
     starts_at     timestamptz NOT NULL,

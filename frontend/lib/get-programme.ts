@@ -75,7 +75,7 @@ export async function getProgramme(): Promise<Programme> {
 }
 
 type EventRow = { id: string; production_id: string; title: string; category: string; organizer: string; venue: string; city: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
-const EVENT_COLUMNS = 'e.id, e.production_id, p.title, p.category, p.organizer, e.venue, e.city, e.starts_at, e.ends_at, e.url, p.image_key'
+const EVENT_COLUMNS = 'e.id, e.production_id, p.title, p.category, e.organizer, e.venue, e.city, e.starts_at, e.ends_at, e.url, p.image_key'
 
 /** The timeline row of an `events` row: its organizer at its venue. */
 function toVenue(r: EventRow): Venue {

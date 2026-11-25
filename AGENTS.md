@@ -56,7 +56,6 @@ The schema, in short (full: `backend/deploy/init.sql`):
 CREATE TABLE productions (  -- one per title per source (Source.name)
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source      text NOT NULL,  -- the website's key (Source.name)
-    organizer   text NOT NULL,  -- who hosts it, shown in full ("Tanztheater Wuppertal Pina Bausch")
     title       text NOT NULL,
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     image_key   text REFERENCES images (key),
@@ -70,6 +69,7 @@ CREATE TABLE productions (  -- one per title per source (Source.name)
 CREATE TABLE events (  -- one dated performance or screening
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     production_id bigint      NOT NULL REFERENCES productions (id),
+    organizer     text        NOT NULL,  -- who hosts it, in full ("Tanztheater Wuppertal Pina Bausch")
     venue         text        NOT NULL,  -- stage or building; a production can play at several
     city          text        NOT NULL,
     starts_at     timestamptz NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE featured (  -- productions shown in the "In focus" card
 existing database. Recreate the database (`docker compose down -v`, then start PostgreSQL and run
 the scraper; it refills everything in minutes). No migration files.
 
-Title, organizer, category and image live once per production; events hold date and place. `save()`
+Title, category and image live once per production; events hold date, organizer and place. `save()`
 upserts new images, then productions (category, `image_key` kept when the new lookup
 found none), then events (`ends_at`, `url`, `updated_at` on a conflict). Two writers share
 `productions`: the scraper and the enricher each update only their own columns, never whole rows.
@@ -137,7 +137,7 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   `frontend/lib/get-programme.ts`, and every `Record<Category, …>` the type
   checker then flags (colour, labels, icon, typical length, `.cat-*` fallback).
 - A `Source` is one website (`name`, `website`, `organizer`: who hosts its events, written out in
-  full); a `Venue` (`name`, `city`) is one physical place. One source can list several venues
+  full; `None` when each `Event.organizer` says it, as for the four Filmkunstkinos); a `Venue` (`name`, `city`) is one physical place. One source can list several venues
   (Filmkunstkinos lists four cinemas). Write a venue's name the same way in every event.
 - `Event` is a dataclass with `title`, `venue`, `category`, an aware
   `starts_at`, an optional aware `ends_at`, an optional absolute `url`, and
@@ -205,7 +205,7 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 - `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance` each. Title
   `.performance__title [itemprop=name]` without soft hyphens, its link made absolute. Start: naive
   `meta[itemprop=startDate]`; end only from `.performance__time` (`19:00 – 20:15`), moved to the next
-  day if not after the start. Venue `.performance__location` without `📍`; city after the postal code in
+  day if not after the start. Venue: the stage of `.performance__location` ("Schauspielhaus, Großes Haus"); city after the postal code in
   the hidden `[itemprop=location] [itemprop=address]`. Cancelled cards are skipped; title and
   `.performance__infos .performance__text` are classified, default `THEATER`.
 
