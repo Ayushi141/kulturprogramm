@@ -153,7 +153,8 @@ def absolute_url(base: httpx.URL, href: str) -> str:
 
 def end_time_from_text(starts_at: datetime, text: str) -> datetime | None:
     match = re.search(
-        r"\b\d{1,2}:\d{2}\s*(?:-|–|—|\bbis\b)\s*(\d{1,2}:\d{2})\b",
+        # "19:00 – 22:00", "19:00 Uhr – 22:00 Uhr"
+        r"\b\d{1,2}:\d{2}(?:\s*Uhr)?\s*(?:-|–|—|\bbis\b)\s*(\d{1,2}:\d{2})\b",
         text,
     )
     if not match:
@@ -528,13 +529,22 @@ class Dhaus(Source):
 
 
 class OperAmRhein(Source):
-    VENUE = Venue(
-        name="Opernhaus Düsseldorf",
-        city="Düsseldorf",
-    )
+    """
+    One company, two houses: each city has its own calendar page
+    (`website` + city key). Only the main house of each city is kept,
+    as the location line names it; foyer, studio and outdoor dates are not.
+    """
+
+    HOUSES = {
+        "duesseldorf": Venue(name="Opernhaus Düsseldorf", city="Düsseldorf"),
+        "duisburg": Venue(name="Theater Duisburg", city="Duisburg"),
+    }
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        return [e for key, venue in self.HOUSES.items() for e in self.scrape_city(key, venue)]
+
+    def scrape_city(self, key: str, house: Venue) -> list[Event]:
+        response = httpx.get(f"{self.website}{key}/", follow_redirects=True, timeout=60)
         log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -548,7 +558,7 @@ class OperAmRhein(Source):
                 continue
             location_tag = performance.select_one(".performance__location")
             location = location_tag.get_text(strip=True)
-            if location != self.VENUE.name:
+            if location != house.name:
                 continue
 
             # e.g. "Oper", "Ballett", "Junge Oper, Konzert"; tours have none
@@ -600,11 +610,11 @@ class OperAmRhein(Source):
                 if ends_at <= starts_at:
                     ends_at += timedelta(days=1)
 
-            log.debug(f"{self.ctx}   {title!r} at {self.VENUE.name}: {starts_at} - {ends_at}")
+            log.debug(f"{self.ctx}   {title!r} at {house.name}: {starts_at} - {ends_at}")
             events.append(
                 Event(
                     title=title,
-                    venue=self.VENUE,
+                    venue=house,
                     category=category,
                     starts_at=starts_at,
                     ends_at=ends_at,
@@ -1546,6 +1556,89 @@ class FilmmuseumDuesseldorf(Source):
         raise RuntimeError(f"more than {self.MAX_PAGES} pages")
 
 
+class TheaterDortmund(Source):
+    """
+    The calendar lists 15 events per page and links the next page with "»".
+    A div.event carries its start as Unix time (data-start; 0 marks dates
+    booked by schools, mobile plays); data-endtime is always 6 hours later,
+    so the end comes from the time line ("19:00 Uhr – 22:00 Uhr"). Its division ("Oper", "Ballett", "Philharmoniker", "Schauspiel",
+    "KJT") gives the category; the first span in .event__details names the
+    venue, often with an address in brackets.
+    """
+
+    CITY = "Dortmund"
+    DIVISIONS = {
+        "Oper": Category.OPER,
+        "Ballett": Category.TANZ,
+        "Philharmoniker": Category.CONCERT,
+        "Schauspiel": Category.THEATER,
+        "KJT": Category.THEATER,  # Kinder- und Jugendtheater
+    }
+    # A venue named after another theatre or a festival: a guest performance
+    # in another city ("Theater Bonn", "55. Hong Kong Arts Festival (…)").
+    ELSEWHERE = re.compile(r"^Theater (?!Dortmund\b)\S+$|\bFestival\b")
+    MAX_PAGES = 60
+
+    def venue(self, details: Tag | None) -> Venue | None:
+        """The venue of an event, without an address in brackets; None: not public or elsewhere."""
+        spans = [s.get_text(" ", strip=True) for s in details.select(":scope > span")] if details else []
+        place = next((s for s in spans if not re.match(r"\d{1,2}:\d{2} Uhr", s)), None)
+        if place is None:
+            return Venue(name=self.organizer, city=self.CITY)  # the calendar names no venue
+        if place == "Mobile Vorstellung" or self.ELSEWHERE.search(place):
+            return None
+        # "Fritz-Henßler-Haus (Geschwister-Scholl-Straße 33)": brackets with a digit are an address
+        name = re.sub(r"\s*\([^)]*\d[^)]*\)", "", place).strip()
+        return Venue(name=name, city=self.CITY)
+
+    def scrape(self) -> list[Event]:
+        berlin = ZoneInfo("Europe/Berlin")
+        events = []
+        url = self.website
+        for _ in range(self.MAX_PAGES):
+            response = httpx.get(url, follow_redirects=True, timeout=60)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            cards = soup.select("div.event")
+            log.info(f"{self.ctx} GET {response.url} -> {size(response)}, {len(cards)} div.event")
+            for card in cards:
+                start = int(card.get("data-start") or 0)
+                if not start:
+                    continue
+                title = card.select_one("h2").get_text(" ", strip=True).replace("\xad", "")
+                division_tag = card.select_one(".event__division")
+                division = division_tag.get_text(" ", strip=True) if division_tag else ""
+                details = card.select_one(".event__details")
+                subtitle = details.select_one("p") if details else None
+                category = self.event_category(
+                    self.DIVISIONS.get(division, Category.THEATER),
+                    title,
+                    division,
+                    subtitle.get_text(" ", strip=True) if subtitle else "",
+                )
+                venue = self.venue(details)
+                if not category or not venue:
+                    log.debug(f"{self.ctx}   skipped {title!r} ({division}, {venue})")
+                    continue
+                starts_at = datetime.fromtimestamp(start, berlin)
+                link = card.select_one(".event__info a[href]")
+                events.append(
+                    Event(
+                        title=title,
+                        venue=venue,
+                        category=category,
+                        starts_at=starts_at,
+                        ends_at=end_time_from_text(starts_at, details.get_text(" ", strip=True)) if details else None,
+                        url=absolute_url(response.url, link["href"]) if link else None,
+                    )
+                )
+            more = next((a for a in soup.select("a.page-link[href]") if a.get_text(strip=True) == "»"), None)
+            if not more:
+                return events
+            url = absolute_url(response.url, more["href"])
+        raise RuntimeError(f"more than {self.MAX_PAGES} pages")
+
+
 # name (stored as productions.source), website, organizer (written to events; shown in full)
 sources = [
     # each event names its cinema as organizer
@@ -1555,7 +1648,7 @@ sources = [
     ),
     OperAmRhein(
         "oper-am-rhein",
-        "https://www.operamrhein.de/spielplan/kalender/duesseldorf/",
+        "https://www.operamrhein.de/spielplan/kalender/",
         "Deutsche Oper am Rhein",
     ),
     SchauspielKoeln("schauspiel-koeln", "https://www.schauspiel.koeln/kalender", "Schauspiel Köln"),
@@ -1592,6 +1685,7 @@ sources = [
         "https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm",
         "Filmmuseum Düsseldorf",
     ),
+    TheaterDortmund("theater-dortmund", "https://www.theaterdo.de/kalender/", "Theater Dortmund"),
 ]
 
 if __name__ == "__main__":
