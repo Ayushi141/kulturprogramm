@@ -51,7 +51,7 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
               <h3><button onClick={() => onOpen(next)}>{next.ev.title}</button></h3>
               {next.category === 'movies' ? <Ticket width={30} /> : <Souffleur width={30} />}
             </div>
-            <p className="x-readvenue">{next.venue.name}</p>
+            <p className="x-readvenue">{next.venue.organizer} · {next.venue.name}</p>
             <p className="x-readnote">{ctx[lang]}</p>
             <div className="x-readactions">
               <button className="x-more" onClick={() => onOpen(next)}>{t.readMore(others)} <ArrowRight size={13} /></button>

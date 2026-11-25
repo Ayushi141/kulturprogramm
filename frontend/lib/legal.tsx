@@ -11,8 +11,8 @@ export { LEGAL_PATH, type LegalPage } from './legal-path'
 
 /** The operator of the site, as the imprint and the privacy policy name them. */
 const OPERATOR = {
-  name: 'Alex Pavlov',
-  street: 'Münsterstraße 78',
+  name: 'Polina Pavlova',
+  street: 'Münsterstraße 40',
   city: '40476 Düsseldorf',
   email: 'kontakt@kulturprogramm.eu',
 }

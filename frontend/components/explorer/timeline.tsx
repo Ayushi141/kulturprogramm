@@ -2,7 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Venue } from '@/lib/types'
 import { CATEGORIES } from '@/lib/types'
-import { clashes, spanLabel, surelyOverlap, upcoming, type Item, type Window } from '@/lib/plan'
+import { clashes, groupVenues, spanLabel, surelyOverlap, upcoming, venueLabel, type Item, type Window } from '@/lib/plan'
 import { DAY0, DAY1, fmt } from '@/lib/time'
 import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
@@ -21,7 +21,7 @@ const GUTTER = 200, R = 20, OV_Y = 38, OV_H = 44, TOP = 134, LANE = 28, BAR = 24
 export const BASE_W = 1000, MAX_ZOOM = 1.5, MIN_W = 960
 /** Up to this container width (phones) the chart fits the screen, without the label gutter. */
 export const NARROW = 700
-const VENUE_HEAD = 18
+const VENUE_HEAD = 18, ORG_H = 22, GREY = '#565247'
 const INK = '#201f1a', PAPER = '#f7f3e8', CARD = '#fbf8f1', RED = '#df3929'
 /** Event id usable inside an SVG id and url(#…). */
 const safeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -38,7 +38,7 @@ function overlapText(it: Item, clash: Item[], t: Dict) {
   return [sure.length ? t.overlaps(names(sure)) : '', maybe.length ? t.mayOverlap(names(maybe)) : ''].filter(Boolean).join(' · ')
 }
 
-type Row = { kind: 'city' | 'venue'; label: string; y: number; h: number; alt: boolean }
+type Row = { kind: 'city' | 'organizer' | 'venue'; label: string; y: number; h: number; alt: boolean }
 type Float = { x: number; y: number } | null
 
 export type TimelineProps = {
@@ -147,24 +147,27 @@ export function Timeline(p: TimelineProps) {
     return { lane, count }
   }, [p.items, p.venues])
 
-  /* Rows: venues grouped by city; a venue is shown when it has an item in the view */
+  /* Rows: city → organizer → venue; a venue is shown when it has an item in the view */
   const layout = useMemo(() => {
     const inWin = p.items.filter(it => it.s < p.win[1] && it.e > p.win[0])
-    const cities: string[] = []
-    p.venues.forEach(v => { if (!cities.includes(v.city)) cities.push(v.city) })
     const rows: Row[] = [], ys = new Map<string, number>()
     let y = TOP
-    for (const city of cities) {
-      const vs = p.venues.filter(v => v.city === city)
-        .map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id) }))
-        .filter(r => r.its.length)
-      if (!vs.length) continue
+    for (const { city, organizers } of groupVenues(p.venues)) {
+      const os = organizers
+        .map(o => ({ o, vs: o.venues.map(v => ({ v, its: inWin.filter(i => i.venue.id === v.id) })).filter(r => r.its.length) }))
+        .filter(r => r.vs.length)
+      if (!os.length) continue
       rows.push({ kind: 'city', label: city, y, h: 22, alt: false }); y += 22
-      vs.forEach(({ v, its }, i) => {
-        its.forEach(it => ys.set(it.id, y + head + AIR + lanes.lane.get(it.id)! * LANE))
-        const h = head + (lanes.count.get(v.id)! - 1) * LANE + BAR + 2 * AIR
-        rows.push({ kind: 'venue', label: v.name, y, h, alt: i % 2 === 1 }); y += h
-      })
+      for (const { o, vs } of os) {
+        rows.push({ kind: 'organizer', label: o.organizer, y, h: ORG_H, alt: false }); y += ORG_H
+        vs.forEach(({ v, its }, i) => {
+          // phones: the venue's name is a heading above its lanes, when it says more than the organizer
+          const label = venueLabel(v), vh = label ? head : 0
+          its.forEach(it => ys.set(it.id, y + vh + AIR + lanes.lane.get(it.id)! * LANE))
+          const h = vh + (lanes.count.get(v.id)! - 1) * LANE + BAR + 2 * AIR
+          rows.push({ kind: 'venue', label, y, h, alt: i % 2 === 1 }); y += h
+        })
+      }
       y += 2
     }
     return { rows, ys, inWin, H: Math.max(y + 24, TOP + 120) }
@@ -218,7 +221,7 @@ export function Timeline(p: TimelineProps) {
     const r = relation(it, p.plan, p.planIds, p.nowMin, t)
     return <>
       <div className="x-tt">{it.ev.title}</div>
-      <div className="x-tm">{t.cat[it.category].label} · {spanLabel(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+      <div className="x-tm">{t.cat[it.category].label} · {spanLabel(it, t)}<br />{it.venue.organizer}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
         {r && <><br /><span className={r.strong ? 'x-hl' : undefined}>{r.text}</span></>}</div>
     </>
   }
@@ -392,11 +395,17 @@ export function Timeline(p: TimelineProps) {
                 <line x1={12} x2={W - R} y1={r.y + 20} y2={r.y + 20} stroke={INK} strokeWidth={1.5} />
                 <text x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
+            : r.kind === 'organizer'
+            ? <g key={i}>
+                {/* the heading runs across the gutter line: a card-coloured backing keeps it readable */}
+                {!narrow && <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />}
+                <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+              </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow
-                  ? <text x={12} y={r.y + 14} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-                  : <text x={12} y={r.y + AIR + BAR / 2 + 4.5} {...T.ui}>{fitText(r.label, L - 30, UI_FONT)}</text>}
+                  ? <text x={12} y={r.y + 13} {...T.text} fill={GREY}>{fitText(r.label, W - 24, TEXT_FONT)}</text>
+                  : <GutterLabel label={r.label} y={r.y + AIR + BAR / 2} max={L - 30} />}
               </g>)}
         </g>
 
@@ -510,5 +519,16 @@ export function Timeline(p: TimelineProps) {
         </div>
       )}
     </div>
+  )
+}
+
+/** A venue's name in the gutter: up to two lines, centred on the first lane. */
+function GutterLabel({ label, y, max }: { label: string; y: number; max: number }) {
+  const words = wrapText(label, max, TEXT_FONT)
+  const lines = words.length > 2 ? [words[0], fitText(words.slice(1).join(' '), max, TEXT_FONT)] : words
+  return (
+    <text x={12} y={y + 4 - (lines.length - 1) * 6.5} {...T.text} fill="#565247">
+      {lines.map((l, i) => <tspan key={i} x={12} dy={i ? 13 : 0}>{l.length && width(l, TEXT_FONT) > max ? fitText(l, max, TEXT_FONT) : l}</tspan>)}
+    </text>
   )
 }

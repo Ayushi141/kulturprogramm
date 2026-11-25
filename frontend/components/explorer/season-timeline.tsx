@@ -1,12 +1,12 @@
 'use client'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Venue } from '@/lib/types'
-import { productions, timeRange, type Item } from '@/lib/plan'
+import { groupVenues, productions, timeRange, venueLabel, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT } from './categories'
 import { EventCard } from './event-card'
-import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, wrapText } from './svg-text'
+import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 
 /* Geometry (logical px, scaled by Z like the day timeline) */
@@ -16,7 +16,7 @@ const TITLE_ROW = 17, DAY_PX = 5
 const INK = '#201f1a', RED = '#df3929'
 
 type Float = { x: number; y: number }
-type Row = { kind: 'city' | 'venue' | 'lane'; label: string; y: number; h: number; alt?: boolean; x?: number }
+type Row = { kind: 'city' | 'organizer' | 'venue' | 'lane'; label: string; y: number; h: number; alt?: boolean; x?: number }
 
 export type SeasonTimelineProps = {
   venues: Venue[]
@@ -84,28 +84,32 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
   const mw = Math.max(2.5, Math.min(9, k - 1.5))
   const head = narrow ? TITLE_ROW : 0
 
-  /* rows: city → venue → one lane per production */
+  /* rows: city → organizer → venue → one lane per production */
   const layout = useMemo(() => {
     const prods = productions(p.items)
-    const cities: string[] = []
-    p.venues.forEach(v => { if (!cities.includes(v.city)) cities.push(v.city) })
     const rows: Row[] = [], laneY = new Map<string, number>()
     let y = TOP
-    for (const city of cities) {
-      const vs = p.venues.filter(v => v.city === city)
-        .map(v => ({ v, ps: prods.filter(pr => pr.venue.id === v.id).sort((a, b) => a.dates[0].day.localeCompare(b.dates[0].day) || a.title.localeCompare(b.title)) }))
-        .filter(r => r.ps.length)
-      if (!vs.length) continue
+    for (const { city, organizers } of groupVenues(p.venues)) {
+      const os = organizers
+        .map(o => ({ o, vs: o.venues
+          .map(v => ({ v, ps: prods.filter(pr => pr.venue.id === v.id).sort((a, b) => a.dates[0].day.localeCompare(b.dates[0].day) || a.title.localeCompare(b.title)) }))
+          .filter(r => r.ps.length) }))
+        .filter(r => r.vs.length)
+      if (!os.length) continue
       rows.push({ kind: 'city', label: city, y, h: 30 }); y += 30
-      for (const { v, ps } of vs) {
-        rows.push({ kind: 'venue', label: v.name, y, h: 22 }); y += 22
-        ps.forEach((pr, i) => {
-          const h = head + LANE
-          // phones: the title starts at the first performance, so it scrolls along with its marks
-          rows.push({ kind: 'lane', label: pr.title, y, h, alt: i % 2 === 1, x: narrow ? Math.max(L, xd(pr.dates[0].day) - mw / 2) : undefined })
-          laneY.set(pr.key, y + head); y += h
-        })
-        y += 4
+      for (const { o, vs } of os) {
+        rows.push({ kind: 'organizer', label: o.organizer, y, h: 22 }); y += 22
+        for (const { v, ps } of vs) {
+          const label = venueLabel(v)
+          if (label) { rows.push({ kind: 'venue', label, y, h: 18 }); y += 18 }
+          ps.forEach((pr, i) => {
+            const h = head + LANE
+            // phones: the title starts at the first performance, so it scrolls along with its marks
+            rows.push({ kind: 'lane', label: pr.title, y, h, alt: i % 2 === 1, x: narrow ? Math.max(L, xd(pr.dates[0].day) - mw / 2) : undefined })
+            laneY.set(pr.key, y + head); y += h
+          })
+          y += 4
+        }
       }
       y += 6
     }
@@ -133,7 +137,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
   })
   const summary = (it: Item) => <>
     <div className="x-tt">{it.ev.title}</div>
-    <div className="x-tm">{t.wd[weekday(it.day)]} {dayLabel(it.day)} · {timeRange(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+    <div className="x-tm">{t.wd[weekday(it.day)]} {dayLabel(it.day)} · {timeRange(it, t)}<br />{it.venue.organizer}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
       {p.planIds.has(it.id) && <><br /><span className="x-hl">{t.inLater}</span></>}</div>
   </>
   const popItem = pop ? p.items.find(i => i.id === pop.id) : undefined
@@ -156,8 +160,14 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
               <line x1={12} x2={W - R} y1={r.y + 24} y2={r.y + 24} stroke={INK} strokeWidth={1.5} />
               <text x={12} y={r.y + 18} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
             </g>
-          : r.kind === 'venue'
-            ? <text key={i} x={12} y={r.y + 16} {...T.ui}>{r.label}</text>
+          : r.kind === 'organizer' || r.kind === 'venue'
+            // headings run across the gutter line: a card-coloured backing keeps them readable
+            ? <g key={i}>
+                <rect x={8} y={r.y + 3} width={Math.min(width(r.label, r.kind === 'organizer' ? UI_FONT : TEXT_FONT), W - 24) + 8} height={r.h - 5} fill="#fbf8f1" />
+                {r.kind === 'organizer'
+                  ? <text x={12} y={r.y + 16} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+                  : <text x={12} y={r.y + 13} {...T.text} fill="#565247">{fitText(r.label, W - 24, TEXT_FONT)}</text>}
+              </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow

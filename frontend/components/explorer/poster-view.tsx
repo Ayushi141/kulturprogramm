@@ -39,6 +39,7 @@ export function PosterView(p: Props) {
         <div className="cardtext">
           <small>{spanLabel(it, t)}{it.ev.price ? ' · ' + it.ev.price : ''}</small>
           <button onClick={() => p.onOpen(it)}><h3>{it.ev.title}</h3><ArrowUpRight size={18} /></button>
+          <p>{it.venue.organizer}</p>
           <p><MapPin size={13} />{it.venue.name} · {it.venue.city}</p>
         </div>
       </article>
@@ -86,6 +87,7 @@ export function SeasonPoster(p: { items: Item[]; planIds: Set<string>; onToggle:
                 <div className="cardtext">
                   <small>{t.nextShow(`${t.wd[weekday(next.day)].toUpperCase()} ${dayLabel(next.day)} ${fmt(next.s)}`, pr.dates.length - 1, dayLabel(last.day))}</small>
                   <button onClick={() => p.onOpen(next)}><h3>{pr.title}</h3><ArrowUpRight size={18} /></button>
+                  <p>{pr.venue.organizer}</p>
                   <p><MapPin size={13} />{pr.venue.name} · {pr.venue.city}</p>
                 </div>
               </article>

@@ -9,16 +9,21 @@
 export const CATEGORIES = ['theatre', 'opera', 'dance', 'concerts', 'movies'] as const
 export type Category = (typeof CATEGORIES)[number]
 
+/**
+ * One row of the timeline: an organizer at one venue. The same building can be two
+ * venues here when two organizers play in it (Oper Wuppertal and Pina Bausch).
+ */
 export type Venue = {
   /** Stable ID. `Event.venueId` refers to it. */
   id: string
-  /** Display name, for example "Schauspielhaus". */
+  /** Who hosts the events, written out in full, for example "Düsseldorfer Schauspielhaus". */
+  organizer: string
+  /** Where, for example "Schauspielhaus, Großes Haus". */
   name: string
   /**
    * City display name, for example "Köln".
-   * The timeline groups venue rows by city. Cities appear in the order of
-   * their first venue in `Programme.venues`. Sort the venues geographically,
-   * for example north to south.
+   * The timeline groups rows by city, then by organizer, in the order of
+   * their first venue in `Programme.venues`.
    */
   city: string
 }

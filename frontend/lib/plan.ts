@@ -88,3 +88,22 @@ export function productions(items: Item[]): Production[] {
   for (const p of map.values()) p.dates.sort((a, b) => a.day.localeCompare(b.day) || a.s - b.s)
   return [...map.values()]
 }
+
+/** Cities, their organizers, and their venues, each in the order of first appearance in `venues`. */
+export type VenueGroup = { city: string; organizers: { organizer: string; venues: Venue[] }[] }
+
+/** Groups the timeline rows: city → organizer → venue. */
+export function groupVenues(venues: Venue[]): VenueGroup[] {
+  const out: VenueGroup[] = []
+  for (const v of venues) {
+    let c = out.find(g => g.city === v.city)
+    if (!c) out.push(c = { city: v.city, organizers: [] })
+    let o = c.organizers.find(g => g.organizer === v.organizer)
+    if (!o) c.organizers.push(o = { organizer: v.organizer, venues: [] })
+    o.venues.push(v)
+  }
+  return out
+}
+
+/** The venue's label under its organizer: empty when it only repeats the organizer ("Oper Köln" at "Oper Köln"). */
+export const venueLabel = (v: Venue) => (v.name === v.organizer ? '' : v.name)

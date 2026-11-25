@@ -148,18 +148,17 @@ def connect() -> psycopg.Connection:
 def pending(limit: int, title: str | None) -> list[tuple]:
     """
     Productions to look up: not looked up yet, with upcoming dates, the
-    soonest first. Each row: id, title, category, venues, city, url.
+    soonest first. Each row: id, title, category, organizer, venues, city, url.
     """
     with connect() as conn:
         return conn.execute(
             """
-            SELECT p.id, p.title, p.category,
-                   string_agg(DISTINCT v.name, ', '),
-                   min(v.city),
+            SELECT p.id, p.title, p.category, p.organizer,
+                   string_agg(DISTINCT e.venue, ', '),
+                   min(e.city),
                    (array_agg(e.url ORDER BY e.starts_at) FILTER (WHERE e.url IS NOT NULL))[1]
             FROM productions p
             JOIN events e ON e.production_id = p.id
-            JOIN venues v ON v.id = e.venue_id
             WHERE p.enriched_at IS NULL
               AND e.starts_at > now()
               AND (%(title)s::text IS NULL OR p.title ILIKE '%%' || %(title)s || '%%')
@@ -176,11 +175,12 @@ def ask(production: tuple, key: str) -> str:
     Sends one production to the model and returns the text of the answer.
     OpenRouter runs the web searches and page fetches during the request.
     """
-    _, title, category, venues, city, url = production
+    _, title, category, organizer, venues, city, url = production
     started = monotonic()
     lines = [
         f"Titel: {title}",
         f"Sparte: {CATEGORY_DE.get(category, category)}",
+        f"Veranstalter: {organizer}",
         f"Spielstätte: {venues}, {city}",
     ]
     if url:
@@ -262,7 +262,7 @@ def enrich(production: tuple, key: str, dry_run: bool) -> str:
     tries it again. Runs in a worker thread: it logs, but never raises.
     """
     label = production[1]
-    log.info(f"{ctx(label)} looking up at {production[3]}, {production[4]}")
+    log.info(f"{ctx(label)} looking up at {production[4]}, {production[5]} ({production[3]})")
     try:
         note_de, note_en = parse(ask(production, key))
         if not dry_run:

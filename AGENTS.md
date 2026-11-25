@@ -24,10 +24,11 @@ kulturprogramm/
 - Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `psycopg[binary]` 3 (scraper
   also `beautifulsoup4`, `pillow`).
 - The frontend is a Next.js application (`node:22-alpine` image, `frontend/Dockerfile`). `getProgramme()`
-  (`frontend/lib/get-programme.ts`) reads venues and events from 6 hours ago to 183 days ahead and maps
+  (`frontend/lib/get-programme.ts`) reads the events from 6 hours ago to 183 days ahead and maps
   `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`, `dance`, `concerts`, `movies`.
   Without `PGPASSWORD_FILE` it shows a demo programme. Data contract: `frontend/lib/types.ts`.
-- The day strip shows 7 days plus a "later" button for days 8–183: one line
+- Timeline rows: city → organizer → venue (`groupVenues` in `lib/plan.ts`); a frontend `Venue` is
+  one organizer at one venue. The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
@@ -50,11 +51,12 @@ kulturprogramm/
 The schema, in short (full: `backend/deploy/init.sql`):
 
 ```sql
--- venues (id, name, city); images (key: first 32 hex digits of the bytes' sha256,
--- source_url, content_type, data, fetched_at), served at /img/<key>; messages (contact form)
+-- images (key: first 32 hex digits of the bytes' sha256, source_url, content_type, data,
+-- fetched_at), served at /img/<key>; messages (contact form)
 CREATE TABLE productions (  -- one per title per source (Source.name)
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    source      text NOT NULL,
+    source      text NOT NULL,  -- the website's key (Source.name)
+    organizer   text NOT NULL,  -- who hosts it, shown in full ("Tanztheater Wuppertal Pina Bausch")
     title       text NOT NULL,
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
     image_key   text REFERENCES images (key),
@@ -68,12 +70,13 @@ CREATE TABLE productions (  -- one per title per source (Source.name)
 CREATE TABLE events (  -- one dated performance or screening
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     production_id bigint      NOT NULL REFERENCES productions (id),
-    venue_id      text        NOT NULL REFERENCES venues (id),
+    venue         text        NOT NULL,  -- stage or building; a production can play at several
+    city          text        NOT NULL,
     starts_at     timestamptz NOT NULL,
     ends_at       timestamptz,
     url           text,
     updated_at    timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (production_id, venue_id, starts_at)
+    UNIQUE (production_id, venue, city, starts_at)
 );
 CREATE INDEX events_starts_at ON events (starts_at);  -- the frontend's window
 CREATE INDEX events_production_id ON events (production_id);
@@ -89,8 +92,8 @@ CREATE TABLE featured (  -- productions shown in the "In focus" card
 existing database. Recreate the database (`docker compose down -v`, then start PostgreSQL and run
 the scraper; it refills everything in minutes). No migration files.
 
-Title, category and image live once per production; events hold only the date data. `save()`
-upserts venues and new images, then productions (category, `image_key` kept when the new lookup
+Title, organizer, category and image live once per production; events hold date and place. `save()`
+upserts new images, then productions (category, `image_key` kept when the new lookup
 found none), then events (`ends_at`, `url`, `updated_at` on a conflict). Two writers share
 `productions`: the scraper and the enricher each update only their own columns, never whole rows.
 Events that disappear from a program are not removed, so cancelled or expired rows can remain.
@@ -133,17 +136,15 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   theatre). These values are written to the database; add new ones to the `category` check in `init.sql`, `CATEGORY` in
   `frontend/lib/get-programme.ts`, and every `Record<Category, …>` the type
   checker then flags (colour, labels, icon, typical length, `.cat-*` fallback).
-- A `Source` is one website; a `Venue` is one physical place. One source can
-  list several venues (Filmkunstkinos lists four cinemas).
-- `Venue` is a frozen dataclass with `id`, `name`, and `city`; it becomes a
-  `venues` row, like the frontend's `Venue`. Build its `id` as
-  `f"{self.name}-{slugify(name)}"`.
+- A `Source` is one website (`name`, `website`, `organizer`: who hosts its events, written out in
+  full); a `Venue` (`name`, `city`) is one physical place. One source can list several venues
+  (Filmkunstkinos lists four cinemas). Write a venue's name the same way in every event.
 - `Event` is a dataclass with `title`, `venue`, `category`, an aware
   `starts_at`, an optional aware `ends_at`, an optional absolute `url`, and
   optional `image_url` (set by `scrape()` when the program page shows one) and
   `image_key` (set by `add_images()`).
 - `Source` stores a key and URL; its abstract `scrape()` fetches and parses
-  events, and `save()` upserts their venues, new images, productions, then the events.
+  events, and `save()` upserts new images, productions, then the events.
 - Images: `Source.scrape_image(event)` returns an image URL or `None`; the
   default returns `event.image_url`, else the `og:image` of `event.url`.
   `Source.add_images(events)` calls it once per title and stores the original bytes (Pillow checks
@@ -184,9 +185,8 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   for example, `SchauspielKoeln`.
 - Use a lowercase key for the `Source` name argument, such as
   `"schauspiel-koeln"`.
-- The event's `venue` should identify the performance location, not
-  automatically the website operator. Check the source page for available
-  location information.
+- The event's `venue` should identify the performance location, not the website operator
+  (that is the `organizer`). Check the source page for available location information.
 
 ## Scraper sources
 
@@ -229,8 +229,8 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 ### Theater Krefeld-Mönchengladbach
 - `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
   listed branch in `BRANCHES` gives the default category; `Extras` keeps only
-  concerts. Cards provide title, URL, start; no end. Venue: one per stage from `.performance__location`
-  ("building – stage"; `ABBREVIATIONS` for "Theater MG/KR", seating notes dropped); city from the
+  concerts. Cards provide title, URL, start; no end. Venue: the stage of `.performance__location`
+  ("building – stage", seating notes dropped), else the building ("Seidenweberhaus"); city from the
   address on the linked directions page (none: `SEAT`, Krefeld).
 
 ### Oper Wuppertal

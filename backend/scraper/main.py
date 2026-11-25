@@ -49,7 +49,8 @@ class Category(StrEnum):
 
 @dataclass(frozen=True)
 class Venue:
-    id: str
+    """Where an event takes place: a stage or a building, and its city."""
+
     name: str
     city: str
 
@@ -141,13 +142,6 @@ def shrink(image: Image.Image) -> tuple[bytes, str]:
     return out.getvalue(), "image/jpeg"
 
 
-def slugify(text: str) -> str:
-    text = text.lower()
-    for umlaut, replacement in {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}.items():
-        text = text.replace(umlaut, replacement)
-    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-
-
 def absolute_url(base: httpx.URL, href: str) -> str:
     url = base.join(href)
     if url.scheme == "http":
@@ -204,9 +198,15 @@ class Source(ABC):
         re.IGNORECASE,
     )
 
-    def __init__(self, name, website):
+    def __init__(self, name: str, website: str, organizer: str):
+        """
+        `name`: the key of the website, stored as `productions.source`.
+        `organizer`: who hosts its events, shown to visitors. A future source
+        that collects the events of several organizers would set it per event.
+        """
         self.name = name
         self.website = website
+        self.organizer = organizer
 
     @property
     def ctx(self) -> str:
@@ -324,34 +324,21 @@ class Source(ABC):
 
     def save(self, events: list[Event], images: list[StoredImage]) -> None:
         """
-        Upserts the events' venues, new images and productions, then the
-        events. Writes only the scraper's columns of `productions`: the
-        enricher's notes stay as they are.
+        Upserts new images and the productions, then the events with their
+        venue and city. Writes only the scraper's columns of `productions`:
+        the enricher's notes stay as they are.
         """
-        venues = {e.venue for e in events}
-        venue_rows = [(v.id, v.name, v.city) for v in venues]
         image_rows = [
             (i.key, i.source_url, i.content_type, i.data) for i in images
         ]
         # one row per title; the last event of a title wins
         productions = {
-            e.title: (self.name, e.title, e.category.value, e.image_key)
+            e.title: (self.name, self.organizer, e.title, e.category.value, e.image_key)
             for e in events
         }
 
         with connect() as conn:
             cursor = conn.cursor()
-            cursor.executemany(
-                """
-                INSERT INTO venues (id, name, city)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (id)
-                DO UPDATE SET
-                    name = EXCLUDED.name,
-                    city = EXCLUDED.city
-                """,
-                venue_rows,
-            )
             cursor.executemany(
                 """
                 INSERT INTO images (key, source_url, content_type, data)
@@ -362,12 +349,13 @@ class Source(ABC):
             )
             production_ids = {}
             for row in productions.values():
-                production_ids[row[1]] = cursor.execute(
+                production_ids[row[2]] = cursor.execute(
                     """
-                    INSERT INTO productions (source, title, category, image_key)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO productions (source, organizer, title, category, image_key)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (source, title)
                     DO UPDATE SET
+                        organizer = EXCLUDED.organizer,
                         category = EXCLUDED.category,
                         -- a failed image lookup keeps the image found earlier
                         image_key = COALESCE(EXCLUDED.image_key, productions.image_key)
@@ -378,21 +366,21 @@ class Source(ABC):
             cursor.executemany(
                 """
                 INSERT INTO events
-                    (production_id, venue_id, starts_at, ends_at, url)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (production_id, venue_id, starts_at)
+                    (production_id, venue, city, starts_at, ends_at, url)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (production_id, venue, city, starts_at)
                 DO UPDATE SET
                     ends_at = EXCLUDED.ends_at,
                     url = EXCLUDED.url,
                     updated_at = now()
                 """,
                 [
-                    (production_ids[e.title], e.venue.id, e.starts_at, e.ends_at, e.url)
+                    (production_ids[e.title], e.venue.name, e.venue.city, e.starts_at, e.ends_at, e.url)
                     for e in events
                 ],
             )
         log.info(
-            f"{self.ctx} saved {len(venue_rows)} venues, {len(image_rows)} images,"
+            f"{self.ctx} saved {len(image_rows)} images,"
             f" {len(productions)} productions, {len(events)} events"
         )
 
@@ -418,9 +406,7 @@ class Filmkunstkinos(Source):
             name = article.select_one("span.meta-theater-logo").get_text(
                 strip=True
             )
-            venue = Venue(
-                id=f"{self.name}-{slugify(name)}", name=name, city=self.CITY
-            )
+            venue = Venue(name=name, city=self.CITY)
 
             # the film poster; optional, so a missing one is no parse error
             poster = article.select_one("figure img[src]")
@@ -497,9 +483,7 @@ class Dhaus(Source):
                 "[itemprop=location] [itemprop=address]"
             ).get_text(strip=True)
             city = re.fullmatch(r".*\b\d{5}\s+(.+)", address).group(1)
-            venue = Venue(
-                id=f"{self.name}-{slugify(name)}", name=name, city=city
-            )
+            venue = Venue(name=name, city=city)
 
             starts_at = datetime.fromisoformat(
                 performance.select_one("meta[itemprop=startDate]")["content"]
@@ -521,7 +505,7 @@ class Dhaus(Source):
                 if ends_at <= starts_at:
                     ends_at += timedelta(days=1)
 
-            log.debug(f"{self.ctx}   {title!r} at {venue.id}: {starts_at} - {ends_at}")
+            log.debug(f"{self.ctx}   {title!r} at {venue.name}: {starts_at} - {ends_at}")
             events.append(
                 Event(
                     title=title,
@@ -537,7 +521,6 @@ class Dhaus(Source):
 
 class OperAmRhein(Source):
     VENUE = Venue(
-        id="oper-am-rhein-opernhaus-duesseldorf",
         name="Opernhaus Düsseldorf",
         city="Düsseldorf",
     )
@@ -609,7 +592,7 @@ class OperAmRhein(Source):
                 if ends_at <= starts_at:
                     ends_at += timedelta(days=1)
 
-            log.debug(f"{self.ctx}   {title!r} at {self.VENUE.id}: {starts_at} - {ends_at}")
+            log.debug(f"{self.ctx}   {title!r} at {self.VENUE.name}: {starts_at} - {ends_at}")
             events.append(
                 Event(
                     title=title,
@@ -635,7 +618,6 @@ class Production:
 class SchauspielKoeln(Source):
     # Used when a production page names no single stage or cannot be loaded.
     VENUE = Venue(
-        id="schauspiel-koeln-schauspiel-koeln",
         name="Schauspiel Köln",
         city="Köln",
     )
@@ -656,7 +638,6 @@ class SchauspielKoeln(Source):
         stage = " ".join(stage_tag.get_text(" ").split()) if stage_tag else ""
         if stage and "&" not in stage:
             venue = Venue(
-                id=f"{self.name}-{slugify(stage)}",
                 name=stage,
                 city=self.VENUE.city,
             )
@@ -680,7 +661,7 @@ class SchauspielKoeln(Source):
         image_url = (
             str(response.url.join(image_tag["content"])) if image_tag else None
         )
-        log.debug(f"{self.ctx}   stage {stage!r} -> {venue.id}, length {length}, image {image_url}")
+        log.debug(f"{self.ctx}   stage {stage!r} -> {venue.name}, length {length}, image {image_url}")
         return Production(venue, length, image_url)
 
     def scrape(self) -> list[Event]:
@@ -763,20 +744,19 @@ class TheaterKrefeldMoenchengladbach(Source):
 
     def venue(self, location: Tag, cities: dict[str, str]) -> Venue:
         """
-        One venue per stage: "Theater Mönchengladbach – Studio". The line is
-        "building – stage" or only the building. The city comes from the
-        address on the building's directions page (its link), read once per
-        building and run.
+        One venue per stage. The line is "building – stage" ("Theater MG –
+        Studio") or only the building ("Seidenweberhaus"). The venue is the
+        stage, else the building: organizer and city already say which
+        theatre. The city comes from the address on the building's directions
+        page (its link), read once per building and run.
         """
         building, _, stage = location.get_text(" ", strip=True).partition(" – ")
-        building = self.ABBREVIATIONS.get(building, building)
-        stage = self.SEATING.sub("", stage)
-        name = f"{building} – {stage}" if stage else building
+        name = self.SEATING.sub("", stage) or self.ABBREVIATIONS.get(building, building)
         link = location.select_one("a[href]")
         if link and link["href"] not in cities:
             cities[link["href"]] = self.city(link["href"])
         city = cities[link["href"]] if link else self.SEAT
-        return Venue(id=f"{self.name}-{slugify(name)}", name=name, city=city)
+        return Venue(name=name, city=city)
 
     def city(self, url: str) -> str:
         """The city in the address of a directions page ("…, 5911 HH Venlo")."""
@@ -858,7 +838,6 @@ class TheaterKrefeldMoenchengladbach(Source):
 class OperWuppertal(Source):
     API = "https://api.wb.c4c.it/api/performances"
     VENUE = Venue(
-        id="oper-wuppertal-opernhaus",
         name="Opernhaus Wuppertal",
         city="Wuppertal",
     )
@@ -920,7 +899,6 @@ class OperWuppertal(Source):
                 self.VENUE
                 if location == "Opernhaus"
                 else Venue(
-                    id=f"{self.name}-{slugify(location)}",
                     name=location,
                     city=self.VENUE.city,
                 )
@@ -1050,7 +1028,6 @@ class TheaterEssen(Source):
                 starts_at, time_tag.get_text(" ", strip=True)
             )
             venue = Venue(
-                id=f"{self.name}-{slugify(location)}",
                 name=location,
                 city="Essen",
             )
@@ -1070,7 +1047,6 @@ class TheaterEssen(Source):
 
 class OperKoeln(Source):
     VENUE = Venue(
-        id="oper-koeln-oper-koeln",
         name="Oper Köln",
         city="Köln",
     )
@@ -1219,13 +1195,12 @@ class SchauspielhausBochum(Source):
                         starts_at.date(), start_clock, tzinfo=berlin
                     )
                     venue = Venue(
-                        id=f"{self.name}-{slugify(stage)}",
                         name=stage,
                         city="Bochum",
                     )
-                    if (title, venue.id, starts_at) in seen:
+                    if (title, venue, starts_at) in seen:
                         continue
-                    seen.add((title, venue.id, starts_at))
+                    seen.add((title, venue, starts_at))
                     events.append(
                         Event(
                             title=title,
@@ -1293,16 +1268,7 @@ class PinaBausch(Source):
             if place["city"] != self.CITY or not piece["plays"]:
                 continue
 
-            # the same stage as Oper Wuppertal's
-            venue = (
-                OperWuppertal.VENUE
-                if place["name"] == OperWuppertal.VENUE.name
-                else Venue(
-                    id=f"{self.name}-{slugify(place['name'])}",
-                    name=place["name"],
-                    city=place["city"],
-                )
-            )
+            venue = Venue(name=place["name"], city=place["city"])
             events.append(
                 Event(
                     title=piece["title"].replace("\xad", "").strip(),
@@ -1341,7 +1307,6 @@ class UfaPalastDuesseldorf(Source):
     """
 
     VENUE = Venue(
-        id="ufa-palast-duesseldorf-ufa-palast",
         name="UFA Palast",
         city="Düsseldorf",
     )
@@ -1405,7 +1370,6 @@ class UciKinowelt(Source):
     """
 
     VENUE = Venue(
-        id="uci-kinowelt-uci-kino",
         name="UCI Kino",
         city="Düsseldorf",
     )
@@ -1476,7 +1440,6 @@ class FilmmuseumDuesseldorf(Source):
     """
 
     VENUE = Venue(
-        id="filmmuseum-duesseldorf-filmmuseum-duesseldorf",
         name="Filmmuseum Düsseldorf",
         city="Düsseldorf",
     )
@@ -1575,40 +1538,52 @@ class FilmmuseumDuesseldorf(Source):
         raise RuntimeError(f"more than {self.MAX_PAGES} pages")
 
 
+# name (stored as productions.source), website, organizer (shown to visitors, written out in full)
 sources = [
-    Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/"),
-    Dhaus("dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel"),
+    Filmkunstkinos(
+        "filmkunstkinos", "https://filmkunstkinos.de/programm/", "Filmkunstkinos Düsseldorf"
+    ),
+    Dhaus(
+        "dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel", "Düsseldorfer Schauspielhaus"
+    ),
     OperAmRhein(
         "oper-am-rhein",
         "https://www.operamrhein.de/spielplan/kalender/duesseldorf/",
+        "Deutsche Oper am Rhein",
     ),
-    SchauspielKoeln(
-        "schauspiel-koeln", "https://www.schauspiel.koeln/kalender"
-    ),
+    SchauspielKoeln("schauspiel-koeln", "https://www.schauspiel.koeln/kalender", "Schauspiel Köln"),
     TheaterKrefeldMoenchengladbach(
         "theater-krefeld-moenchengladbach",
         "https://theater-kr-mg.de/kalender/",
+        "Theater Krefeld und Mönchengladbach",
     ),
-    OperWuppertal("oper-wuppertal", "https://www.oper-wuppertal.de/"),
+    OperWuppertal(
+        "oper-wuppertal", "https://www.oper-wuppertal.de/", "Wuppertaler Bühnen und Sinfonieorchester"
+    ),
     TheaterEssen(
-        "theater-essen", "https://www.theater-essen.de/programm/kalender/"
+        "theater-essen", "https://www.theater-essen.de/programm/kalender/", "Theater und Philharmonie Essen"
     ),
-    OperKoeln("oper-koeln", "https://www.oper.koeln/programm"),
+    OperKoeln("oper-koeln", "https://www.oper.koeln/programm", "Oper Köln"),
     SchauspielhausBochum(
         "schauspielhaus-bochum",
         "https://www.schauspielhausbochum.de/de/spielplan/13/schauspiel",
+        "Schauspielhaus Bochum",
     ),
-    PinaBausch("pina-bausch", "https://www.pina-bausch.de/de/calendar"),
+    PinaBausch(
+        "pina-bausch", "https://www.pina-bausch.de/de/calendar", "Tanztheater Wuppertal Pina Bausch"
+    ),
     UfaPalastDuesseldorf(
-        "ufa-palast-duesseldorf", "https://ufa-duesseldorf.de/programm/"
+        "ufa-palast-duesseldorf", "https://ufa-duesseldorf.de/programm/", "UFA Palast Düsseldorf"
     ),
     UciKinowelt(
         "uci-kinowelt",
         "https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50",
+        "UCI Kinowelt Düsseldorf",
     ),
     FilmmuseumDuesseldorf(
         "filmmuseum-duesseldorf",
         "https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm",
+        "Filmmuseum Düsseldorf",
     ),
 ]
 
