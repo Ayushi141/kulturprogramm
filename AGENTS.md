@@ -43,7 +43,7 @@ kulturprogramm/
   privacy text with any new data processing. The imprint's contact form stores into `messages` (`/api/contact`).
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
 - Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
-  at boot). PostgreSQL and the frontend restart with the host (`unless-stopped`).
+  at boot). All services restart with the host (`unless-stopped`).
 
 ## Database
 
@@ -194,14 +194,12 @@ The notes below describe the parser implementation. They are not a guarantee tha
 page has not changed. Rheinisches Landestheater is not registered: no dated events yet.
 
 ### Filmkunstkinos
-- `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and
-  cinema. Title: direct text of `h2.movie-small--title a`
-  (`find(string=True, recursive=False)` drops `span.extended-title`); URL: its
-  `href`. Venue `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`,
-  `Atelier`) in Düsseldorf. Each `time[datetime]` is a screening labelled
-  `+00:00` but local: replace the timezone, do not convert. End: start plus
-  `.movie-small--meta p.meta` (`100 Min`, without trailers). Labels: the
-  genres before its first `•`.
+- `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and cinema. Title: direct
+  text of `h2.movie-small--title a` (`find(string=True, recursive=False)` drops `span.extended-title`);
+  URL: its `href`. Venue `span.meta-theater-logo` (`Metropol`, `Bambi`, `Cinema`, `Atelier`) in
+  Düsseldorf. Each `time[datetime]` is a screening labelled `+00:00` but local: replace the timezone,
+  do not convert. End: start plus `.movie-small--meta p.meta` (`100 Min`, without trailers). Labels:
+  the genres before its first `•`.
 
 ### Dhaus (Düsseldorfer Schauspielhaus)
 - `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance`
@@ -271,14 +269,17 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all rows.
 
 ### UCI Kinowelt Düsseldorf
-- `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only
-  today): one `div.film-container` per film, title link
-  `h2.film-container__description__text__eventtitle a`, `159min` in
-  `ul.film-info` (missing for unreleased films), poster `img.film-thumb`;
-  screenings `a.badge-performance[data-date="20261120"][data-time]`. Venue
-  `UCI Kino`; labels: the `ul.film-info` genres (`Oper`, `Ballett`). Page and
-  posters need a browser User-Agent. Both cinemas date after-midnight
-  screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
+- `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only today): one
+  `div.film-container` per film, title link `h2.film-container__description__text__eventtitle a`,
+  `159min` in `ul.film-info` (missing for unreleased films), poster `img.film-thumb`; screenings
+  `a.badge-performance[data-date="20261120"][data-time]`. Venue `UCI Kino`; labels: the `ul.film-info`
+  genres (`Oper`, `Ballett`). Page and posters need a browser User-Agent. Both cinemas date
+  after-midnight screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
+
+### Filmmuseum Düsseldorf
+- `https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm` ("Black Box" is the program), pages via
+  "Weiter" (`#` on the last). `div.event-item`: `p.mb-0` date without year ("Sa 28.11.": this or next year,
+  whichever has that weekday), time, link `a.mb-2`; series in its path. Film page: "· 83 min ·", og:image.
 
 ## Common operations
 
