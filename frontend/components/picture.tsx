@@ -1,20 +1,20 @@
 'use client'
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Clapperboard, Drama, Footprints, Maximize, MicVocal, Music } from 'lucide-react'
+import { Maximize } from 'lucide-react'
 import type { Category } from '@/lib/types'
 import { useT } from './i18n'
+import { Placeholder } from './placeholder'
 
-const icons: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
 const HOLD_MS = 150 // a shorter press may still turn into a scroll: the peek waits this long
 const TAP_MS = 300  // released sooner: a tap, the poster stays open; later: a hold, it closes
 const SLOP_PX = 8   // moving further before the peek shows means the finger is scrolling
 
-/** Event image with a typographic fallback when the image is missing or fails.
+/** Event image with an abstract placeholder (seeded by the title) when the image is missing or fails.
     With `peek` (the event title), the image opens the whole poster over the page. A tap (or
     Enter) keeps it open until the next tap anywhere or Escape. Holding (finger, mouse button or
     Space) shows it only while held. */
-export function Picture({ image, category, peek }: { image?: string; category: Category; peek?: string }) {
+export function Picture({ image, category, seed, peek }: { image?: string; category: Category; seed: string; peek?: string }) {
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
   // open after a tap: stays until the next tap. `pinnedAt` ignores the tap's own late click.
@@ -23,7 +23,6 @@ export function Picture({ image, category, peek }: { image?: string; category: C
   const btn = useRef<HTMLButtonElement>(null)
   const press = useRef<{ id: number; x: number; y: number; at: number; timer: number } | null>(null)
   const t = useT()
-  const Icon = icons[category]
 
   const end = () => {
     if (press.current) clearTimeout(press.current.timer)
@@ -62,11 +61,7 @@ export function Picture({ image, category, peek }: { image?: string; category: C
     return () => el.removeEventListener('touchmove', stop)
   }, [open])
 
-  if (failed || !image) return (
-    <div className={'source-image cat-' + category}>
-      <div className="typeprint"><Icon size={40} /><strong>{t.cat[category].tag}</strong></div>
-    </div>
-  )
+  if (failed || !image) return <Placeholder category={category} seed={seed} />
   if (!peek) return (
     <div className={'source-image cat-' + category}>
       <img src={image} alt="" onError={() => setFailed(true)} />
