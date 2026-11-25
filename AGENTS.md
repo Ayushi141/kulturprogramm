@@ -202,14 +202,12 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   the genres before its first `•`.
 
 ### Dhaus (Düsseldorfer Schauspielhaus)
-- `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance`
-  each. Title `.performance__title [itemprop=name]` without soft hyphens, its
-  link made absolute. Start: naive `meta[itemprop=startDate]`; end only from
-  `.performance__time` (`19:00 – 20:15`), moved to the next day if not after
-  the start. Venue `.performance__location` without `📍`; city after the postal
-  code in the hidden `[itemprop=location] [itemprop=address]`. Cancelled cards
-  are skipped; title and `.performance__infos .performance__text` are
-  classified, default `THEATER`.
+- `https://www.dhaus.de/programm/spielplan/schauspiel`: one `div.performance` each. Title
+  `.performance__title [itemprop=name]` without soft hyphens, its link made absolute. Start: naive
+  `meta[itemprop=startDate]`; end only from `.performance__time` (`19:00 – 20:15`), moved to the next
+  day if not after the start. Venue `.performance__location` without `📍`; city after the postal code in
+  the hidden `[itemprop=location] [itemprop=address]`. Cancelled cards are skipped; title and
+  `.performance__infos .performance__text` are classified, default `THEATER`.
 
 ### Schauspiel Köln
 - `https://www.schauspiel.koeln/kalender`: one `li.s-bko-activity` each. Title
@@ -231,7 +229,9 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 ### Theater Krefeld-Mönchengladbach
 - `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
   listed branch in `BRANCHES` gives the default category; `Extras` keeps only
-  concerts. Cards provide title, URL, venue, start; no end.
+  concerts. Cards provide title, URL, start; no end. Venue: one per stage from `.performance__location`
+  ("building – stage"; `ABBREVIATIONS` for "Theater MG/KR", seating notes dropped); city from the
+  address on the linked directions page (none: `SEAT`, Krefeld).
 
 ### Oper Wuppertal
 - `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, all pages (at most 50 items each). Keep

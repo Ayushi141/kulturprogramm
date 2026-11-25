@@ -12,7 +12,7 @@ import httpx
 import psycopg
 from enum import StrEnum
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from pathlib import Path
 from PIL import Image, ImageOps
 from zoneinfo import ZoneInfo
@@ -751,6 +751,49 @@ class TheaterKrefeldMoenchengladbach(Source):
         "Schauspiel": Category.THEATER,
         "Kinder & Jugend": Category.THEATER,
     }
+    # Some location lines abbreviate the two theatres ("Theater MG – Studio").
+    ABBREVIATIONS = {
+        "Theater MG": "Theater Mönchengladbach",
+        "Theater KR": "Theater Krefeld",
+    }
+    # Seating notes after the stage ("Konzertsaal Freie Platzwahl", "Große Bühne FP").
+    SEATING = re.compile(r"\s+(?:Freie Platzwahl|FP)$")
+    # The company's seat: the city of a venue whose directions page gives no address.
+    SEAT = "Krefeld"
+
+    def venue(self, location: Tag, cities: dict[str, str]) -> Venue:
+        """
+        One venue per stage: "Theater Mönchengladbach – Studio". The line is
+        "building – stage" or only the building. The city comes from the
+        address on the building's directions page (its link), read once per
+        building and run.
+        """
+        building, _, stage = location.get_text(" ", strip=True).partition(" – ")
+        building = self.ABBREVIATIONS.get(building, building)
+        stage = self.SEATING.sub("", stage)
+        name = f"{building} – {stage}" if stage else building
+        link = location.select_one("a[href]")
+        if link and link["href"] not in cities:
+            cities[link["href"]] = self.city(link["href"])
+        city = cities[link["href"]] if link else self.SEAT
+        return Venue(id=f"{self.name}-{slugify(name)}", name=name, city=city)
+
+    def city(self, url: str) -> str:
+        """The city in the address of a directions page ("…, 5911 HH Venlo")."""
+        try:
+            response = httpx.get(url, follow_redirects=True, timeout=60)
+            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            log.warning(f"{self.ctx} no address from {url}: {error!r}; city {self.SEAT}")
+            return self.SEAT
+        address = BeautifulSoup(response.text, "html.parser").select_one("span.has-icon--multiline")
+        if not address:
+            log.info(f"{self.ctx} no address on {url}; city {self.SEAT}")
+            return self.SEAT
+        # "Theater Mönchengladbach | Odenkirchener Straße 78, 41236 Mönchengladbach"
+        place = address.get_text(" ", strip=True).rsplit(",", 1)[-1]
+        return re.sub(r"^\s*\d{4,5}(?: [A-Z]{2})?\s+", "", place).strip()
 
     def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
@@ -760,6 +803,7 @@ class TheaterKrefeldMoenchengladbach(Source):
         berlin = ZoneInfo("Europe/Berlin")
 
         events = []
+        cities: dict[str, str] = {}  # directions page URL -> city
         performances = soup.select("article.performance")
         log.info(f"{self.ctx} found {len(performances)} article.performance")
         for performance in performances:
@@ -796,19 +840,7 @@ class TheaterKrefeldMoenchengladbach(Source):
             else:
                 starts_at = starts_at.astimezone(berlin)
 
-            location = performance.select_one(
-                ".performance__location"
-            ).get_text(" ", strip=True)
-            city = (
-                "Mönchengladbach"
-                if re.search(r"\bMG\b|Mönchengladbach", location)
-                else "Krefeld"
-            )
-            venue = Venue(
-                id=f"{self.name}-{slugify(location)}",
-                name=location,
-                city=city,
-            )
+            venue = self.venue(performance.select_one(".performance__location"), cities)
             url = absolute_url(response.url, link["href"]) if link else None
             events.append(
                 Event(
