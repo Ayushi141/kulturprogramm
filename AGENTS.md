@@ -30,7 +30,7 @@ kulturprogramm/
 - The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
-  each performance.
+  each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
   "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
   speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
