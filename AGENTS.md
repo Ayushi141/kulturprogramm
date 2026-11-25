@@ -41,7 +41,7 @@ kulturprogramm/
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
 - Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
-  at boot). PostgreSQL and the frontend restart with the host (`unless-stopped`).
+  at boot). All services restart with the host (`unless-stopped`).
 
 ## Database
 
