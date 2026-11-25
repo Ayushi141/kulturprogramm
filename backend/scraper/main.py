@@ -1315,7 +1315,7 @@ class UfaPalastDuesseldorf(Source):
     """
 
     VENUE = Venue(
-        name="UFA Palast",
+        name="UFA Palast Düsseldorf",  # = organizer: the timeline shows no extra venue line
         city="Düsseldorf",
     )
 
@@ -1378,7 +1378,7 @@ class UciKinowelt(Source):
     """
 
     VENUE = Venue(
-        name="UCI Kino",
+        name="UCI Kinowelt Düsseldorf",  # = organizer: the timeline shows no extra venue line
         city="Düsseldorf",
     )
 

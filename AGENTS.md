@@ -28,7 +28,7 @@ kulturprogramm/
   `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`, `dance`, `concerts`, `movies`.
   Without `PGPASSWORD_FILE` it shows a demo programme. Data contract: `frontend/lib/types.ts`.
 - Timeline rows: city → organizer → venue (`groupVenues` in `lib/plan.ts`); a frontend `Venue` is
-  one organizer at one venue. The day strip shows 7 days plus a "later" button for days 8–183: one line
+  one organizer at one venue. A venue named like its organizer gets no line of its own. The day strip shows 7 days plus a "later" button for days 8–183: one line
   per production with one square per performance (`season-timeline.tsx`) or
   one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
@@ -265,14 +265,14 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   ahead) as `section.day-section`, one `article.movie-row` per film: title `h2`
   in `a.group` (the film page), runtime in the div after it (`2 Std 39 Min`,
   `2 Std`, `95 Min`), poster `img`. Each `.showtime-wrap[data-date][data-time]`
-  is a screening; screens (`Kino 13`) are halls of venue `UFA Palast`. Labels:
+  is a screening; screens (`Kino 13`) are halls of venue `UFA Palast Düsseldorf`. Labels:
   the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all rows.
 
 ### UCI Kinowelt Düsseldorf
 - `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only today): one
   `div.film-container` per film, title link `h2.film-container__description__text__eventtitle a`,
   `159min` in `ul.film-info` (missing for unreleased films), poster `img.film-thumb`; screenings
-  `a.badge-performance[data-date="20261120"][data-time]`. Venue `UCI Kino`; labels: the `ul.film-info`
+  `a.badge-performance[data-date="20261120"][data-time]`. Venue `UCI Kinowelt Düsseldorf`; labels: the `ul.film-info`
   genres (`Oper`, `Ballett`). Page and posters need a browser User-Agent. Both cinemas date
   after-midnight screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
 
