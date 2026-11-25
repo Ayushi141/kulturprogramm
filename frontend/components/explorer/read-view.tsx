@@ -34,7 +34,6 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
   return (
     <div className="x-read">
       <header className="x-readhead">
-        <p>{t.readSort}</p>
         <div className="x-readai"><Souffleur width={26} /><p>{t.readAi}</p></div>
       </header>
       {entries.length === 0 && <p className="x-empty">{t.readEmpty}</p>}

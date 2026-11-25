@@ -214,7 +214,8 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
 
         <section className="directory" id="guide">
           {programme.demo && <p className="x-demo">{t.demo}</p>}
-          {view !== 'read' && <p className="x-hint">{hint}</p>}
+          {/* the hint line: what to do here, or in the reading view how it is sorted */}
+          <p className="x-hint">{view === 'read' ? t.readSort : hint}</p>
           {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
           {view === 'read' ? (
