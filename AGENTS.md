@@ -279,7 +279,7 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 ### Theater Dortmund
 - `https://www.theaterdo.de/kalender/`, pages via "»": `div.event`, start `data-start` (Unix; 0: school
   bookings, skipped; `data-endtime` is a fixed +6 h, unused), end from the "19:00 Uhr – 22:00 Uhr" line.
-  `DIVISIONS` by division; venue: first details span; skips mobile shows and `ELSEWHERE` guest venues.
+  `DIVISIONS` by division; skips KJT (youth theatre), mobile shows, `ELSEWHERE` guest venues.
 
 ## Common operations
 

@@ -1561,8 +1561,9 @@ class TheaterDortmund(Source):
     The calendar lists 15 events per page and links the next page with "»".
     A div.event carries its start as Unix time (data-start; 0 marks dates
     booked by schools, mobile plays); data-endtime is always 6 hours later,
-    so the end comes from the time line ("19:00 Uhr – 22:00 Uhr"). Its division ("Oper", "Ballett", "Philharmoniker", "Schauspiel",
-    "KJT") gives the category; the first span in .event__details names the
+    so the end comes from the time line ("19:00 Uhr – 22:00 Uhr"). Its division
+    ("Oper", "Ballett", "Philharmoniker", "Schauspiel") gives the category; the
+    youth theatre ("KJT") is skipped. The first span in .event__details names the
     venue, often with an address in brackets.
     """
 
@@ -1572,8 +1573,8 @@ class TheaterDortmund(Source):
         "Ballett": Category.TANZ,
         "Philharmoniker": Category.CONCERT,
         "Schauspiel": Category.THEATER,
-        "KJT": Category.THEATER,  # Kinder- und Jugendtheater
     }
+    SKIPPED = {"KJT"}  # Kinder- und Jugendtheater
     # A venue named after another theatre or a festival: a guest performance
     # in another city ("Theater Bonn", "55. Hong Kong Arts Festival (…)").
     ELSEWHERE = re.compile(r"^Theater (?!Dortmund\b)\S+$|\bFestival\b")
@@ -1608,6 +1609,8 @@ class TheaterDortmund(Source):
                 title = card.select_one("h2").get_text(" ", strip=True).replace("\xad", "")
                 division_tag = card.select_one(".event__division")
                 division = division_tag.get_text(" ", strip=True) if division_tag else ""
+                if division in self.SKIPPED:
+                    continue
                 details = card.select_one(".event__details")
                 subtitle = details.select_one("p") if details else None
                 category = self.event_category(
