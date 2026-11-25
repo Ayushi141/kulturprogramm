@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { DICTS, HOME, type Lang } from '@/lib/i18n'
 import '@/app/globals.css'
@@ -41,7 +40,6 @@ export function RootLayout({ lang, children }: { lang: Lang; children: React.Rea
     <html lang={lang}>
       <body className="antialiased">
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )

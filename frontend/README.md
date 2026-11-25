@@ -1,11 +1,11 @@
 # Kulturprogramm — kulturprogramm.eu
 
-Theatre, opera and movies in NRW on one timeline.
+Theatre, opera, dance, concerts and movies in NRW on one timeline.
 Pick a day, add events to your evening, open the venue page for tickets.
 
 ## Start
 
-Requirements: Node.js 20 or newer, pnpm.
+Requirements: Node.js 22 or newer, pnpm.
 
 ```bash
 pnpm install
@@ -30,18 +30,18 @@ the `venues` and `events` tables from PostgreSQL. The Compose file in
 the same variables, for example `PGHOST=127.0.0.1`.
 
 - Events from 6 hours ago to 183 days ahead are loaded. The day strip shows the first 7 days; the "later" button shows the rest, one line per production.
-- Database categories `theater`, `oper` and `film` become `theatre`, `opera`
-  and `movies`. Other categories, such as `konzert`, are not shown.
+- Database categories `theater`, `oper`, `tanz`, `konzert` and `film` become
+  `theatre`, `opera`, `dance`, `concerts` and `movies`.
 - `ends_at` NULL becomes a missing `end` ("end not announced"). For layout
   only, the frontend estimates the length per category (`TYPICAL_LENGTH` in
-  `lib/plan.ts`: theatre 150, opera 180, movies 120 minutes). The timeline draws
+  `lib/plan.ts`: theatre 150, opera 180, dance, concerts and movies 120 minutes). The timeline draws
   such a bar with an open end: solid colour under the label, then a halftone
   that fades to nothing, with no right edge (`components/explorer/open-end.ts`).
 - Venues are ordered by city, then name.
 - Event images come from the `images` table and are served at `/img/<key>`
   (`app/img/[key]/route.ts`), so visitors never load images from the venues.
 
-The page is rendered on each request (`dynamic` in `app/page.tsx`). If the
+The page is rendered on each request (`dynamic` in `app/(de)/page.tsx` and `app/(en)/en/page.tsx`). If the
 query fails, the page shows an error. It never falls back to the demo when
 `PGPASSWORD_FILE` is set.
 
@@ -77,4 +77,4 @@ type makes a missing German text a type error.
 
 ## Clean-up candidates
 
-`app/globals.css` still has rules from the first design (`.hero`, `.marquee`, `.feature`, `.artwork`). The page does not use them.
+`app/globals.css` still has rules from the first design (`.hero`, `.marquee`, `.artwork`). The page does not use them.
