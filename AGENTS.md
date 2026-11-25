@@ -277,9 +277,9 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   whichever has that weekday), time, link `a.mb-2`; series in its path. Film page: "· 83 min ·", og:image.
 
 ### Theater Dortmund
-- `https://www.theaterdo.de/kalender/`, pages via "»": `div.event`, start `data-start` (Unix; 0: school
-  bookings, skipped; `data-endtime` is a fixed +6 h, unused), end from the "19:00 Uhr – 22:00 Uhr" line.
-  `DIVISIONS` by division; skips KJT (youth theatre), mobile shows, `ELSEWHERE` guest venues.
+- `/kalender/`, pages via "»": `div.event`, start `data-start` (Unix; 0: school bookings, skipped;
+  `data-endtime` is a fixed +6 h), end from the "19:00 Uhr – 22:00 Uhr" line. Skips KJT, mobile shows,
+  `ELSEWHERE` guests. Image: no og:image; last (widest) `#tx-ra-eventim-header-*` CSS background.
 
 ## Common operations
 

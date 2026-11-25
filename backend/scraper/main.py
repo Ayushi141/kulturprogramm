@@ -1592,6 +1592,21 @@ class TheaterDortmund(Source):
         name = re.sub(r"\s*\([^)]*\d[^)]*\)", "", place).strip()
         return Venue(name=name, city=self.CITY)
 
+    # The production page has no og:image. Its header photo is a CSS
+    # background, one rule per screen width; the last rule is the widest.
+    HEADER_IMAGE = re.compile(r"#tx-ra-eventim-header-\d+\s*\{\s*background-image:\s*url\(['\"]?([^'\")]+)")
+
+    def scrape_image(self, event: Event) -> str | None:
+        """URL of the widest header photo on the event's production page, or None."""
+        if not event.url:
+            return None
+        response = httpx.get(event.url, follow_redirects=True, timeout=60)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+        response.raise_for_status()
+        found = self.HEADER_IMAGE.findall(response.text)
+        log.debug(f"{self.ctx}   header image {found[-1] if found else None}")
+        return absolute_url(response.url, found[-1]) if found else None
+
     def scrape(self) -> list[Event]:
         berlin = ZoneInfo("Europe/Berlin")
         events = []
