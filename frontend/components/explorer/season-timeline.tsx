@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Venue } from '@/lib/types'
-import { groupVenues, productions, timeRange, venueLabel, type Item } from '@/lib/plan'
+import { groupVenues, productions, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT } from './categories'
@@ -92,15 +92,14 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
     for (const { city, organizers } of groupVenues(p.venues)) {
       const os = organizers
         .map(o => ({ o, vs: o.venues
-          .map(v => ({ v, ps: prods.filter(pr => pr.venue.id === v.id).sort((a, b) => a.dates[0].day.localeCompare(b.dates[0].day) || a.title.localeCompare(b.title)) }))
+          .map(({ v, label }) => ({ v, label, ps: prods.filter(pr => pr.venue.id === v.id).sort((a, b) => a.dates[0].day.localeCompare(b.dates[0].day) || a.title.localeCompare(b.title)) }))
           .filter(r => r.ps.length) }))
         .filter(r => r.vs.length)
       if (!os.length) continue
       rows.push({ kind: 'city', label: city, y, h: 30 }); y += 30
       for (const { o, vs } of os) {
         rows.push({ kind: 'organizer', label: o.organizer, y, h: 22 }); y += 22
-        for (const { v, ps } of vs) {
-          const label = venueLabel(v)
+        for (const { label, ps } of vs) {
           if (label) { rows.push({ kind: 'venue', label, y, h: 18 }); y += 18 }
           ps.forEach((pr, i) => {
             const h = head + LANE

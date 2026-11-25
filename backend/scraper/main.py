@@ -68,6 +68,8 @@ class Event(ABC):
     image_url: str | None = None
     # Key of the stored image (images.key), set by Source.add_images().
     image_key: str | None = None
+    # Who hosts this date, when it differs per event; else the source's organizer.
+    organizer: str | None = None
 
 
 @dataclass(frozen=True)
@@ -198,11 +200,12 @@ class Source(ABC):
         re.IGNORECASE,
     )
 
-    def __init__(self, name: str, website: str, organizer: str):
+    def __init__(self, name: str, website: str, organizer: str | None):
         """
         `name`: the key of the website, stored as `productions.source`.
-        `organizer`: who hosts its events, shown to visitors. A future source
-        that collects the events of several organizers would set it per event.
+        `organizer`: who hosts its events, shown to visitors, written out in
+        full. None: the source sets `Event.organizer` on every event (several
+        independent organizers on one website, like the Filmkunstkinos).
         """
         self.name = name
         self.website = website
@@ -325,7 +328,7 @@ class Source(ABC):
     def save(self, events: list[Event], images: list[StoredImage]) -> None:
         """
         Upserts new images and the productions, then the events with their
-        venue and city. Writes only the scraper's columns of `productions`:
+        organizer, venue and city. Writes only the scraper's columns of `productions`:
         the enricher's notes stay as they are.
         """
         image_rows = [
@@ -333,7 +336,7 @@ class Source(ABC):
         ]
         # one row per title; the last event of a title wins
         productions = {
-            e.title: (self.name, self.organizer, e.title, e.category.value, e.image_key)
+            e.title: (self.name, e.title, e.category.value, e.image_key)
             for e in events
         }
 
@@ -349,13 +352,12 @@ class Source(ABC):
             )
             production_ids = {}
             for row in productions.values():
-                production_ids[row[2]] = cursor.execute(
+                production_ids[row[1]] = cursor.execute(
                     """
-                    INSERT INTO productions (source, organizer, title, category, image_key)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO productions (source, title, category, image_key)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (source, title)
                     DO UPDATE SET
-                        organizer = EXCLUDED.organizer,
                         category = EXCLUDED.category,
                         -- a failed image lookup keeps the image found earlier
                         image_key = COALESCE(EXCLUDED.image_key, productions.image_key)
@@ -366,16 +368,17 @@ class Source(ABC):
             cursor.executemany(
                 """
                 INSERT INTO events
-                    (production_id, venue, city, starts_at, ends_at, url)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                    (production_id, organizer, venue, city, starts_at, ends_at, url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (production_id, venue, city, starts_at)
                 DO UPDATE SET
+                    organizer = EXCLUDED.organizer,
                     ends_at = EXCLUDED.ends_at,
                     url = EXCLUDED.url,
                     updated_at = now()
                 """,
                 [
-                    (production_ids[e.title], e.venue.name, e.venue.city, e.starts_at, e.ends_at, e.url)
+                    (production_ids[e.title], e.organizer or self.organizer, e.venue.name, e.venue.city, e.starts_at, e.ends_at, e.url)
                     for e in events
                 ],
             )
@@ -387,6 +390,7 @@ class Source(ABC):
 
 class Filmkunstkinos(Source):
     # The program page names no city; all four cinemas are in Düsseldorf.
+    # Each cinema is its own organizer (one website, four independent houses).
     CITY = "Düsseldorf"
 
     def scrape(self) -> list[Event]:
@@ -435,6 +439,7 @@ class Filmkunstkinos(Source):
                         ends_at=starts_at + runtime,
                         url=url,
                         image_url=image_url,
+                        organizer=venue.name,
                     )
                 )
 
@@ -473,12 +478,15 @@ class Dhaus(Source):
                 continue
             url = str(response.url.join(link["href"]))
 
-            name = (
+            # "Schauspielhaus, Großes Haus": the stage; the organizer already names the house
+            location = (
                 performance.select_one(".performance__location")
                 .get_text(strip=True)
                 .removeprefix("📍")
                 .strip()
             )
+            building, _, stage = location.partition(",")
+            name = stage.strip() or building
             address = performance.select_one(
                 "[itemprop=location] [itemprop=address]"
             ).get_text(strip=True)
@@ -1538,11 +1546,10 @@ class FilmmuseumDuesseldorf(Source):
         raise RuntimeError(f"more than {self.MAX_PAGES} pages")
 
 
-# name (stored as productions.source), website, organizer (shown to visitors, written out in full)
+# name (stored as productions.source), website, organizer (written to events; shown in full)
 sources = [
-    Filmkunstkinos(
-        "filmkunstkinos", "https://filmkunstkinos.de/programm/", "Filmkunstkinos Düsseldorf"
-    ),
+    # each event names its cinema as organizer
+    Filmkunstkinos("filmkunstkinos", "https://filmkunstkinos.de/programm/", None),
     Dhaus(
         "dhaus", "https://www.dhaus.de/programm/spielplan/schauspiel", "Düsseldorfer Schauspielhaus"
     ),

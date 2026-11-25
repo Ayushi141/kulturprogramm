@@ -153,7 +153,8 @@ def pending(limit: int, title: str | None) -> list[tuple]:
     with connect() as conn:
         return conn.execute(
             """
-            SELECT p.id, p.title, p.category, p.organizer,
+            SELECT p.id, p.title, p.category,
+                   string_agg(DISTINCT e.organizer, ', '),
                    string_agg(DISTINCT e.venue, ', '),
                    min(e.city),
                    (array_agg(e.url ORDER BY e.starts_at) FILTER (WHERE e.url IS NOT NULL))[1]

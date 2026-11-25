@@ -90,9 +90,14 @@ export function productions(items: Item[]): Production[] {
 }
 
 /** Cities, their organizers, and their venues, each in the order of first appearance in `venues`. */
-export type VenueGroup = { city: string; organizers: { organizer: string; venues: Venue[] }[] }
+export type VenueGroup = { city: string; organizers: { organizer: string; venues: { v: Venue; label: string }[] }[] }
 
-/** Groups the timeline rows: city → organizer → venue. */
+/**
+ * Groups the timeline rows: city → organizer → venue. A venue's label tells the organizer's venues
+ * apart, so it is empty when the organizer has only one venue in the city ("UFA Palast" under
+ * "UFA Palast Düsseldorf") or when it only repeats the organizer. Counted over the whole
+ * programme, not the view, so labels do not come and go while the view moves.
+ */
 export function groupVenues(venues: Venue[]): VenueGroup[] {
   const out: VenueGroup[] = []
   for (const v of venues) {
@@ -100,10 +105,9 @@ export function groupVenues(venues: Venue[]): VenueGroup[] {
     if (!c) out.push(c = { city: v.city, organizers: [] })
     let o = c.organizers.find(g => g.organizer === v.organizer)
     if (!o) c.organizers.push(o = { organizer: v.organizer, venues: [] })
-    o.venues.push(v)
+    o.venues.push({ v, label: v.name })
   }
+  for (const c of out) for (const o of c.organizers)
+    for (const r of o.venues) if (o.venues.length === 1 || r.v.name === o.organizer) r.label = ''
   return out
 }
-
-/** The venue's label under its organizer: empty when it only repeats the organizer ("Oper Köln" at "Oper Köln"). */
-export const venueLabel = (v: Venue) => (v.name === v.organizer ? '' : v.name)
