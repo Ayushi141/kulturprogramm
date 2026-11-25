@@ -790,6 +790,8 @@ class TheaterKrefeldMoenchengladbach(Source):
         "Schauspiel": Category.THEATER,
         "Kinder & Jugend": Category.THEATER,
     }
+    # The house orchestra: events of the "Konzerte" branch are its own.
+    ORCHESTRA = "Niederrheinische Sinfoniker"
     # Some location lines abbreviate the two theatres ("Theater MG – Studio").
     ABBREVIATIONS = {
         "Theater MG": "Theater Mönchengladbach",
@@ -888,6 +890,7 @@ class TheaterKrefeldMoenchengladbach(Source):
                     starts_at=starts_at,
                     ends_at=None,
                     url=url,
+                    organizer=self.ORCHESTRA if "Konzerte" in branches else None,
                 )
             )
         return events
@@ -895,6 +898,8 @@ class TheaterKrefeldMoenchengladbach(Source):
 
 class OperWuppertal(Source):
     API = "https://api.wb.c4c.it/api/performances"
+    # The house orchestra: events of the "Sinfonieorchester" branch are its own.
+    ORCHESTRA = "Sinfonieorchester Wuppertal"
     VENUE = Venue(
         name="Opernhaus Wuppertal",
         city="Wuppertal",
@@ -987,6 +992,7 @@ class OperWuppertal(Source):
                     starts_at=starts_at,
                     ends_at=ends_at,
                     url=absolute_url(response.url, performance["url"]),
+                    organizer=self.ORCHESTRA if branch == "Sinfonieorchester" else None,
                 )
             )
 
@@ -1022,6 +1028,8 @@ class TheaterEssen(Source):
         "Essener Philharmoniker": Category.CONCERT,
         "Philharmonie Essen": Category.CONCERT,
     }
+    # The house orchestra; "Philharmonie Essen" is the concert hall's own series.
+    ORCHESTRA = "Essener Philharmoniker"
 
     def scrape(self) -> list[Event]:
         response = httpx.get(self.website, follow_redirects=True, timeout=60)
@@ -1098,6 +1106,7 @@ class TheaterEssen(Source):
                     starts_at=starts_at,
                     ends_at=ends_at,
                     url=url,
+                    organizer=self.ORCHESTRA if category_name == self.ORCHESTRA else None,
                 )
             )
         return events
@@ -1615,6 +1624,8 @@ class TheaterDortmund(Source):
         "Schauspiel": Category.THEATER,
     }
     SKIPPED = {"KJT"}  # Kinder- und Jugendtheater
+    # The house orchestra: events of the "Philharmoniker" division are its own.
+    ORCHESTRA = "Dortmunder Philharmoniker"
     # A venue named after another theatre or a festival: a guest performance
     # in another city ("Theater Bonn", "55. Hong Kong Arts Festival (…)").
     ELSEWHERE = re.compile(r"^Theater (?!Dortmund\b)\S+$|\bFestival\b")
@@ -1688,6 +1699,7 @@ class TheaterDortmund(Source):
                         starts_at=starts_at,
                         ends_at=end_time_from_text(starts_at, details.get_text(" ", strip=True)) if details else None,
                         url=absolute_url(response.url, link["href"]) if link else None,
+                        organizer=self.ORCHESTRA if division == "Philharmoniker" else None,
                     )
                 )
             more = next((a for a in soup.select("a.page-link[href]") if a.get_text(strip=True) == "»"), None)
@@ -1716,7 +1728,7 @@ sources = [
         "Theater Krefeld und Mönchengladbach",
     ),
     OperWuppertal(
-        "oper-wuppertal", "https://www.oper-wuppertal.de/", "Wuppertaler Bühnen und Sinfonieorchester"
+        "oper-wuppertal", "https://www.oper-wuppertal.de/", "Oper Wuppertal"
     ),
     TheaterEssen(
         "theater-essen", "https://www.theater-essen.de/programm/kalender/", "Theater und Philharmonie Essen"
