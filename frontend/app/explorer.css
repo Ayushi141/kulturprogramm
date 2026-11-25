@@ -17,7 +17,7 @@
 .x-wrap{width:min(92%,1500px);margin:auto}
 .navwrap .saves{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:0 7px;border:1px solid var(--ink);box-shadow:none}
 .navwrap .saves b{padding:0 4px}
-footer{gap:16px}
+footer{gap:8px 16px;flex-wrap:wrap}
 /* footer: the same logo as the header, smaller */
 footer .x-footbrand{font:20px/.95 var(--display);letter-spacing:-1px;transform:none;flex-shrink:0}
 footer .x-footbrand .burst{width:20px;height:22px;margin-right:-6px}
@@ -152,6 +152,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-leg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 12px;min-width:110px}
 .x-leg b{line-height:1}
 .x-leg.x-bad{color:var(--red)}
+.x-planday{margin-bottom:18px}.x-planday>p{margin:0 0 8px}
 .x-planbtns{display:flex;gap:8px;margin-top:14px}
 .x-planbtns button{border:1px solid;padding:8px 12px}
 
@@ -294,6 +295,20 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-readsave{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:6px 9px;border:1.5px solid var(--ink);background:none;color:var(--ink);cursor:pointer}
 .x-readsave[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 
+/* ── Legal pages (legal-page.tsx): imprint, privacy policy, contact form ── */
+.x-legal{width:min(92%,760px);margin:auto;padding:32px 0 48px}
+.x-legal h1{margin:0 0 6px}
+.x-legal h2{margin:28px 0 8px}
+.x-legal section p{margin:0 0 10px}
+.x-legal a,.x-footlinks a{text-decoration:underline;text-underline-offset:2px}
+.x-contact{display:flex;flex-direction:column;gap:14px;margin-top:28px;padding-top:24px;border-top:1.5px solid var(--ink)}
+.x-contact label{display:flex;flex-direction:column;gap:6px;margin:0}
+.x-contact input,.x-contact textarea{width:100%;margin:0;padding:9px 10px;border:1.5px solid var(--ink);background:#fffdf6;color:var(--ink);resize:vertical}
+.x-contact .x-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.x-legalnote{margin:0}
+.x-send{align-self:flex-start;padding:8px 16px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);box-shadow:2px 2px var(--blue);cursor:pointer}
+.x-footlinks{display:flex;gap:14px;margin-left:auto}
+
 /* ── Type system ─────────────────────────────────────────────────────────────
    The shared text styles. Seven styles, each with one job:
      label    mono 700 11, tracked   tags, badges, kickers, counts
@@ -314,24 +329,24 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 :root{--zs:clamp(1px,.092vw,1.5px);--sans:Arial,Helvetica,sans-serif}
 button,input{font:inherit;letter-spacing:inherit}
 
-small,.tag,.featuretop,.saves,.x-lang,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-readnew
+small,.tag,.featuretop,.saves,.x-lang,.x-planday>p,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-readnew,.x-contact label
   {font:700 calc(11 * var(--zs))/1.3 var(--mono);letter-spacing:.08em}
 
-.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-narrator span,.x-readai p,.x-readvenue,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand)
+.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-narrator span,.x-readai p,.x-readvenue,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand),.x-legalnote,.x-footlinks a
   {font:400 calc(12 * var(--zs))/1.6 var(--mono);letter-spacing:0}
 
-.x-bubble p,.x-readnote
+.x-bubble p,.x-readnote,.x-legal section p,.x-contact input,.x-contact textarea
   {font:400 calc(12 * var(--zs))/1.6 'IBM Plex Mono',var(--mono);letter-spacing:0}
 
-.filters button,.visit,.x-readsave,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove
+.filters button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove
   {font:700 calc(13 * var(--zs))/1.2 var(--sans);letter-spacing:0}
 
-.x-tt,.x-step h3,.x-readtitle h3,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
+.x-tt,.x-step h3,.x-readtitle h3,.x-legal h2,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
   {font:400 calc(22 * var(--zs))/1.05 var(--display);letter-spacing:0}
-.x-gh,.x-plan h2,.dialogbody h2,.typeprint strong
+.x-gh,.x-plan h2,.dialogbody h2,.x-legal h1,.typeprint strong
   {font:400 calc(32 * var(--zs))/1 var(--display);letter-spacing:-.02em}
 .x-hero h1{letter-spacing:-.03em}
 
 /* secondary text is grey, never smaller or lighter */
-.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand){color:#565247}
+.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand),.x-legalnote,.x-footlinks a{color:#565247}
 

@@ -7,11 +7,12 @@ import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
+import { SiteFooter } from './site-footer'
 import { Picture } from './picture'
 import { CAT } from './explorer/categories'
 import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
-import { LaterPanel, PlanPanel } from './explorer/plan-panel'
+import { PlanPanel } from './explorer/plan-panel'
 import { ReadView } from './explorer/read-view'
 import { SeasonTimeline } from './explorer/season-timeline'
 import { CardContext, EventCard, type CardData } from './explorer/event-card'
@@ -131,14 +132,9 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
     const it = itemById.get(id)
     if (it) setPlans(ps => ({ ...ps, [it.day]: toggle(planFor(it.day).map(i => i.id), id) }))
   }
-  const pickCount = Object.values(plans).reduce((n, ids) => n + ids.length, 0)
-  const showPicks = () => {
-    if (!isLater && !plan.length) {
-      const d = days.find(x => planFor(x).length)
-      if (d) setDay(d); else if (laterPicks.length) setDay(LATER)
-    }
-    setTimeout(() => document.getElementById('my-evening')?.scrollIntoView({ behavior: 'smooth' }), 50)
-  }
+  /** "Mein Abend": every saved performance from today on, in date and time order, whatever day is selected. */
+  const picks = Object.keys(plans).sort().flatMap(planFor)
+  const showPicks = () => document.getElementById('my-evening')?.scrollIntoView({ behavior: 'smooth' })
 
 
   let hint: React.ReactNode = null
@@ -165,7 +161,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   return (
     <CardContext value={cardData}>
     <main id="top">
-      <Masthead count={pickCount} showPicks={showPicks} />
+      <Masthead count={picks.length} showPicks={showPicks} />
       {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
@@ -236,12 +232,10 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
               onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
-          {view === 'context' ? null : isLater
-            ? <LaterPanel items={laterPicks} onToggle={onToggle} />
-            : <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />}
+          {view !== 'context' && now && <PlanPanel picks={picks} today={now.day} suggestion={isLater ? undefined : suggestion} onToggle={onToggle} />}
         </section>
       </>}
-      <footer><span className="brand x-footbrand"><span className="burst" aria-hidden="true" />KULTURPROGRAMM</span> <span>{t.footer}</span></footer>
+      <SiteFooter lang={lang} />
 
       {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
       <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>

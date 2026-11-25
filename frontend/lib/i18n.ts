@@ -61,9 +61,7 @@ const en = {
   nextShow: (when: string, more: number, until: string) => `NEXT ${when}${more ? ` · +${more} UNTIL ${until}` : ''}`,
   saveNext: (title: string) => `Save the next show: ${title}`,
   removeNext: (title: string) => `Remove the next show: ${title}`,
-  laterPanel: 'YOUR LATER EVENINGS',
   laterSum: (n: number, evenings: number) => `${n} SAVED · ${evenings} ${evenings === 1 ? 'EVENING' : 'EVENINGS'}`,
-  laterEmpty: 'Tap a performance to save it. Theatre and opera often sell out weeks ahead, so the ticket link is right next to it.',
 
   // control bar and hints
   categoriesGroup: 'Categories (choose one or more)',
@@ -87,6 +85,16 @@ const en = {
   demo: 'DEMO PROGRAMME — invented times and titles; links go to venue home pages. Set PGPASSWORD_FILE to load the database.',
   keyZoom: 'drag on the whole-day strip to zoom · click it to move the view · drag or scroll the timeline sideways to move through the day',
   footer: "Programme and images come from the venues' own websites.",
+  imprint: 'Imprint',
+  privacy: 'Privacy',
+  backHome: 'Back to the programme',
+  contactName: 'Name (optional)',
+  contactEmail: 'Email (if you would like a reply)',
+  contactMessage: 'Message',
+  contactSend: 'Send',
+  contactSent: 'Thank you. Your message has arrived.',
+  contactFailed: 'That did not work. Please write an email instead.',
+  contactNote: 'We store your message only to answer it, then delete it.',
 
   // event details
   details: 'Programme details',
@@ -166,14 +174,11 @@ const en = {
   seeOnTimeline: 'see them on the timeline',
 
   // plan panel
-  yourDay: (weekday: string) => `YOUR ${weekday.toUpperCase()}`,
   empty: 'EMPTY',
   emptyStart: 'Bookmark what you want to see',
   emptyExample: ' — for example ',
   at: (title: string, time: string) => `${title} at ${time}`,
-  emptyEnd: '. Your picks for the day show up here in time order, with their ticket links.',
-  out: 'OUT',
-  stops: (n: number) => `${n} ${n === 1 ? 'STOP' : 'STOPS'}`,
+  emptyEnd: '. Your picks show up here by day and time, with their ticket links.',
   overlapsBy: (min: number) => `overlaps by ${min} min`,
   backToBack: 'back to back',
   breakOf: (min: number) => `${min} min break`,
@@ -181,7 +186,6 @@ const en = {
   copyPlan: 'Copy plan',
   copied: 'Copied',
   copyBlocked: 'Copy blocked',
-  clear: 'Clear',
 }
 
 export type Dict = typeof en
@@ -232,9 +236,7 @@ const de: Dict = {
   nextShow: (when, more, until) => `NÄCHSTE ${when}${more ? ` · +${more} BIS ${until}` : ''}`,
   saveNext: title => `Nächste Vorstellung merken: ${title}`,
   removeNext: title => `Nächste Vorstellung entfernen: ${title}`,
-  laterPanel: 'DEINE SPÄTEREN ABENDE',
   laterSum: (n, evenings) => `${n} GEMERKT · ${evenings} ${evenings === 1 ? 'ABEND' : 'ABENDE'}`,
-  laterEmpty: 'Vorstellung antippen und vormerken. Theater und Oper sind oft Wochen im Voraus ausverkauft – der Ticket-Link steht deshalb gleich daneben.',
 
   categoriesGroup: 'Kategorien (Mehrfachauswahl)',
   viewGroup: 'Ansicht',
@@ -256,6 +258,16 @@ const de: Dict = {
   demo: 'DEMO-PROGRAMM – erfundene Zeiten und Titel; Links führen zu den Startseiten der Spielstätten. Setze PGPASSWORD_FILE, um die Datenbank zu laden.',
   keyZoom: 'Tagesleiste: ziehen zum Zoomen, klicken zum Verschieben · Timeline: seitlich ziehen oder scrollen, um durch den Tag zu gehen',
   footer: 'Programm und Bilder stammen von den Websites der Spielstätten.',
+  imprint: 'Impressum',
+  privacy: 'Datenschutz',
+  backHome: 'Zurück zum Programm',
+  contactName: 'Name (optional)',
+  contactEmail: 'E-Mail (falls du eine Antwort möchtest)',
+  contactMessage: 'Nachricht',
+  contactSend: 'Senden',
+  contactSent: 'Danke! Deine Nachricht ist angekommen.',
+  contactFailed: 'Das hat nicht geklappt. Schreib uns bitte eine E-Mail.',
+  contactNote: 'Wir speichern deine Nachricht nur, um sie zu beantworten, und löschen sie danach.',
 
   details: 'Programmdetails',
   close: 'Schließen',
@@ -319,14 +331,11 @@ const de: Dict = {
   startedToday: n => `${n} ${n === 1 ? 'weiteres hat' : 'weitere haben'} heute schon begonnen – `,
   seeOnTimeline: 'in der Timeline ansehen',
 
-  yourDay: weekday => `DEIN ${weekday.toUpperCase()}`,
   empty: 'LEER',
   emptyStart: 'Merk dir vor, was du sehen willst',
   emptyExample: ' – zum Beispiel ',
   at: (title, time) => `${title} um ${time}`,
-  emptyEnd: '. Hier steht dann dein Tag der Reihe nach, mit Ticket-Links.',
-  out: 'UNTERWEGS',
-  stops: n => `${n} ${n === 1 ? 'STATION' : 'STATIONEN'}`,
+  emptyEnd: '. Hier stehen dann deine Abende der Reihe nach, mit Ticket-Links.',
   overlapsBy: min => `${min} Min. Überschneidung`,
   backToBack: 'direkt nacheinander',
   breakOf: min => `${min} Min. Pause`,
@@ -334,7 +343,6 @@ const de: Dict = {
   copyPlan: 'Plan kopieren',
   copied: 'Kopiert',
   copyBlocked: 'Kopieren nicht möglich',
-  clear: 'Leeren',
 }
 
 export const DICTS: Record<Lang, Dict> = { de, en }
