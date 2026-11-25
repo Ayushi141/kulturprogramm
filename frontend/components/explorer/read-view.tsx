@@ -43,7 +43,6 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
         return (
           <article key={id} className="x-readitem">
             <div className="x-readmascot">{next.category === 'movies' ? <Ticket width={30} /> : <Souffleur width={30} />}</div>
-            <div className="x-readbody">
             <div className="x-readkicker">
               <i className="x-sw" style={{ background: CAT[next.category].color }} />
               <small>{t.cat[next.category].tag} · {when}</small>
@@ -60,7 +59,6 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
               <button className="x-readsave" aria-pressed={planned} aria-label={(planned ? t.removeFrom : t.addTo)(next.ev.title)} onClick={() => onToggle(next.id)}>
                 <Bookmark size={15} fill={planned ? 'currentColor' : 'none'} />{t.readSave}
               </button>
-            </div>
             </div>
           </article>
         )

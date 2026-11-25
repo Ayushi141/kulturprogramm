@@ -287,20 +287,14 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-group .cat-movies img{object-position:center}
 
 /* ── Context view (read-view.tsx): the context notes of the selected day or range ── */
-/* as wide as the timeline; only the note keeps a reading width on big screens */
-.x-read .x-readnote{max-width:75ch}
+/* as wide as the timeline; the text uses the full width */
 .x-readai{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--yellow);border:1.5px dashed var(--ink)}.x-readai svg{flex:none;width:calc(32 * var(--zs));height:auto}.x-readai p{margin:0;text-wrap:balance}
-/* entry: the mascot (who whispers the note) in its own column, the text as wide as the note
-   (75ch), so the mascot and "Merken" stay next to the text on wide screens */
-.x-readitem{display:grid;grid-template-columns:auto minmax(0,max-content);justify-content:start;column-gap:calc(16 * var(--zs));padding:18px 0 16px;border-bottom:1.5px solid var(--ink)}
-.x-readmascot svg{display:block;width:calc(52 * var(--zs));height:auto}
-.x-readbody{display:flex;flex-direction:column;gap:6px;min-width:0}
-@media (max-width:700px){
-  .x-readitem{position:relative;display:block}
-  .x-readmascot{position:absolute;top:18px;right:0}
-  .x-readmascot svg{width:34px}
-  .x-readkicker,.x-readtitle{padding-right:44px}
-}
+/* entry: the text uses the full width; the mascot (who whispers the note) sits at the right,
+   next to the date line and the title, so its height does not push the title down */
+.x-readitem{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:6px;padding:18px 0 16px;border-bottom:1.5px solid var(--ink)}
+.x-readitem>*{grid-column:1/-1}.x-readitem>.x-readkicker,.x-readitem>.x-readtitle{grid-column:1}
+.x-readitem>.x-readmascot{grid-column:2;grid-row:1/span 2;align-self:end}.x-readmascot svg{display:block;width:calc(52 * var(--zs));height:auto}
+@media (max-width:700px){ .x-readmascot svg{width:34px} }
 .x-readkicker{display:flex;align-items:center;gap:7px}.x-readkicker .x-sw{border:1px solid var(--ink)}
 .x-readnew{padding:1px 5px;background:var(--ink);color:var(--yellow)}
 .x-readtitle{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.x-readtitle h3{margin:0}.x-readtitle button{padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.x-readtitle button:hover{text-decoration:underline}
