@@ -744,15 +744,14 @@ class TheaterKrefeldMoenchengladbach(Source):
 
     def venue(self, location: Tag, cities: dict[str, str]) -> Venue:
         """
-        One venue per stage: "Theater Mönchengladbach – Studio". The line is
-        "building – stage" or only the building. The city comes from the
-        address on the building's directions page (its link), read once per
-        building and run.
+        One venue per stage. The line is "building – stage" ("Theater MG –
+        Studio") or only the building ("Seidenweberhaus"). The venue is the
+        stage, else the building: organizer and city already say which
+        theatre. The city comes from the address on the building's directions
+        page (its link), read once per building and run.
         """
         building, _, stage = location.get_text(" ", strip=True).partition(" – ")
-        building = self.ABBREVIATIONS.get(building, building)
-        stage = self.SEATING.sub("", stage)
-        name = f"{building} – {stage}" if stage else building
+        name = self.SEATING.sub("", stage) or self.ABBREVIATIONS.get(building, building)
         link = location.select_one("a[href]")
         if link and link["href"] not in cities:
             cities[link["href"]] = self.city(link["href"])

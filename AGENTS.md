@@ -229,8 +229,8 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 ### Theater Krefeld-Mönchengladbach
 - `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
   listed branch in `BRANCHES` gives the default category; `Extras` keeps only
-  concerts. Cards provide title, URL, start; no end. Venue: one per stage from `.performance__location`
-  ("building – stage"; `ABBREVIATIONS` for "Theater MG/KR", seating notes dropped); city from the
+  concerts. Cards provide title, URL, start; no end. Venue: the stage of `.performance__location`
+  ("building – stage", seating notes dropped), else the building ("Seidenweberhaus"); city from the
   address on the linked directions page (none: `SEAT`, Krefeld).
 
 ### Oper Wuppertal
