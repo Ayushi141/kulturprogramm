@@ -39,6 +39,8 @@ kulturprogramm/
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
   first performance (a day: by start time; "later": by date and time). NEU: `imported_at` under 7 days old.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
+- Legal pages: `/impressum`, `/datenschutz` (EN `/en/imprint`, `/en/privacy`), texts in `lib/legal.tsx`; update the
+  privacy text with any new data processing. The imprint's contact form stores into `messages` (`/api/contact`).
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
 - Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
   at boot). PostgreSQL and the frontend restart with the host (`unless-stopped`).
@@ -49,7 +51,7 @@ The schema, in short (full: `backend/deploy/init.sql`):
 
 ```sql
 -- venues (id, name, city); images (key: first 32 hex digits of the bytes' sha256,
--- source_url, content_type, data, fetched_at), served at /img/<key>
+-- source_url, content_type, data, fetched_at), served at /img/<key>; messages (contact form)
 CREATE TABLE productions (  -- one per title per source (Source.name)
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source      text NOT NULL,
@@ -189,7 +191,7 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 ## Scraper sources
 
 The notes below describe the parser implementation. They are not a guarantee that a venue's live
-page has not changed.
+page has not changed. Rheinisches Landestheater is not registered: no dated events yet.
 
 ### Filmkunstkinos
 - `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and
@@ -277,9 +279,6 @@ page has not changed.
   `UCI Kino`; labels: the `ul.film-info` genres (`Oper`, `Ballett`). Page and
   posters need a browser User-Agent. Both cinemas date after-midnight
   screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
-
-### Rheinisches Landestheater
-- Not registered: its page has filters but no dated events yet.
 
 ## Common operations
 
