@@ -7,6 +7,7 @@ import { cultureDay, dayLabel, fmt, shiftDate, stamp, weekday } from '@/lib/time
 import { DICTS, type Lang } from '@/lib/i18n'
 import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
+import { SiteFooter } from './site-footer'
 import { Picture } from './picture'
 import { CAT } from './explorer/categories'
 import { DayStrip } from './explorer/day-strip'
@@ -241,7 +242,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
             : <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />}
         </section>
       </>}
-      <footer><span className="brand x-footbrand"><span className="burst" aria-hidden="true" />KULTURPROGRAMM</span> <span>{t.footer}</span></footer>
+      <SiteFooter lang={lang} />
 
       {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
       <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
