@@ -6,7 +6,7 @@ import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT } from './categories'
 import { EventCard } from './event-card'
-import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, wrapText } from './svg-text'
+import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 
 /* Geometry (logical px, scaled by Z like the day timeline) */
@@ -137,7 +137,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
   })
   const summary = (it: Item) => <>
     <div className="x-tt">{it.ev.title}</div>
-    <div className="x-tm">{t.wd[weekday(it.day)]} {dayLabel(it.day)} · {timeRange(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+    <div className="x-tm">{t.wd[weekday(it.day)]} {dayLabel(it.day)} · {timeRange(it, t)}<br />{it.venue.organizer}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
       {p.planIds.has(it.id) && <><br /><span className="x-hl">{t.inLater}</span></>}</div>
   </>
   const popItem = pop ? p.items.find(i => i.id === pop.id) : undefined
@@ -160,10 +160,14 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
               <line x1={12} x2={W - R} y1={r.y + 24} y2={r.y + 24} stroke={INK} strokeWidth={1.5} />
               <text x={12} y={r.y + 18} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
             </g>
-          : r.kind === 'organizer'
-            ? <text key={i} x={12} y={r.y + 16} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-          : r.kind === 'venue'
-            ? <text key={i} x={12} y={r.y + 13} {...T.text} fill="#565247">{fitText(r.label, W - 24, TEXT_FONT)}</text>
+          : r.kind === 'organizer' || r.kind === 'venue'
+            // headings run across the gutter line: a card-coloured backing keeps them readable
+            ? <g key={i}>
+                <rect x={8} y={r.y + 3} width={Math.min(width(r.label, r.kind === 'organizer' ? UI_FONT : TEXT_FONT), W - 24) + 8} height={r.h - 5} fill="#fbf8f1" />
+                {r.kind === 'organizer'
+                  ? <text x={12} y={r.y + 16} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+                  : <text x={12} y={r.y + 13} {...T.text} fill="#565247">{fitText(r.label, W - 24, TEXT_FONT)}</text>}
+              </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow

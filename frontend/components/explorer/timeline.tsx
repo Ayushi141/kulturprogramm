@@ -221,7 +221,7 @@ export function Timeline(p: TimelineProps) {
     const r = relation(it, p.plan, p.planIds, p.nowMin, t)
     return <>
       <div className="x-tt">{it.ev.title}</div>
-      <div className="x-tm">{t.cat[it.category].label} · {spanLabel(it, t)}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
+      <div className="x-tm">{t.cat[it.category].label} · {spanLabel(it, t)}<br />{it.venue.organizer}<br />{it.venue.name} · {it.venue.city}{it.ev.price && <> · {it.ev.price}</>}
         {r && <><br /><span className={r.strong ? 'x-hl' : undefined}>{r.text}</span></>}</div>
     </>
   }
@@ -396,12 +396,16 @@ export function Timeline(p: TimelineProps) {
                 <text x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
             : r.kind === 'organizer'
-            ? <text key={i} x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+            ? <g key={i}>
+                {/* the heading runs across the gutter line: a card-coloured backing keeps it readable */}
+                {!narrow && <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />}
+                <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+              </g>
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
                 {narrow
                   ? <text x={12} y={r.y + 13} {...T.text} fill={GREY}>{fitText(r.label, W - 24, TEXT_FONT)}</text>
-                  : <text x={12} y={r.y + AIR + BAR / 2 + 4} {...T.text} fill={GREY}>{fitText(r.label, L - 30, TEXT_FONT)}</text>}
+                  : <GutterLabel label={r.label} y={r.y + AIR + BAR / 2} max={L - 30} />}
               </g>)}
         </g>
 
@@ -515,5 +519,16 @@ export function Timeline(p: TimelineProps) {
         </div>
       )}
     </div>
+  )
+}
+
+/** A venue's name in the gutter: up to two lines, centred on the first lane. */
+function GutterLabel({ label, y, max }: { label: string; y: number; max: number }) {
+  const words = wrapText(label, max, TEXT_FONT)
+  const lines = words.length > 2 ? [words[0], fitText(words.slice(1).join(' '), max, TEXT_FONT)] : words
+  return (
+    <text x={12} y={y + 4 - (lines.length - 1) * 6.5} {...T.text} fill="#565247">
+      {lines.map((l, i) => <tspan key={i} x={12} dy={i ? 13 : 0}>{l.length && width(l, TEXT_FONT) > max ? fitText(l, max, TEXT_FONT) : l}</tspan>)}
+    </text>
   )
 }

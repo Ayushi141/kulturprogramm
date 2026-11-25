@@ -103,7 +103,7 @@ export function EventCard({ it, onToggle, onClose }: {
         <div className="x-popphoto"><Picture image={shown.ev.image} category={shown.category} key={it.id} peek={shown.ev.title} /></div>
         <small>{t.cat[shown.category].tag} / {t.dateline(t.wdl[weekday(shown.day)].toUpperCase(), dayLabel(shown.day))}</small>
         <div className="x-tt">{shown.ev.title}</div>
-        <div className="x-tm">{spanLabel(shown, t)}<br />{shown.venue.name} · {shown.venue.city}{shown.ev.price && <> · {shown.ev.price}</>}</div>
+        <div className="x-tm">{spanLabel(shown, t)}<br />{shown.venue.organizer}<br />{shown.venue.name} · {shown.venue.city}{shown.ev.price && <> · {shown.ev.price}</>}</div>
         {(others.length > 0 || context) && (
           <div className="x-tags">
             {others.length > 0 && (
