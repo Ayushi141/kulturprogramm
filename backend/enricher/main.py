@@ -311,9 +311,14 @@ def main() -> None:
     parser.add_argument("--title", help="only titles that contain this text")
     args = parser.parse_args()
     while True:
-        run_batch(args.limit, args.title, args.dry_run)
         if args.once or args.dry_run:
-            return
+            return run_batch(args.limit, args.title, args.dry_run)
+        try:
+            run_batch(args.limit, args.title, args.dry_run)
+        except Exception:
+            # e.g. the database is down or its schema changed under a running container:
+            # wait like after a batch, instead of crashing into a restart loop
+            log.exception(f"{ctx('batch')} failed")
         log.info(f"{ctx('batch')} next batch in {INTERVAL_HOURS:g} h")
         sleep(INTERVAL_HOURS * 3600)
 
