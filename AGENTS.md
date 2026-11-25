@@ -27,10 +27,10 @@ kulturprogramm/
   (`frontend/lib/get-programme.ts`) reads the events from 6 hours ago to 183 days ahead and maps
   `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`, `dance`, `concerts`, `movies`.
   Without `PGPASSWORD_FILE` it shows a demo programme. Data contract: `frontend/lib/types.ts`.
-- Timeline rows: city → organizer → venue (`groupVenues` in `lib/plan.ts`); a frontend `Venue` is
-  one organizer at one venue. A venue named like its organizer gets no line of its own. The day strip shows 7 days plus a "later" button for days 8–183: one line
-  per production with one square per performance (`season-timeline.tsx`) or
-  one card per production (`SeasonPoster`). Picks are saved under the day of
+- Timeline rows: city → organizer → venue (`groupVenues` in `lib/plan.ts`); a frontend `Venue` is one
+  organizer at one venue. A venue named like its organizer gets no line of its own. The day strip shows
+  7 days plus a "later" button for days 8–183: one line per production with one square per performance
+  (`season-timeline.tsx`) or one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
   "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
@@ -210,28 +210,25 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   `.performance__infos .performance__text` are classified, default `THEATER`.
 
 ### Schauspiel Köln
-- `https://www.schauspiel.koeln/kalender`: one `li.s-bko-activity` each. Title
-  and link `.field--name-production a`; start: date of
-  `time.s-bko-activity__datetime[datetime]` plus its last text piece
-  (`"%Y-%m-%d %H.%M Uhr"`). `production(url)` reads each production page once
-  per run: stage `.field--name-stages` in Köln (several or none: general
-  `VENUE` Schauspiel Köln), length `.field--name-duration` (`1 h 45 min`,
-  `5 h`; missing for about a third, unknown formats logged), `og:image`. A
-  failing page is logged; its events keep the general venue, no end or image.
-  Label `.field--name-category` is classified with the title, default
-  `THEATER`; `Entfällt` tickets are skipped.
+- `https://www.schauspiel.koeln/kalender`: one `li.s-bko-activity` each. Title and link
+  `.field--name-production a`; start: date of `time.s-bko-activity__datetime[datetime]` plus its last
+  text piece (`"%Y-%m-%d %H.%M Uhr"`). `production(url)` reads each production page once per run:
+  stage `.field--name-stages` in Köln (several or none: general `VENUE` Schauspiel Köln), length
+  `.field--name-duration` (`1 h 45 min`, `5 h`; missing for about a third, unknown formats logged),
+  `og:image`. A failing page is logged; its events keep the general venue, no end or image. Label
+  `.field--name-category` is classified with the title, default `THEATER`; `Entfällt` is skipped.
 
-### Deutsche Oper am Rhein (Opernhaus Düsseldorf)
-- `https://www.operamrhein.de/spielplan/kalender/duesseldorf/`: `div.performance`
-  at Opernhaus with a `.performance__category` (tours have none), default
-  `TANZ` for `Ballett`, else `OPER`. Cards give title/link, start, optional end.
+### Deutsche Oper am Rhein (Düsseldorf and Duisburg)
+- `…/spielplan/kalender/<city>/` per `HOUSES` entry: `div.performance` at the main house (Opernhaus
+  Düsseldorf, Theater Duisburg) with a `.performance__category` (tours have none), default `TANZ` for
+  `Ballett`, else `OPER`. Cards give title/link, start, optional end.
 
 ### Theater Krefeld-Mönchengladbach
-- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first
-  listed branch in `BRANCHES` gives the default category; `Extras` keeps only
-  concerts. Cards provide title, URL, start; no end. Venue: the stage of `.performance__location`
-  ("building – stage", seating notes dropped), else the building ("Seidenweberhaus"); city from the
-  address on the linked directions page (none: `SEAT`, Krefeld).
+- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first listed branch in `BRANCHES`
+  gives the default category; `Extras` keeps only concerts. Cards provide title, URL, start; no end.
+  Venue: the stage of `.performance__location` ("building – stage", seating notes dropped), else the
+  building ("Seidenweberhaus"); city from the address on the linked directions page (none: `SEAT`,
+  Krefeld).
 
 ### Oper Wuppertal
 - `https://api.wb.c4c.it/api/performances`, JSON-LD Accept, all pages (at most 50 items each). Keep
@@ -239,34 +236,32 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   Image: `production.image.src` of `/api/performances/<id>` (id ends the page URL; not in the list).
 
 ### Theater und Philharmonie Essen
-- `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the
-  first category in `CATEGORIES` (Schauspiel, Aalto, Philharmonie) gives the
-  default; `Treffpunkt:` locations (tours) are skipped and the ticket line
-  marks closed shows. Cards provide title/times/venue.
+- `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the first category in
+  `CATEGORIES` (Schauspiel, Aalto, Philharmonie) gives the default; `Treffpunkt:` locations (tours) are
+  skipped and the ticket line marks closed shows. Cards provide title/times/venue.
 
 ### Oper Köln
-- `https://www.oper.koeln/programm` (`li.s-bko-activity--schedule`): cards
-  provide label, local times and production links; the info line marks Kita
-  bookings. Venue Oper Köln, default `OPER`; image: `og:image` of the link.
+- `https://www.oper.koeln/programm` (`li.s-bko-activity--schedule`): cards provide label, local times
+  and production links; the info line marks Kita bookings. Venue Oper Köln, default `OPER`; image:
+  `og:image` of the link.
 
 ### Schauspielhaus Bochum
-- Read `/de/spielplan/11/tanz` (`TANZ`), then `/de/spielplan/13/schauspiel`
-  (`THEATER`, also lists dance; first listing wins). `.schedule__group`/`.schedule__item`
-  give date/title/stage/times; skip Theater Hagen, `Fällt aus`. Image (no og:image): inline
-  background of `.production__title-image`, else first `img.lazyimage[data-src]`.
+- Read `/de/spielplan/11/tanz` (`TANZ`), then `/de/spielplan/13/schauspiel` (`THEATER`, also lists
+  dance; first listing wins). `.schedule__group`/`.schedule__item` give date/title/stage/times; skip
+  Theater Hagen, `Fällt aus`. Image (no og:image): inline background of `.production__title-image`, else
+  first `img.lazyimage[data-src]`.
 
 ### Pina Bausch
-- `https://www.pina-bausch.de/de/calendar`: season JSON in `data-page`. Keep
-  Wuppertal dates whose event links played pieces (`plays`); labs and classes
-  link none. `TANZ`, UTC times, no end; image from the event page JSON.
+- `https://www.pina-bausch.de/de/calendar`: season JSON in `data-page`. Keep Wuppertal dates whose event
+  links played pieces (`plays`); labs and classes link none. `TANZ`, UTC times, no end; image from the
+  event page JSON.
 
 ### UFA Palast Düsseldorf
-- `https://ufa-duesseldorf.de/programm/`: every announced day (presales months
-  ahead) as `section.day-section`, one `article.movie-row` per film: title `h2`
-  in `a.group` (the film page), runtime in the div after it (`2 Std 39 Min`,
-  `2 Std`, `95 Min`), poster `img`. Each `.showtime-wrap[data-date][data-time]`
-  is a screening; screens (`Kino 13`) are halls of venue `UFA Palast Düsseldorf`. Labels:
-  the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all rows.
+- `https://ufa-duesseldorf.de/programm/`: every announced day (presales months ahead) as
+  `section.day-section`, one `article.movie-row` per film: title `h2` in `a.group` (the film page),
+  runtime in the div after it (`2 Std 39 Min`, `2 Std`, `95 Min`), poster `img`. Each
+  `.showtime-wrap[data-date][data-time]` is a screening; screens (`Kino 13`) are halls of venue `UFA
+  Palast Düsseldorf`. Labels: the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all.
 
 ### UCI Kinowelt Düsseldorf
 - `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only today): one
@@ -280,6 +275,11 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 - `https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm` ("Black Box" is the program), pages via
   "Weiter" (`#` on the last). `div.event-item`: `p.mb-0` date without year ("Sa 28.11.": this or next year,
   whichever has that weekday), time, link `a.mb-2`; series in its path. Film page: "· 83 min ·", og:image.
+
+### Theater Dortmund
+- `https://www.theaterdo.de/kalender/`, pages via "»": `div.event`, start `data-start` (Unix; 0: school
+  bookings, skipped; `data-endtime` is a fixed +6 h, unused), end from the "19:00 Uhr – 22:00 Uhr" line.
+  `DIVISIONS` by division; skips KJT (youth theatre), mobile shows, `ELSEWHERE` guest venues.
 
 ## Common operations
 
