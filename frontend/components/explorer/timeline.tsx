@@ -393,14 +393,11 @@ export function Timeline(p: TimelineProps) {
           {layout.rows.map((r, i) => r.kind === 'city'
             ? <g key={i}>
                 <line x1={12} x2={W - R} y1={r.y + 20} y2={r.y + 20} stroke={INK} strokeWidth={1.5} />
-                <text x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
               </g>
             : r.kind === 'organizer' ? null
             : <g key={i}>
                 {r.alt && <rect x={0} y={r.y} width={W} height={r.h} fill={INK} opacity={0.035} />}
-                {narrow
-                  ? <text x={12} y={r.y + 13} {...T.text} fill={GREY}>{fitText(r.label, W - 24, TEXT_FONT)}</text>
-                  : <GutterLabel label={r.label} y={r.y + AIR + BAR / 2} max={L - 30} />}
+                {!narrow && <GutterLabel label={r.label} y={r.y + AIR + BAR / 2} max={L - 30} />}
               </g>)}
         </g>
 
@@ -414,17 +411,6 @@ export function Timeline(p: TimelineProps) {
             </g>
           })}
           {!narrow && <line x1={L - 10} x2={L - 10} y1={OV_Y} y2={H - 14} stroke={INK} />}
-        </g>
-
-        {/* organizer headings: above the axis lines, on a card-coloured backing, as they run across the
-            gutter line and the hour lines (their rows hold no bars) */}
-        <g>
-          {layout.rows.filter(r => r.kind === 'organizer').map((r, i) => (
-            <g key={i}>
-              <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />
-              <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
-            </g>
-          ))}
         </g>
 
         {/* bars */}
@@ -500,6 +486,21 @@ export function Timeline(p: TimelineProps) {
             </>}
           </g>
         )}
+
+        {/* Labels in the chart area: city, organizer and (phones) venue names. Above the axis lines and
+            the past-time overlay, so neither crosses nor fades them; their rows hold no bars. */}
+        <g pointerEvents="none">
+          {layout.rows.map((r, i) => r.kind === 'city'
+            ? <text key={i} x={12} y={r.y + 15} {...T.label} letterSpacing={TRACK}>{r.label.toUpperCase()}</text>
+            : r.kind === 'organizer'
+            ? <g key={i}>
+                <rect x={8} y={r.y + 2} width={Math.min(width(r.label, UI_FONT), W - 24) + 8} height={ORG_H - 4} fill={CARD} />
+                <text x={12} y={r.y + 15} {...T.ui}>{fitText(r.label, W - 24, UI_FONT)}</text>
+              </g>
+            : narrow && r.label
+            ? <text key={i} x={12} y={r.y + 13} {...T.text} fill={GREY}>{fitText(r.label, W - 24, TEXT_FONT)}</text>
+            : null)}
+        </g>
 
         {/* nothing in view: centred in the chart area, wrapped to fit, above the past-time overlay */}
         {!layout.rows.length && (
