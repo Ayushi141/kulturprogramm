@@ -156,9 +156,13 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-planbtns{display:flex;gap:8px;margin-top:14px}
 .x-planbtns button{border:1px solid;padding:8px 12px}
 
-/* category swatch inside filter buttons (identity is never colour-only: icon + label too) */
+/* category swatch (context view); the filter buttons colour their icon instead (identity is never
+   colour-only: icon + label too). An unselected category's icon fades. */
 .x-sw{width:11px;height:11px;border:1.5px solid var(--ink);display:inline-block;flex:none}
-.filters button[aria-pressed=false] .x-sw{opacity:.3}
+.x-cats button svg{color:var(--cat)}
+/* on the dark (selected) button the darker colours (concerts, movies) need lifting */
+.x-cats button[aria-pressed=true] svg{color:color-mix(in oklab,var(--cat) 65%,white)}
+.filters button[aria-pressed=false] svg{opacity:.4}
 .filters button[aria-pressed=false]{color:#565247}
 
 /* event card (event-card.tsx): the same card in the timelines' popover (.x-pop, placed beside
