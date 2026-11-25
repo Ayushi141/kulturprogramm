@@ -279,7 +279,8 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-group .cat-movies img{object-position:center}
 
 /* ── Reading view: every production with a context note, newest first ── */
-.x-read{max-width:680px;margin:0 auto;padding:0 16px}
+/* as wide as the timeline; only the note keeps a reading width on big screens */
+.x-read .x-readnote{max-width:75ch}
 .x-readhead{display:flex;flex-direction:column;gap:6px;padding:8px 0 4px}.x-readhead p{margin:0}
 .x-readai{display:flex;align-items:flex-start;gap:10px;margin-top:6px;padding:8px 10px;background:var(--yellow);border:1.5px dashed var(--ink)}.x-readai svg{flex:none}
 .x-readitem{display:flex;flex-direction:column;gap:6px;padding:18px 0 16px;border-bottom:1.5px solid var(--ink)}
