@@ -19,7 +19,7 @@ import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
 /** `read`: the context notes of all upcoming productions, whatever day is selected. */
-type View = 'timeline' | 'poster' | 'read'
+type View = 'timeline' | 'poster' | 'context'
 type Now = { day: string; min: number }
 
 const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
@@ -72,7 +72,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
       setPlans(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= n.day)))
     } catch { /* storage unavailable: start empty */ }
     loaded.current = true
-    const fromHash = () => { const v = location.hash.slice(1); if (v === 'poster' || v === 'timeline' || v === 'read') setViewState(v) }
+    const fromHash = () => { const v = location.hash.slice(1); if (v === 'poster' || v === 'timeline' || v === 'context') setViewState(v) }
     fromHash()
     const t = setInterval(() => setNow(cultureDay(new Date())), 60000)
     addEventListener('hashchange', fromHash)
@@ -208,7 +208,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
             <div className="x-views" role="group" aria-label={t.viewGroup}>
               <button aria-pressed={view === 'timeline'} onClick={() => setView('timeline')}><ChartGantt size={16} />{t.timeline}</button>
               <button aria-pressed={view === 'poster'} onClick={() => setView('poster')}><LayoutGrid size={16} />{t.poster}</button>
-              <button aria-pressed={view === 'read'} onClick={() => setView('read')}><BookOpenText size={16} />{t.read}</button>
+              <button aria-pressed={view === 'context'} onClick={() => setView('context')}><BookOpenText size={16} />{t.read}</button>
             </div>
           </div>
         </div>
@@ -216,10 +216,10 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
         <section className="directory" id="guide">
           {programme.demo && <p className="x-demo">{t.demo}</p>}
           {/* the hint line: what to do here, or in the reading view what it shows and in which order */}
-          <p className="x-hint">{view === 'read' ? (isLater ? t.readSortLater : t.readSortDay) : hint}</p>
+          <p className="x-hint">{view === 'context' ? (isLater ? t.readSortLater : t.readSortDay) : hint}</p>
           {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
-          {view === 'read' ? (
+          {view === 'context' ? (
             <ReadView items={readItems} contexts={programme.contexts ?? {}} planIds={new Set(Object.values(plans).flat())}
               onToggle={onToggle} onOpen={setDetail} />
           ) : isLater ? (view === 'timeline'
@@ -236,7 +236,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
               onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
-          {view === 'read' ? null : isLater
+          {view === 'context' ? null : isLater
             ? <LaterPanel items={laterPicks} onToggle={onToggle} />
             : <PlanPanel day={day} plan={plan} suggestion={suggestion} onToggle={onToggle} onClear={() => setPlans(ps => ({ ...ps, [day]: [] }))} />}
         </section>
