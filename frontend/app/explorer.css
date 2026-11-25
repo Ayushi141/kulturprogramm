@@ -208,6 +208,9 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-cardwrap{position:relative}
 .x-drawer{position:absolute;z-index:2;top:0;bottom:0;left:100%;width:100%;display:flex;flex-direction:column;background:var(--ink);color:var(--paper);padding:13px 14px 14px;border-left:1.5px dashed var(--paper);box-shadow:5px 5px var(--red)}
 .x-drawer-over{left:0;border-left:0}
+/* desktop: the context drawer grows into the free width right of the card (--room, set in
+   event-card.tsx), up to twice the card, so the whole note fits without scrolling */
+@media (min-width:701px){ .x-drawer-note{width:clamp(100%, var(--room), 200%)} .x-drawer.x-drawer-over{width:100%} }
 /* the drawer's heading only (a direct child), not the AI label inside the bubble */
 .x-drawer>small{display:block;margin:0 30px 10px 0}
 /* "+N weitere Termine" and "Kontext": the open one turns light */
