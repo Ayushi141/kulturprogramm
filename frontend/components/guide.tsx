@@ -175,7 +175,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
                     <em>{ahead.length ? (nowMin !== null ? t.toCome : t.on)(ahead.length) : t.nothingOn}</em></h1>}
               {focus && (
                 <button className="feature x-focus" onClick={() => setDetail(focus)} aria-label={t.detailsFor(focus.ev.title)}>
-                  <Picture image={focus.ev.image} category={focus.category} key={focus.id} />
+                  <Picture image={focus.ev.image} category={focus.category} seed={focus.ev.title} key={focus.id} />
                   <span className="featuretop">{t.inFocus} / {t.cat[focus.category].tag}</span>
                   <span className="featurecap">
                     <small>{t.dateline(t.wdl[weekday(focus.day)].toUpperCase(), dayLabel(focus.day))}, {fmt(focus.s)} · {focus.venue.name}</small>

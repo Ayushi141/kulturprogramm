@@ -30,7 +30,7 @@ export function PosterView(p: Props) {
     return (
       <article key={it.id} className={`card${planned ? ' x-planned' : ''}`}>
         <div className="poster">
-          <button className="artbtn" aria-label={t.detailsFor(it.ev.title)} onClick={() => p.onOpen(it)}><Picture image={it.ev.image} category={it.category} /></button>
+          <button className="artbtn" aria-label={t.detailsFor(it.ev.title)} onClick={() => p.onOpen(it)}><Picture image={it.ev.image} category={it.category} seed={it.ev.title} /></button>
           <span className="tag">{t.cat[it.category].tag}</span>
           <button className="bookmark" aria-label={(planned ? t.removeFrom : t.addTo)(it.ev.title)} aria-pressed={planned} onClick={() => p.onToggle(it.id)}>
             <Bookmark size={16} fill={planned ? 'currentColor' : 'none'} />
@@ -78,7 +78,7 @@ export function SeasonPoster(p: { items: Item[]; planIds: Set<string>; onToggle:
             return (
               <article key={pr.key} className={`card${planned ? ' x-planned' : ''}`}>
                 <div className="poster">
-                  <button className="artbtn" aria-label={t.detailsFor(pr.title)} onClick={() => p.onOpen(next)}><Picture image={next.ev.image} category={pr.category} /></button>
+                  <button className="artbtn" aria-label={t.detailsFor(pr.title)} onClick={() => p.onOpen(next)}><Picture image={next.ev.image} category={pr.category} seed={pr.title} /></button>
                   <span className="tag">{t.cat[pr.category].tag}</span>
                   <button className="bookmark" aria-label={(saved ? t.removeNext : t.saveNext)(pr.title)} aria-pressed={saved} onClick={() => p.onToggle(next.id)}>
                     <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
