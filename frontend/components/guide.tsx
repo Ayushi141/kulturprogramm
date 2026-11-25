@@ -120,9 +120,10 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const focusAll = featured.size && now ? [...byDay.keys()].filter(d => d >= now.day).sort().flatMap(d => (byDay.get(d) ?? [])
     .filter(i => featured.has(i.ev.productionId) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
   const focus = focusAll.find(i => i.day === day) ?? focusAll[0]
-  /** The reading view: every upcoming performance in the chosen categories, from now to the horizon. */
-  const readItems = useMemo(() => !now || view !== 'read' ? [] : [...byDay].filter(([d]) => d >= now.day).sort(([a], [b]) => a.localeCompare(b))
-    .flatMap(([d, its]) => its.filter(i => inCat(i) && upcoming(i, d === now.day ? now.min : null)).sort(byStart)), [byDay, now, view, cats])
+  /** The reading view follows the day strip: the selected day by start time, or the later range by date and time. */
+  const readItems = isLater
+    ? [...laterPool].sort((a, b) => a.day.localeCompare(b.day) || byStart(a, b))
+    : pool.filter(i => upcoming(i, nowMin)).sort(byStart)
   const suggestion = ahead.filter(i => i.s >= EVENING[0]).sort((a, b) => a.s - b.s)[0] ?? ahead[0]
 
   /** Adds or removes a performance on its own day (not the selected one). */
@@ -214,7 +215,8 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
 
         <section className="directory" id="guide">
           {programme.demo && <p className="x-demo">{t.demo}</p>}
-          {view !== 'read' && <p className="x-hint">{hint}</p>}
+          {/* the hint line: what to do here, or in the reading view what it shows and in which order */}
+          <p className="x-hint">{view === 'read' ? (isLater ? t.readSortLater : t.readSortDay) : hint}</p>
           {programme.updatedAt && <p className="x-updated">{t.updated(stamp(new Date(programme.updatedAt)))}</p>}
 
           {view === 'read' ? (
