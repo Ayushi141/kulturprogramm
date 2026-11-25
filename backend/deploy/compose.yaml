@@ -19,6 +19,7 @@ services:
 
   scraper:
     build: ../scraper
+    restart: unless-stopped
     environment:
       PGHOST: postgres
       PGUSER: kultur
