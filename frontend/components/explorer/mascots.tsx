@@ -17,9 +17,11 @@ const RIBS = [30, 60, 90, 120, 150].map(a => {
   return `M${60 + 38 * c} ${88 - 38 * s}L${60 + 52 * c} ${88 - 52 * s}`
 }).join('')
 
-export function Souffleur({ width = 84 }: { width?: number }) {
+/** `tight` drops the empty space above the shell (the speech bubble's room), for use as a small icon. */
+export function Souffleur({ width = 84, tight = false }: { width?: number; tight?: boolean }) {
+  const [top, height] = tight ? [33, 78] : [0, 110]
   return (
-    <svg width={width} height={(width * 110) / 120} viewBox="0 0 120 110" fill="none" aria-hidden="true">
+    <svg width={width} height={(width * height) / 120} viewBox={`0 ${top} 120 ${height}`} fill="none" aria-hidden="true">
       <path d="M8 88 A52 52 0 0 1 112 88 Z" fill={RED} {...line} />
       <path d="M22 88 A38 38 0 0 1 98 88 Z" fill={INK} />
       <path d={RIBS} {...line} strokeWidth={2.5} />

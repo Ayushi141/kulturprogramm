@@ -34,9 +34,7 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
 
   return (
     <div className="x-read">
-      <header className="x-readhead">
-        <div className="x-readai"><Souffleur width={26} /><p>{t.readAi}</p></div>
-      </header>
+      <div className="x-readai"><Souffleur width={26} tight /><p>{t.readAi}</p></div>
       {firsts.size === 0 && <p className="x-empty">{t.readEmpty}</p>}
       {[...firsts].map(([id, next]) => {
         const ctx = contexts[id], others = (data?.dates(next).length ?? 1) - 1

@@ -36,7 +36,7 @@ aggregator/
   speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
-- "Lesen" view (`read-view.tsx`): follows the day strip; one entry per production with a note, at its
+- "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
   first performance (a day: by start time; "later": by date and time). NEU: `imported_at` under 7 days old.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
