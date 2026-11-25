@@ -86,8 +86,9 @@ def connect() -> psycopg.Connection:
 
 
 # Longest side of a stored image. Larger ones are shrunk: the site shows them
-# at a few hundred pixels, and serves the stored bytes to every visitor.
-MAX_SIDE = 2000
+# at a few hundred pixels (a full-screen poster at most), and serves the stored
+# bytes to every visitor. After lowering it, run shrink_stored() once.
+MAX_SIDE = 1200
 # Pillow refuses images above about 179 megapixels (decompression bombs);
 # download_image() checks sizes itself and decodes large JPEGs at reduced size.
 Image.MAX_IMAGE_PIXELS = None
@@ -112,7 +113,11 @@ def download_image(source_url: str, ctx: str) -> StoredImage:
     )
     log.debug(f"{ctx} image {source_url} -> {size(response)}")
     response.raise_for_status()
-    data = response.content
+    return stored_image(response.content, source_url, ctx)
+
+
+def stored_image(data: bytes, source_url: str, ctx: str) -> StoredImage:
+    """The image to store for these bytes: the bytes themselves, or shrunk to MAX_SIDE."""
     with Image.open(io.BytesIO(data)) as image:
         content_type = Image.MIME[image.format]
         image.verify()
@@ -124,6 +129,41 @@ def download_image(source_url: str, ctx: str) -> StoredImage:
     # and never collides with an old copy in a browser cache.
     key = hashlib.sha256(data).hexdigest()[:32]
     return StoredImage(key, source_url, content_type, data)
+
+
+def shrink_stored() -> None:
+    """
+    Shrinks the stored images that are larger than MAX_SIDE. Run it once after
+    lowering MAX_SIDE:
+        docker compose -p deploy exec scraper python -c "import main; main.shrink_stored()"
+    A shrunk image gets a new key (the hash of its new bytes): productions move
+    to the new key and the old row is deleted. One transaction: a failure
+    changes nothing.
+    """
+    ctx = f"{'shrink-stored':<{CTX_WIDTH}} |"
+    with connect() as conn:
+        keys = [row[0] for row in conn.execute("SELECT key FROM images").fetchall()]
+        shrunk = saved = 0
+        for key in keys:  # one image in memory at a time
+            source_url, data = conn.execute(
+                "SELECT source_url, data FROM images WHERE key = %s", [key]
+            ).fetchone()
+            with Image.open(io.BytesIO(data)) as image:  # reads the header only
+                if max(image.size) <= MAX_SIDE:
+                    continue
+            new = stored_image(bytes(data), source_url, ctx)
+            conn.execute(
+                """
+                INSERT INTO images (key, source_url, content_type, data)
+                VALUES (%s, %s, %s, %s) ON CONFLICT (key) DO NOTHING
+                """,
+                [new.key, new.source_url, new.content_type, new.data],
+            )
+            conn.execute("UPDATE productions SET image_key = %s WHERE image_key = %s", [new.key, key])
+            conn.execute("DELETE FROM images WHERE key = %s", [key])
+            shrunk += 1
+            saved += len(data) - len(new.data)
+    log.info(f"{ctx} {shrunk} of {len(keys)} images shrunk, {saved / 1e6:.1f} MB saved")
 
 
 def shrink(image: Image.Image) -> tuple[bytes, str]:

@@ -145,12 +145,12 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   `image_key` (set by `add_images()`).
 - `Source` stores a key and URL; its abstract `scrape()` fetches and parses
   events, and `save()` upserts new images, productions, then the events.
-- Images: `Source.scrape_image(event)` returns an image URL or `None`; the
-  default returns `event.image_url`, else the `og:image` of `event.url`.
-  `Source.add_images(events)` calls it once per title and stores the original bytes (Pillow checks
-  the format; over `MAX_SIDE` 2000 px shrunk to JPEG, PNG if transparent), keyed by a hash of the
-  bytes. It never raises: a failure is a warning, the event keeps no image. A production's stored
-  image (same source and title) is reused, so a run only looks up new productions.
+- Images: `Source.scrape_image(event)` returns an image URL or `None`; the default returns
+  `event.image_url`, else the `og:image` of `event.url`. `Source.add_images(events)` calls it once per
+  title and stores the original bytes (Pillow checks the format; over `MAX_SIDE` 1200 px shrunk to JPEG,
+  PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is a warning, the event
+  keeps no image. A production's stored image (same source and title) is reused, so a run only looks up
+  new productions. After lowering `MAX_SIDE`, run `shrink_stored()` once (new keys, same productions).
 - The run loop scrapes each source, adds images, saves, logs which sources failed, sleeps one day.
   A raising source is logged with its traceback; the others continue.
 - Logging (scraper and enricher): `log.info(f"{self.ctx} …")`, every line `time LEVEL <source or
