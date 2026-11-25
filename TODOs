@@ -1,7 +1,0 @@
-1. Add/delete featured event
-docker compose exec postgres psql -U kultur -d kultur -c "INSERT INTO featured (title, until) VALUES ('Der Hobbit', '2026-11-30');"
-docker compose exec postgres psql -U kultur -d kultur -c "DELETE FROM featured WHERE title = 'Der Hobbit';"
-
-2. Add analytics Umami
-
-3. Get old default images from v0

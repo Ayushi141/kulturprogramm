@@ -1,2 +1,17 @@
+# dependencies and build output
+node_modules/
+.next/
+*.tsbuildinfo
+__pycache__/
+.venv/
+
+# the frontend uses pnpm (pnpm-lock.yaml); npm would write its own lock file
+frontend/package-lock.json
+
+# local secrets and environment files
+.env*
+pg_password
+*_api_key
+
 # personal Claude Code permissions (may name your own server)
 .claude/settings.local.json

@@ -7,7 +7,7 @@ Repository notes for coding agents. Verify operational details against the serve
 This project collects cultural events from venue websites, stores them in PostgreSQL, and displays upcoming events in a Next.js frontend.
 
 ```text
-aggregator/
+kulturprogramm/
 ├── backend/
 │   ├── deploy/       # Docker Compose and database initialization SQL
 │   ├── enricher/     # writes the context notes through OpenRouter (main.py, Dockerfile)
