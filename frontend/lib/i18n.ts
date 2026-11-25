@@ -143,7 +143,7 @@ const en = {
   over: 'This performance is over.',
   overNextDates: 'This performance is over. Next dates →',
   share: 'Share',
-  linkCopied: 'Link copied',
+  linkCopied: 'Copied',
   /** An event that has started; its end is unknown or still ahead. */
   startedAt: (time: string) => `Started at ${time}`,
   overlaps: (names: string) => `overlaps ${names}`,
@@ -305,7 +305,7 @@ const de: Dict = {
   over: 'Diese Vorstellung ist vorbei.',
   overNextDates: 'Diese Vorstellung ist vorbei. Nächste Termine →',
   share: 'Teilen',
-  linkCopied: 'Link kopiert',
+  linkCopied: 'Kopiert',
   startedAt: time => `Hat um ${time} begonnen`,
   overlaps: names => `überschneidet sich mit ${names}`,
   mayOverlap: names => `überschneidet sich vielleicht mit ${names}`,

@@ -132,7 +132,9 @@ export function EventCard({ it, onToggle, onClose }: {
           )}
           {shown.ev.url && <a href={shown.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
           <button className={copied ? 'x-copied' : undefined} onClick={share} aria-live="polite">
-            {copied ? <Check size={15} /> : <Share size={15} />}{copied ? t.linkCopied : t.share}
+            {copied ? <Check size={15} /> : <Share size={15} />}
+            {/* both labels share one grid cell, so the button is as wide as the longer one and does not move */}
+            <span className="x-swap"><span data-off={copied || undefined}>{t.share}</span><span data-off={!copied || undefined}>{t.linkCopied}</span></span>
           </button>
         </div>
       </div>

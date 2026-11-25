@@ -188,9 +188,10 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* opened by a tap: takes taps (to close) and blocks scrolling the page behind it */
 .x-peek-pinned{pointer-events:auto;cursor:zoom-out;touch-action:none}
 .x-popbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.x-popbtns button,.x-popbtns a{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--paper);text-decoration:none;color:var(--paper)}
+.x-popbtns button,.x-popbtns a{display:inline-flex;align-items:center;gap:6px;padding:7px 8px;border:1px solid var(--paper);text-decoration:none;color:var(--paper)}
 .x-popbtns a{background:var(--paper);color:var(--ink)}
 /* the share button for 2 s after copying the link */
+.x-swap{display:grid}.x-swap>*{grid-area:1/1}.x-swap>[data-off]{visibility:hidden}
 .x-popbtns .x-copied{background:var(--yellow);color:var(--ink);border-color:var(--ink);transform:rotate(-1deg)}
 .x-remove{display:block;margin-top:6px;color:var(--grey);text-decoration:underline;text-underline-offset:2px}
 .x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;text-decoration:underline;text-underline-offset:2px}
