@@ -150,9 +150,9 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   title and stores the original bytes (Pillow checks the format; over `MAX_SIDE` 1200 px shrunk to JPEG,
   PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is a warning, the event
   keeps no image. A production's stored image (same source and title) is reused, so a run only looks up
-  new productions. After lowering `MAX_SIDE`, run `shrink_stored()` once (new keys, same productions).
-- The run loop scrapes each source, adds images, saves, logs which sources failed, sleeps one day.
-  A raising source is logged with its traceback; the others continue.
+  new productions. After lowering `MAX_SIDE`, run `shrink_stored()` once.
+- Run loop: per source scrape, add images, save (a raising source is logged, the others continue);
+  sleep one day. Sources saved in the last hour (`FRESH`, latest `events.updated_at`) are skipped.
 - Logging (scraper and enricher): `log.info(f"{self.ctx} …")`, every line `time LEVEL <source or
   production, fixed column> | message`, stdout only. INFO: a few lines per source; per-event detail
   is `log.debug` (`LOG_LEVEL=DEBUG`). Keep this format; no `print()`.

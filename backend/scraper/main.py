@@ -366,6 +366,18 @@ class Source(ABC):
         )
         return list(new.values())
 
+    def last_saved(self) -> datetime | None:
+        """When this source last saved its events: save() sets updated_at on every event it writes."""
+        with connect() as conn:
+            return conn.execute(
+                """
+                SELECT max(e.updated_at) FROM events e
+                JOIN productions p ON p.id = e.production_id
+                WHERE p.source = %s
+                """,
+                [self.name],
+            ).fetchone()[0]
+
     def save(self, events: list[Event], images: list[StoredImage]) -> None:
         """
         Upserts new images and the productions, then the events with their
@@ -1746,11 +1758,21 @@ sources = [
     TheaterDortmund("theater-dortmund", "https://www.theaterdo.de/kalender/", "Theater Dortmund"),
 ]
 
+# A source saved more recently is skipped, so a restart (after a deploy) only
+# scrapes the sources that are not fresh yet.
+FRESH = timedelta(hours=1)
+
 if __name__ == "__main__":
     while True:
         failed = []
+        skipped = 0
         for source in sources:
             try:
+                saved_at = source.last_saved()
+                if saved_at and datetime.now(saved_at.tzinfo) - saved_at < FRESH:
+                    log.info(f"{source.ctx} saved at {saved_at.astimezone(ZoneInfo('Europe/Berlin')):%H:%M}, skipped")
+                    skipped += 1
+                    continue
                 events = source.scrape()
                 log.info(f"{source.ctx} scraped {len(events)} events")
                 images = source.add_images(events)
@@ -1760,7 +1782,8 @@ if __name__ == "__main__":
                 # the traceback follows on the next lines
                 log.exception(f"{source.ctx} failed, nothing saved")
         log.info(
-            f"{'run':<{CTX_WIDTH}} | {len(sources) - len(failed)}/{len(sources)} sources saved"
+            f"{'run':<{CTX_WIDTH}} | {len(sources) - len(failed) - skipped}/{len(sources)} sources saved"
+            + (f", {skipped} skipped (saved in the last {FRESH.seconds // 3600} h)" if skipped else "")
             + (f", failed: {', '.join(failed)}" if failed else "")
             + "; next run in 24 h"
         )
