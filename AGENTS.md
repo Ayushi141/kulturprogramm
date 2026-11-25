@@ -39,6 +39,8 @@ kulturprogramm/
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
   first performance (a day: by start time; "later": by date and time). NEU: `imported_at` under 7 days old.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
+- Legal pages: `/impressum`, `/datenschutz` (EN `/en/imprint`, `/en/privacy`), texts in `lib/legal.tsx`; update the
+  privacy text with any new data processing. The imprint's contact form stores into `messages` (`/api/contact`).
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
 - Compose expects the host password file at `/etc/kulturprogramm/pg_password` (not `/run`, emptied
   at boot). All services restart with the host (`unless-stopped`).
@@ -49,7 +51,7 @@ The schema, in short (full: `backend/deploy/init.sql`):
 
 ```sql
 -- venues (id, name, city); images (key: first 32 hex digits of the bytes' sha256,
--- source_url, content_type, data, fetched_at), served at /img/<key>
+-- source_url, content_type, data, fetched_at), served at /img/<key>; messages (contact form)
 CREATE TABLE productions (  -- one per title per source (Source.name)
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source      text NOT NULL,
@@ -267,14 +269,12 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   the row's `.prog-badge`s (`MET Opera`). `#all-movies-view` repeats all rows.
 
 ### UCI Kinowelt Düsseldorf
-- `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only
-  today): one `div.film-container` per film, title link
-  `h2.film-container__description__text__eventtitle a`, `159min` in
-  `ul.film-info` (missing for unreleased films), poster `img.film-thumb`;
-  screenings `a.badge-performance[data-date="20261120"][data-time]`. Venue
-  `UCI Kino`; labels: the `ul.film-info` genres (`Oper`, `Ballett`). Page and
-  posters need a browser User-Agent. Both cinemas date after-midnight
-  screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
+- `https://www.uci-kinowelt.de/kinoprogramm/duesseldorf/50` (`/day` shows only today): one
+  `div.film-container` per film, title link `h2.film-container__description__text__eventtitle a`,
+  `159min` in `ul.film-info` (missing for unreleased films), poster `img.film-thumb`; screenings
+  `a.badge-performance[data-date="20261120"][data-time]`. Venue `UCI Kino`; labels: the `ul.film-info`
+  genres (`Oper`, `Ballett`). Page and posters need a browser User-Agent. Both cinemas date
+  after-midnight screenings by calendar day (UFA's ticket page: "Mittwoch, 16.12.26 00:05").
 
 ### Filmmuseum Düsseldorf
 - `https://filmmuseum-duesseldorf.de/black-box-kino/kinoprogramm` ("Black Box" is the program), pages via

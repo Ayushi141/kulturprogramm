@@ -63,3 +63,13 @@ CREATE TABLE featured (
     until         date,
     added_at      timestamptz NOT NULL DEFAULT now()
 );
+
+-- Messages from the contact form (/impressum, /en/imprint). Read them in pgAdmin; delete a
+-- message when it is answered (the privacy page promises this, at the latest after six months).
+CREATE TABLE messages (
+    id      bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sent_at timestamptz NOT NULL DEFAULT now(),
+    name    text,
+    email   text,
+    message text NOT NULL
+);
