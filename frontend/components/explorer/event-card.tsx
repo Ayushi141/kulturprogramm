@@ -7,7 +7,7 @@ import { shareLine, sharePath } from '@/lib/share'
 import { useLang, useT } from '../i18n'
 import type { Context } from '@/lib/types'
 import { Picture } from '../picture'
-import { CAT } from './categories'
+import { CAT } from '@/lib/colors'
 import { MOUTH, Souffleur, Ticket } from './mascots'
 
 export type Relation = { text: string; strong: boolean } | null

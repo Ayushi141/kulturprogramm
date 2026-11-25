@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { PALETTE } from '@/lib/colors'
 
 /**
  * The web app manifest, served at `/manifest.webmanifest`. With it, phones can install the site
@@ -16,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#f7f3e8',
-    theme_color: '#f7f3e8',
+    background_color: PALETTE.paper,
+    theme_color: PALETTE.paper,
     icons: [
       { src: '/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

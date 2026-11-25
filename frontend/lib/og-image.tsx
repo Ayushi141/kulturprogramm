@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import sharp from 'sharp'
-import { CAT } from '@/components/explorer/categories'
+import { CAT, CAT_DARK, PALETTE } from '@/lib/colors'
 import { getEvent, getPool } from './get-programme'
 import { DICTS, type Lang } from './i18n'
 import { cultureDay, dayLabel, fmt, weekday } from './time'
@@ -16,9 +16,9 @@ import type { Category } from './types'
  */
 export const OG_SIZE = { width: 1200, height: 630 }
 
-const PAPER = '#f7f3e8', INK = '#201f1a', YELLOW = '#ffde5b', RED = '#df3929'
+const { paper: PAPER, ink: INK, yellow: YELLOW, red: RED } = PALETTE
 /** The photo-less block, as `.cat-*` in globals.css. */
-const BLOCK: Record<Category, string> = { theatre: '#ab382a', opera: '#8f5400', concerts: '#7f2866', dance: '#11706f', movies: '#2646c8' }
+const BLOCK = CAT_DARK
 /** The category icons of the card (lucide Drama, MicVocal, Footprints, Music, Clapperboard). */
 const ICON: Record<Category, string[]> = {
   theatre: ['M10 11h.01', 'M14 6h.01', 'M18 6h.01', 'M6.5 13.1h.01', 'M22 5c0 9-4 12-6 12s-6-3-6-12c0-2 2-3 6-3s6 1 6 3', 'M17.4 9.9c-.8.8-2 .8-2.8 0', 'M10.1 7.1C9 7.2 7.7 7.7 6 8.6c-3.5 2-4.7 3.9-3.7 5.6 4.5 7.8 9.5 8.4 11.2 7.4.9-.5 1.9-2.1 1.9-4.7', 'M9.1 16.5c.3-1.1 1.4-1.7 2.4-1.4'],
@@ -30,7 +30,7 @@ const ICON: Record<Category, string[]> = {
 /** The logo star (`.burst` in globals.css) as SVG points in a 100×100 box. */
 const STAR = '50,0 57,33 82,8 67,40 100,35 72,53 98,72 65,65 78,98 54,73 43,100 41,69 10,89 31,60 0,55 32,46 9,18 41,34'
 /** The CMYK and house colours of the hero's colour bar. */
-const BAR = ['#00a0e3', '#e4007c', YELLOW, INK, RED, '#2646c8', PAPER]
+const BAR = [PALETTE.cyan, PALETTE.magenta, YELLOW, INK, RED, PALETTE.blue, PAPER]
 
 // read once; the runtime image keeps `public/` next to the server
 const file = (name: string) => readFile(join(process.cwd(), 'public', name))
@@ -93,7 +93,7 @@ function Poster({ c, tag }: { c: Card; tag: string | null }) {
         </div>
       </div>
       <div style={{ width: 470, flexShrink: 0, borderLeft: `4px solid ${INK}`, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
-        background: c.category ? (c.image ? CAT[c.category].color : BLOCK[c.category]) : '#2646c8', color: '#ffffff' }}>
+        background: c.category ? (c.image ? CAT[c.category].color : BLOCK[c.category]) : PALETTE.blue, color: '#ffffff' }}>
         {c.image
           ? <img src={c.image} width={470} height={630} style={{ position: 'absolute', top: 0, left: 0, width: 470, height: 630, objectFit: 'cover' }} />
           : <>

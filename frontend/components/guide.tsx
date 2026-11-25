@@ -9,7 +9,7 @@ import { LangProvider } from './i18n'
 import { Masthead } from './masthead'
 import { SiteFooter } from './site-footer'
 import { Picture } from './picture'
-import { CAT } from './explorer/categories'
+import { CAT } from '@/lib/colors'
 import { DayStrip } from './explorer/day-strip'
 import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { PlanPanel } from './explorer/plan-panel'
@@ -197,7 +197,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
             <div className="filters x-cats" aria-label={t.categoriesGroup}>
               {CATEGORIES.map(c => {
                 const Icon = ICONS[c]
-                return <button key={c} aria-pressed={cats.has(c)} onClick={() => flipCat(c)}><i className="x-sw" style={{ background: CAT[c].color }} /><Icon size={15} />{t.cat[c].label}</button>
+                return <button key={c} aria-pressed={cats.has(c)} onClick={() => flipCat(c)} style={{ '--cat': CAT[c].color } as React.CSSProperties}><Icon size={17} strokeWidth={2.25} />{t.cat[c].label}</button>
               })}
             </div>
             <i className="x-star" aria-hidden="true" />

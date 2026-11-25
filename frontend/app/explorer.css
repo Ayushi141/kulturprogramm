@@ -43,7 +43,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-colorbar{position:absolute;right:0;bottom:-18px;display:flex;border:1px solid var(--ink);border-bottom:0}
 .x-colorbar i{display:block;width:24px;height:12px}
 .x-colorbar i+i{border-left:1px solid var(--ink)}
-.x-colorbar i:nth-child(1){background:#00a0e3}.x-colorbar i:nth-child(2){background:#e4007c}.x-colorbar i:nth-child(3){background:var(--yellow)}
+.x-colorbar i:nth-child(1){background:var(--cyan)}.x-colorbar i:nth-child(2){background:var(--magenta)}.x-colorbar i:nth-child(3){background:var(--yellow)}
 .x-colorbar i:nth-child(4){background:var(--ink)}.x-colorbar i:nth-child(5){background:var(--red)}.x-colorbar i:nth-child(6){background:var(--blue)}
 .x-colorbar i:nth-child(7){background:var(--paper)}
 @media(max-width:700px){.x-halftone{width:85%;right:calc(-100% * .04 / .92)}  /* runs out to the screen edge (.x-wrap is 92% wide) */
@@ -66,7 +66,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-bandrow{display:flex;align-items:center;gap:16px;padding:10px 0}
 .x-band .filters button{background:var(--paper);color:var(--ink);border:1.5px solid var(--ink)}
 .x-band .filters button[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:2px 2px var(--yellow)}
-.x-band .filters button[aria-pressed=false]{color:#565247}
+.x-band .filters button[aria-pressed=false]{color:var(--grey)}
 /* category buttons use the view toggle's type: Poster 18px, upper case */
 .x-band .filters button{font:400 18px var(--display);letter-spacing:.5px;text-transform:uppercase}
 /* room for the buttons' 2px offset shadow, which the scroll container would clip */
@@ -79,7 +79,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-views button{display:flex;align-items:center;gap:7px;font:400 18px var(--display);letter-spacing:.5px;text-transform:uppercase;padding:8px 15px;background:var(--paper)}
 .x-views button+button{border-left:2px solid var(--ink)}
 .x-views button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.x-views button[aria-pressed=false]{color:#565247}  /* greyed like inactive category buttons */
+.x-views button[aria-pressed=false]{color:var(--grey)}  /* greyed like inactive category buttons */
 
 .x-demo{background:var(--yellow);border:1px solid var(--ink);padding:6px 10px;margin:0 0 var(--info-gap);display:inline-block}
 .x-demo code{font:inherit;background:var(--paper);padding:0 4px}
@@ -87,11 +87,11 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* day strip */
 .x-days{display:grid;grid-template-columns:repeat(8,minmax(118px,1fr));gap:8px;overflow-x:auto;padding:0 6px 8px 0}
 .x-day{border:1.5px solid var(--ink);background:var(--paper);padding:8px 10px;text-align:left;display:flex;flex-direction:column;gap:1px}
-.x-day:hover{background:#ebe4d4}
+.x-day:hover{background:color-mix(in oklab,var(--paper),var(--ink) 6%)}
 .x-day[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:4px 4px var(--red)}
 /* the "later" button: same shape, printed on yellow, double rule on the left */
 .x-later{background:var(--yellow);border-left:5px double var(--ink)}
-.x-later:hover{background:#f5d23f}
+.x-later:hover{background:color-mix(in oklab,var(--yellow),var(--ink) 5%)}
 .x-later[aria-pressed=true]{background:var(--ink);color:var(--yellow)}
 
 
@@ -107,12 +107,12 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
    control bar) and below (to the chart): --info-gap. The demo notice uses it too. */
 .directory{--info-gap:12px;padding-top:var(--info-gap)}
 .x-hint{font:12px/1.4 var(--mono);margin:0;min-height:17px}
-.x-updated{font:12px/1.4 var(--mono);color:#565247;margin:0}
+.x-updated{font:12px/1.4 var(--mono);color:var(--grey);margin:0}
 .x-hint+.x-updated,.x-hint:not(:has(+.x-updated)){margin-bottom:var(--info-gap)}
 .x-hint b{font:700 11px/1 var(--mono);letter-spacing:.08em;background:var(--ink);color:var(--paper);padding:2px 5px}
 
 /* timeline */
-.x-chart{position:relative;overflow-x:auto;border:2px solid var(--ink);background:#fbf8f1;box-shadow:5px 5px var(--blue)}
+.x-chart{position:relative;overflow-x:auto;border:2px solid var(--ink);background:var(--card);box-shadow:5px 5px var(--blue)}
 .x-brush{position:absolute;cursor:ew-resize;touch-action:pan-y}
 /* sideways drags pan the timeline (timeline.tsx); vertical ones still scroll the page.
    When the chart is wider than its box, touch keeps the native sideways scroll. */
@@ -123,31 +123,31 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 
 .x-hl{color:var(--yellow)}
 /* the zoom hint under the chart: the same style and gap as the "Stand" line above it */
-.x-key{display:flex;flex-wrap:wrap;gap:8px 22px;font:12px/1.4 var(--mono);color:#565247;margin-top:var(--info-gap);align-items:center}
+.x-key{display:flex;flex-wrap:wrap;gap:8px 22px;font:12px/1.4 var(--mono);color:var(--grey);margin-top:var(--info-gap);align-items:center}
 .x-key span{display:inline-flex;align-items:center;gap:7px}
 
 /* poster view (reuses .gridcards/.card from globals.css) */
 .x-group{margin:20px 0 6px}
 .x-ghead{display:flex;align-items:baseline;gap:14px;border-bottom:1.5px solid var(--ink);padding-bottom:4px;margin-bottom:16px}
 
-.x-gc{color:#565247;text-transform:uppercase}
+.x-gc{color:var(--grey);text-transform:uppercase}
 .card{transition:opacity .15s,box-shadow .15s}
 .card.x-planned{box-shadow:6px 6px var(--red)}
 
-.x-note{color:#565247;margin-top:22px}
+.x-note{color:var(--grey);margin-top:22px}
 .x-note button,.x-emptyplan button{font:inherit;text-decoration:underline;color:var(--ink)}
 .x-empty{border:1.5px dashed var(--ink);padding:28px;text-align:center;margin-top:18px}
 
 /* plan panel */
 .x-plan{margin-top:30px;border:2px solid var(--ink);padding:18px 20px;box-shadow:5px 5px var(--red);scroll-margin-top:20px}
 
-.x-sum{color:#565247;margin:4px 0 14px}
+.x-sum{color:var(--grey);margin:4px 0 14px}
 .x-emptyplan{margin:0}
 .x-steps{display:flex;flex-wrap:wrap;align-items:stretch}
-.x-step{border:1.5px solid var(--ink);background:#fbf8f1;padding:10px 12px;min-width:190px;max-width:270px}
+.x-step{border:1.5px solid var(--ink);background:var(--card);padding:10px 12px;min-width:190px;max-width:270px}
 
 .x-step h3{line-height:1.05;margin:4px 0}
-.x-step p{color:#565247;margin:0;display:flex;align-items:center;gap:6px}
+.x-step p{color:var(--grey);margin:0;display:flex;align-items:center;gap:6px}
 .x-step p i{width:10px;height:10px;border:1.5px solid var(--ink);display:inline-block}
 .x-leg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 12px;min-width:110px}
 .x-leg b{line-height:1}
@@ -156,10 +156,14 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-planbtns{display:flex;gap:8px;margin-top:14px}
 .x-planbtns button{border:1px solid;padding:8px 12px}
 
-/* category swatch inside filter buttons (identity is never colour-only: icon + label too) */
+/* category swatch (context view); the filter buttons colour their icon instead (identity is never
+   colour-only: icon + label too). An unselected category's icon fades. */
 .x-sw{width:11px;height:11px;border:1.5px solid var(--ink);display:inline-block;flex:none}
-.filters button[aria-pressed=false] .x-sw{opacity:.3}
-.filters button[aria-pressed=false]{color:#565247}
+.x-cats button svg{color:var(--cat)}
+/* on the dark (selected) button the darker colours (concerts, movies) need lifting */
+.x-cats button[aria-pressed=true] svg{color:color-mix(in oklab,var(--cat) 65%,white)}
+.filters button[aria-pressed=false] svg{opacity:.4}
+.filters button[aria-pressed=false]{color:var(--grey)}
 
 /* event card (event-card.tsx): the same card in the timelines' popover (.x-pop, placed beside
    the clicked bar) and in the poster view's dialog (.x-carddialog, centred) */
@@ -187,7 +191,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-popbtns a{background:var(--paper);color:var(--ink)}
 /* the share button for 2 s after copying the link */
 .x-popbtns .x-copied{background:var(--yellow);color:var(--ink);border-color:var(--ink);transform:rotate(-1deg)}
-.x-remove{display:block;margin-top:6px;color:#565247;text-decoration:underline;text-underline-offset:2px}
+.x-remove{display:block;margin-top:6px;color:var(--grey);text-decoration:underline;text-underline-offset:2px}
 .x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;text-decoration:underline;text-underline-offset:2px}
 
 /* how the event fits the evening, on the event card */
@@ -211,7 +215,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* the drawer is as tall as the card: a long note scrolls inside the bubble, the narrator stays */
 .x-bubble{position:relative;z-index:1;display:flex;flex-direction:column;min-height:0;padding:11px 13px 10px;background:var(--yellow);color:var(--ink);border:1.5px dashed var(--ink);border-radius:10px}
 .x-bubble p{margin:0;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--ink) transparent}.x-narrator{flex:none}
-.x-ai{display:block;margin-top:8px;color:#565247}
+.x-ai{display:block;margin-top:8px;color:var(--grey)}
 .x-tail{position:absolute;top:100%;left:0;margin-top:-1.5px;overflow:visible}
 /* the drawing tucks under the bubble, so the tail is short; its text starts below the bubble */
 .x-narrator{position:relative;z-index:0;display:flex;align-items:flex-start;gap:12px;margin-top:14px;padding-left:1.5px}.x-narrator>svg{position:relative;top:-20px;flex:none}
@@ -303,7 +307,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-legal a,.x-footlinks a{text-decoration:underline;text-underline-offset:2px}
 .x-contact{display:flex;flex-direction:column;gap:14px;margin-top:28px;padding-top:24px;border-top:1.5px solid var(--ink)}
 .x-contact label{display:flex;flex-direction:column;gap:6px;margin:0}
-.x-contact input,.x-contact textarea{width:100%;margin:0;padding:9px 10px;border:1.5px solid var(--ink);background:#fffdf6;color:var(--ink);resize:vertical}
+.x-contact input,.x-contact textarea{width:100%;margin:0;padding:9px 10px;border:1.5px solid var(--ink);background:color-mix(in oklab,var(--paper),white 60%);color:var(--ink);resize:vertical}
 .x-contact .x-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .x-legalnote{margin:0}
 .x-send{align-self:flex-start;padding:8px 16px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);box-shadow:2px 2px var(--blue);cursor:pointer}
@@ -312,7 +316,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* Placeholder for events without an image (placeholder.tsx): calm shapes in the category colour
    on a lightly tinted paper with a faint grid. --c is the category colour. */
 .source-image.ph{--c:var(--blue);display:block;background:color-mix(in oklab,var(--c) 12%,var(--paper));background-image:linear-gradient(color-mix(in oklab,var(--c) 14%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--c) 14%,transparent) 1px,transparent 1px);background-size:18px 18px;background-position:center}
-.ph.cat-theatre{--c:#ab382a}.ph.cat-opera{--c:#8f5400}.ph.cat-concerts{--c:#7f2866}.ph.cat-dance{--c:#11706f}.ph.cat-movies{--c:var(--blue)}
+.ph.cat-theatre{--c:var(--cat-theatre)}.ph.cat-opera{--c:var(--cat-opera)}.ph.cat-concerts{--c:var(--cat-concerts)}.ph.cat-dance{--c:var(--cat-dance)}.ph.cat-movies{--c:var(--cat-movies)}
 .ph svg{display:block;width:100%;height:100%}
 .ph-a,.ph-b{stroke:var(--ink);stroke-width:.9;stroke-linejoin:round}
 .ph-a{fill:color-mix(in oklab,var(--c) 55%,var(--paper))}.ph-b{fill:var(--paper)}
@@ -357,5 +361,5 @@ small,.tag,.featuretop,.saves,.x-lang,.x-planday>p,.saves b,.x-gc,.x-sum,.x-demo
 .x-hero h1{letter-spacing:-.03em}
 
 /* secondary text is grey, never smaller or lighter */
-.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand),.x-legalnote,.x-footlinks a{color:#565247}
+.x-updated,.x-note,.x-readvenue,.x-key,.x-gc,.x-sum,.x-step p,footer>span:not(.brand),.x-legalnote,.x-footlinks a{color:var(--grey)}
 

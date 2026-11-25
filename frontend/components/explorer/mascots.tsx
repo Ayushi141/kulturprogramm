@@ -5,10 +5,11 @@
  * bubble above points there.
  */
 import { MONO } from './svg-text'
+import { PALETTE } from '@/lib/colors'
 
 export const MOUTH = { souffleur: [46, 57], ticket: [59, 52] } as const
 
-const INK = '#201f1a', PAPER = '#f7f3e8', YELLOW = '#ffde5b', RED = '#b8281c'
+const { ink: INK, paper: PAPER, yellow: YELLOW, redDeep: RED } = PALETTE
 const line = { stroke: INK, strokeWidth: 3, strokeLinejoin: 'round', strokeLinecap: 'round' } as const
 
 /** The ribs of the shell, between radius 38 and 52 around (60, 88). */

@@ -114,7 +114,8 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 | title-l | Poster 32 | section headings |
 
 - Sizes are `calc(N * var(--zs))`; `--zs` scales 1–1.5px with the page, like the timeline's zoom `Z`.
-- Secondary text is grey (`#565247`), never smaller or lighter.
+- Secondary text is grey (`--grey`), never smaller or lighter. Colours: only in `lib/colors.ts`
+  (palette, `CAT`, `CAT_DARK`); CSS reads them as `var(--ink)`, `var(--cat-opera)`, `var(--cat-dark-opera)`.
 - Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
   on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
   "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.

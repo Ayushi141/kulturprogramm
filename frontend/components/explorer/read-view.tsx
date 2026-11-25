@@ -5,7 +5,7 @@ import type { Context } from '@/lib/types'
 import type { Item } from '@/lib/plan'
 import { dayLabel, fmt, weekday } from '@/lib/time'
 import { useLang, useT } from '../i18n'
-import { CAT } from './categories'
+import { CAT } from '@/lib/colors'
 import { CardContext } from './event-card'
 import { Souffleur, Ticket } from './mascots'
 
