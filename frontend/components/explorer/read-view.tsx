@@ -42,6 +42,8 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
         const when = `${t.wd[weekday(next.day)]} ${dayLabel(next.day)} ${fmt(next.s)}`
         return (
           <article key={id} className="x-readitem">
+            <div className="x-readmascot">{next.category === 'movies' ? <Ticket width={30} /> : <Souffleur width={30} />}</div>
+            <div className="x-readbody">
             <div className="x-readkicker">
               <i className="x-sw" style={{ background: CAT[next.category].color }} />
               <small>{t.cat[next.category].tag} · {when}</small>
@@ -49,15 +51,16 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
             </div>
             <div className="x-readtitle">
               <h3><button onClick={() => onOpen(next)}>{next.ev.title}</button></h3>
-              {next.category === 'movies' ? <Ticket width={30} /> : <Souffleur width={30} />}
             </div>
-            <p className="x-readvenue">{next.venue.organizer} · {next.venue.name}</p>
+            {/* as in the timeline: a venue named like its organizer is not repeated */}
+            <p className="x-readvenue">{next.venue.organizer}{next.venue.name !== next.venue.organizer && ` · ${next.venue.name}`}</p>
             <p className="x-readnote">{ctx[lang]}</p>
             <div className="x-readactions">
               <button className="x-more" onClick={() => onOpen(next)}>{t.readMore(others)} <ArrowRight size={13} /></button>
               <button className="x-readsave" aria-pressed={planned} aria-label={(planned ? t.removeFrom : t.addTo)(next.ev.title)} onClick={() => onToggle(next.id)}>
                 <Bookmark size={15} fill={planned ? 'currentColor' : 'none'} />{t.readSave}
               </button>
+            </div>
             </div>
           </article>
         )
