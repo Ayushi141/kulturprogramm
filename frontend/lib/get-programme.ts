@@ -34,10 +34,7 @@ export async function getProgramme(): Promise<Programme> {
   const db = getPool()
   if (!db) return demoProgramme()
 
-  const [venues, events, updated, featured, contexts] = await Promise.all([
-    // Cities appear in the order of their first venue. Alphabetical happens to
-    // be north to south for Duisburg, Düsseldorf and Köln.
-    db.query<Venue>('SELECT id, name, city FROM venues ORDER BY city, name'),
+  const [events, updated, featured, contexts] = await Promise.all([
     db.query<EventRow>(
       `SELECT ${EVENT_COLUMNS}
        FROM ${EVENT_TABLES}
@@ -62,8 +59,12 @@ export async function getProgramme(): Promise<Programme> {
     ),
   ])
 
+  // The rows of the timeline: every organizer and venue with an event in the window. Sorted by
+  // city (alphabetical happens to be north to south for Duisburg, Düsseldorf and Köln), organizer, venue.
+  const venues = [...new Map(events.rows.map(r => { const v = toVenue(r); return [v.id, v] })).values()]
+    .sort((a, b) => a.city.localeCompare(b.city, 'de') || a.organizer.localeCompare(b.organizer, 'de') || a.name.localeCompare(b.name, 'de'))
   return {
-    venues: venues.rows,
+    venues,
     events: events.rows.flatMap(toEvent),
     generatedAt: new Date().toISOString(),
     updatedAt: updated.rows[0].max?.toISOString() ?? null,
@@ -73,8 +74,13 @@ export async function getProgramme(): Promise<Programme> {
   }
 }
 
-type EventRow = { id: string; production_id: string; title: string; category: string; venue_id: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
-const EVENT_COLUMNS = 'e.id, e.production_id, p.title, p.category, e.venue_id, e.starts_at, e.ends_at, e.url, p.image_key'
+type EventRow = { id: string; production_id: string; title: string; category: string; organizer: string; venue: string; city: string; starts_at: Date; ends_at: Date | null; url: string | null; image_key: string | null }
+const EVENT_COLUMNS = 'e.id, e.production_id, p.title, p.category, p.organizer, e.venue, e.city, e.starts_at, e.ends_at, e.url, p.image_key'
+
+/** The timeline row of an `events` row: its organizer at its venue. */
+function toVenue(r: EventRow): Venue {
+  return { id: [r.organizer, r.venue, r.city].join('|'), organizer: r.organizer, name: r.venue, city: r.city }
+}
 const EVENT_TABLES = 'events e JOIN productions p ON p.id = e.production_id'
 
 /** One `events` row as an `Event`, or none when its category is not shown. */
@@ -86,7 +92,7 @@ function toEvent(r: EventRow): Event[] {
     productionId: String(r.production_id),
     title: r.title,
     category,
-    venueId: r.venue_id,
+    venueId: toVenue(r).id,
     start: r.starts_at.toISOString(),
     end: r.ends_at?.toISOString(),
     url: r.url ?? undefined,
@@ -108,13 +114,8 @@ export async function getEvent(id: string): Promise<{ event: Event; venue: Venue
     return event && venue ? { event, venue } : null
   }
   if (!/^\d{1,18}$/.test(id)) return null // database IDs are bigint
-  const res = await db.query<EventRow & { name: string; city: string }>(
-    `SELECT ${EVENT_COLUMNS}, v.name, v.city
-     FROM ${EVENT_TABLES} JOIN venues v ON v.id = e.venue_id
-     WHERE e.id = $1`,
-    [id],
-  )
+  const res = await db.query<EventRow>(`SELECT ${EVENT_COLUMNS} FROM ${EVENT_TABLES} WHERE e.id = $1`, [id])
   const r = res.rows[0]
   const event = r && toEvent(r)[0]
-  return event ? { event, venue: { id: r.venue_id, name: r.name, city: r.city } } : null
+  return event ? { event, venue: toVenue(r) } : null
 }

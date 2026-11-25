@@ -1,9 +1,3 @@
-CREATE TABLE venues (
-    id   text PRIMARY KEY,
-    name text NOT NULL,
-    city text NOT NULL
-);
-
 -- Event images, downloaded by the scraper in their original form. Served by the frontend
 -- at /img/<key>, so visitors never load images from the venues' servers.
 CREATE TABLE images (
@@ -20,8 +14,11 @@ CREATE TABLE images (
 -- own columns: never replace whole rows.
 CREATE TABLE productions (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    -- written by the scraper
+    -- written by the scraper. source: the key of the website it came from
+    -- (Source.name). organizer: who hosts it, as visitors see it, written out
+    -- in full ("Tanztheater Wuppertal Pina Bausch").
     source      text NOT NULL,
+    organizer   text NOT NULL,
     title       text NOT NULL,
     -- the values of the scraper's Category enum
     category    text NOT NULL CHECK (category IN ('film', 'theater', 'oper', 'konzert', 'tanz')),
@@ -37,16 +34,20 @@ CREATE TABLE productions (
     UNIQUE (source, title)
 );
 
--- One dated performance or screening of a production.
+-- One dated performance or screening of a production, and where it takes
+-- place: a stage or building (venue) in a city. A production can play at
+-- several venues (a film in two cinemas, a staging in Krefeld and in
+-- Mönchengladbach), so the venue belongs here, not to the production.
 CREATE TABLE events (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     production_id bigint      NOT NULL REFERENCES productions (id),
-    venue_id      text        NOT NULL REFERENCES venues (id),
+    venue         text        NOT NULL,
+    city          text        NOT NULL,
     starts_at     timestamptz NOT NULL,
     ends_at       timestamptz,
     url           text,
     updated_at    timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (production_id, venue_id, starts_at)
+    UNIQUE (production_id, venue, city, starts_at)
 );
 
 -- The frontend reads a window of start times. Rows are never deleted, and
