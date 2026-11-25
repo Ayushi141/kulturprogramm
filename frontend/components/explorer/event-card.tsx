@@ -83,7 +83,9 @@ export function EventCard({ it, onToggle, onClose }: {
     } catch { /* clipboard blocked: nothing to show */ }
   }
   // The drawer opens beside the card if the window has room for it, else over the card.
+  // `room` is the free width right of the card: the context drawer grows into it (explorer.css).
   const [onTop, setOnTop] = useState(false)
+  const [room, setRoom] = useState(0)
   const wrap = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -91,7 +93,7 @@ export function EventCard({ it, onToggle, onClose }: {
     // measure in the next frame: a dialog shows the card only after this effect, still before that frame is painted
     const id = requestAnimationFrame(() => {
       const r = wrap.current?.getBoundingClientRect()
-      if (r) setOnTop(r.right + r.width + 8 > window.innerWidth)
+      if (r) { setOnTop(r.right + r.width + 8 > window.innerWidth); setRoom(window.innerWidth - r.right - 13) }
       closeBtn.current?.focus()
     })
     return () => cancelAnimationFrame(id)
@@ -141,7 +143,7 @@ export function EventCard({ it, onToggle, onClose }: {
         </section>
       )}
       {drawer === 'context' && context && (
-        <section className={onTop ? 'x-drawer x-drawer-over' : 'x-drawer'} aria-label={t.context}>
+        <section className={onTop ? 'x-drawer x-drawer-note x-drawer-over' : 'x-drawer x-drawer-note'} aria-label={t.context} style={{ '--room': `${room}px` } as React.CSSProperties}>
           <button className="x-popclose" ref={closeBtn} aria-label={t.closeContext} onClick={() => setDrawer(null)}><X size={15} /></button>
           <ContextNote context={context} movie={shown.category === 'movies'} productionId={shown.ev.productionId} />
         </section>
