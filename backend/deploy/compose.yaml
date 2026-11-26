@@ -86,7 +86,7 @@ services:
     ports:
       - "127.0.0.1:3001:3000"
     environment:
-      DATABASE_URL: postgresql://admin@kulturprogramm.eu:${pgadmin_password}@postgres:5432/umami
+      DATABASE_URL: postgresql://kultur:${pgadmin_password}@postgres:5432/umami
       # Generate with: openssl rand -hex 32
       APP_SECRET: ${APP_SECRET}
       # Required for two-factor authentication, generate with: openssl rand -hex 32
