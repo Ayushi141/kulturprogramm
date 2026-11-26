@@ -31,8 +31,6 @@ services:
       postgres:
         condition: service_healthy
 
-  # Writes the context notes (see backend/enricher/main.py). Started by hand,
-  # like the scraper; update.sh rebuilds only the frontend.
   enricher:
     build: ../enricher
     restart: unless-stopped
@@ -66,9 +64,6 @@ services:
       postgres:
         condition: service_healthy
 
-  # Database admin in the browser. Only reachable on the server itself (not
-  # from the internet): open an SSH tunnel, then http://localhost:5050 (see
-  # AGENTS.md). Started by hand; update.sh rebuilds only the frontend.
   pgadmin:
     image: dpage/pgadmin4
     restart: unless-stopped
@@ -85,6 +80,27 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  umami:
+    image: ghcr.io/umami-software/umami:latest
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://admin:${pgadmin_password}@127.0.0.1:5432/umami
+      # Generate with: openssl rand -hex 32
+      APP_SECRET: ${APP_SECRET}
+      # Required for two-factor authentication, generate with: openssl rand -hex 32
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:3000/api/heartbeat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 secrets:
   pg_password:
