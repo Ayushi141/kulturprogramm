@@ -130,7 +130,7 @@ with good taste say it like this, out loud?
 - Spoken German, not office German: „nichts los", not „läuft nichts mehr"; „Probier's", „Verschieb"
   are fine. Verbs, not nouns. Flat and correct is not enough: a line may have attitude or a joke.
 - Concrete: an instruction says where and how („Mit dem Lesezeichen landet sie in ‚Mein Abend'").
-- One word per thing, one verb per action, everywhere: „Event" for a dated show, „Merken" for saving one.
+- One word per thing, one verb per action, everywhere: „Event" for a dated show.
 - Address the reader as "du". English is its own idiomatic text with the same attitude, never a
   word-for-word translation.
 - No marketing clichés („entdecke", „erlebe", „unvergesslich") and no boasting superlatives.
