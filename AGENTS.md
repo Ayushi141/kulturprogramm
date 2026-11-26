@@ -42,7 +42,7 @@ kulturprogramm/
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
   first performance (a day: by start time; "later": by date and time). NEU: `imported_at` under 7 days old.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
-- Caddy runs on the host (`backend/deploy/Caddyfile`, copied to `/etc/caddy/Caddyfile`): HTTPS, the site
+- Caddy runs on the host (`backend/deploy/Caddyfile`, copied to `/etc/caddy/Caddyfile`): HTTPS (no HTTP/3), the site
   on `localhost:3000`, Umami (visitor statistics) on `localhost:3001` at `stats.kulturprogramm.eu`. The site
   loads the Umami tracker from its own domain: `/k/s.js` and events `/k/e` (`root-layout.tsx`); the recorder
   (replays, heatmaps) `/k/r.js`, sends to `/k/api/…`, not with Do Not Track (`umami-recorder.tsx`).

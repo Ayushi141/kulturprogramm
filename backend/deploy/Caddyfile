@@ -1,6 +1,14 @@
 # Caddy runs on the host, not in Compose. After a change:
 #   sudo cp backend/deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
 
+# HTTP/1.1 and HTTP/2 only (TCP), no HTTP/3 (UDP). On some networks the UDP packets of HTTP/3 get
+# lost after the first requests; the browser does not fall back to TCP and the page half-loads.
+{
+	servers {
+		protocols h1 h2
+	}
+}
+
 kulturprogramm.eu {
 	# Umami visitor statistics, from this domain: the tracker script /k/s.js and its events /k/e.
 	# The browser contacts no other host. Names: TRACKER_SCRIPT_NAME, COLLECT_API_ENDPOINT in
