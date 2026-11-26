@@ -19,7 +19,7 @@ kulturprogramm/
 
 ## Runtime and services
 
-- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, enricher, frontend and pgAdmin services
+- `backend/deploy/compose.yaml` defines PostgreSQL, scraper, enricher, frontend, pgAdmin and Umami services
   (paths relative to `backend/deploy/`; run Compose there, project `deploy`).
 - PostgreSQL uses `postgres:18`; the configured database and user are both `kultur`.
 - Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `psycopg[binary]` 3 (scraper
@@ -42,6 +42,9 @@ kulturprogramm/
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
   first performance (a day: by start time; "later": by date and time). NEU: `imported_at` under 7 days old.
 - Interface texts: `frontend/lib/i18n.ts`, German at `/` (default), English at `/en`; data untranslated.
+- Caddy runs on the host (`backend/deploy/Caddyfile`, copied to `/etc/caddy/Caddyfile`): HTTPS, the site
+  on `localhost:3000`, Umami (visitor statistics) on `localhost:3001` at `stats.kulturprogramm.eu`. The site
+  loads the Umami tracker from its own domain: `/k/s.js` and events `/k/e` (`root-layout.tsx`).
 - Legal pages: `/impressum`, `/datenschutz` (EN `/en/imprint`, `/en/privacy`), texts in `lib/legal.tsx`; update the
   privacy text with any new data processing. The imprint's contact form stores into `messages` (`/api/contact`).
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.
@@ -260,6 +263,8 @@ These rules are for every task. Each chat starts without memory of earlier chats
 ### After a merge
 
 - Frontend only: nothing to do. The deploy timer rebuilds it in a few minutes (see "Deployment").
+- `Caddyfile`: `sudo cp backend/deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
+- Umami settings in `compose.yaml`: `docker compose -p deploy up -d umami`.
 - Scraper or enricher: on the server, `cd ~/aggregator && git pull && docker compose -p deploy up -d
   --build --force-recreate scraper` (or `enricher`).
 - `init.sql`: an existing database does not change (see "Database").

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { DICTS, HOME, type Lang } from '@/lib/i18n'
 import { colorVariables, PALETTE } from '@/lib/colors'
 import '@/app/globals.css'
@@ -31,6 +32,13 @@ export function metadataFor(lang: Lang): Metadata {
   }
 }
 
+/**
+ * Umami, the visitor statistics (dashboard: stats.kulturprogramm.eu). The tracker loads from this
+ * domain under /k, and sends its events there too (backend/deploy/Caddyfile). Not a secret: the ID
+ * is in every page. `data-do-not-track`: a browser that sends Do Not Track is not counted.
+ */
+const UMAMI_WEBSITE_ID = '4a1976f2-0bbb-4a67-a11f-d99b4fb190aa'
+
 export const viewport: Viewport = {
   colorScheme: 'light',
   themeColor: PALETTE.paper,
@@ -41,6 +49,7 @@ export function RootLayout({ lang, children }: { lang: Lang; children: React.Rea
     <html lang={lang} style={colorVariables()}>
       <body className="antialiased">
         {children}
+        <Script src="/k/s.js" data-website-id={UMAMI_WEBSITE_ID} data-do-not-track="true" />
       </body>
     </html>
   )
