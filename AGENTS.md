@@ -124,15 +124,19 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 ## Tone of voice
 
 Interface texts (`i18n.ts`, `legal.tsx`, alt texts, share texts) read as if a native-speaking copywriter at
-a top German design agency wrote them: precise, calm, confident, with dry wit at most.
+a top German design agency wrote them: confident, warm, with charisma and a wink. Test: would a friend
+with good taste say it like this, out loud?
 
-- German first, then English as its own idiomatic text, never a word-for-word translation.
-- Address the reader as "du". Short sentences, active verbs, no filler ("einfach", "ganz", "jetzt").
-- No exclamation marks, superlatives or marketing words ("entdecke", "erlebe", "unvergesslich").
+- Spoken German, not office German: „nichts los", not „läuft nichts mehr"; „Probier's", „Verschieb"
+  are fine. Verbs, not nouns. Flat and correct is not enough: a line may have attitude or a joke.
+- Concrete: an instruction says where and how („Mit dem Lesezeichen landet sie in ‚Mein Abend'").
+- One word per thing, one verb per action, everywhere.
+- Address the reader as "du". English is its own idiomatic text with the same attitude, never a
+  word-for-word translation.
+- No marketing clichés („entdecke", „erlebe", „unvergesslich") and no boasting superlatives.
 - German typography: „…" quotes, a spaced en dash ( – ), the ellipsis character "…".
-- Narrators (`narrator` in `i18n.ts`): one sentence, place plus action, as "Sitzt vorn an der
+- Narrators (`narrator` in `i18n.ts`): one sentence, place plus action, as „Sitzt vorn an der
   Bühne und flüstert, was man wissen sollte."
-- When in doubt: shorter. A text that only sounds clever is wrong.
 
 ## Configuration and secrets
 
