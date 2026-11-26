@@ -54,7 +54,9 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const [win, setWin] = useState<Window>(DEFAULT_WIN) // what the timeline shows; nothing else depends on it
   const [plans, setPlans] = useState<Record<string, string[]>>({})
   const [view, setViewState] = useState<View>('timeline')
-  const [detail, setDetail] = useState<Item | null>(null)
+  /** The event card in the dialog; `dates`: opened with its dates drawer open. */
+  const [detail, setDetailState] = useState<{ it: Item; dates: boolean } | null>(null)
+  const setDetail = (it: Item | null, dates = false) => setDetailState(it && { it, dates })
   const dialog = useRef<HTMLDialogElement>(null)
   const loaded = useRef(false)
 
@@ -232,14 +234,14 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
               onTimeline={() => setView('timeline')} emptyText={t.posterEmpty} />
           )}
 
-          {view !== 'context' && now && <PlanPanel picks={picks} today={now.day} suggestion={isLater ? undefined : suggestion} onToggle={onToggle} />}
+          {view !== 'context' && now && <PlanPanel picks={picks} today={now.day} suggestion={isLater ? undefined : suggestion} onToggle={onToggle} onOpen={setDetail} />}
         </section>
       </>}
       <SiteFooter lang={lang} />
 
-      {/* the poster view's and "In focus" card's event card; the timelines show the same card in a popover */}
-      <dialog ref={dialog} className="x-carddialog" aria-label={detail?.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
-        {detail && <EventCard key={detail.id} it={detail} onToggle={id => { onToggle(id); setDetail(null) }} onClose={() => setDetail(null)} />}
+      {/* the event card of the poster view, the reading view, "In focus" and "Mein Abend"; the timelines show the same card in a popover */}
+      <dialog ref={dialog} className="x-carddialog" aria-label={detail?.it.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
+        {detail && <EventCard key={detail.it.id} it={detail.it} openDates={detail.dates} onToggle={id => { onToggle(id); setDetail(null) }} onClose={() => setDetail(null)} />}
       </dialog>
     </main>
     </CardContext>

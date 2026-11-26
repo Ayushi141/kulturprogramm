@@ -48,11 +48,13 @@ const MIN_IN_DAYS = 3
  * A date in the dates drawer changes the shown performance in place (`shown`); the card stays
  * where it is and the drawer's grid keeps starting at the day of `it`, the clicked performance.
  */
-export function EventCard({ it, onToggle, onClose }: {
+export function EventCard({ it, onToggle, onClose, openDates = false }: {
   it: Item
   /** Adds or removes a performance (the shown one, which can differ from `it`). */
   onToggle: (id: string) => void
   onClose: () => void
+  /** Opens the card with its dates drawer open (the "+N" button in "Mein Abend"). */
+  openDates?: boolean
 }) {
   const t = useT(), lang = useLang()
   const data = useContext(CardContext)
@@ -62,8 +64,9 @@ export function EventCard({ it, onToggle, onClose }: {
   const over = (d: Item) => data?.over(d) ?? false
   const rel = data?.relation(shown) ?? null, picked = data?.picked(shown) ?? false, later = data?.later(shown) ?? false
   const context = data?.context(shown)
-  // one drawer at a time; a past performance (from a shared link) opens with its next dates, the grid starting at the first of them
-  const [drawer, setDrawer] = useState<'dates' | 'context' | null>(() => over(it) && all.length > 1 ? 'dates' : null)
+  // one drawer at a time; a past performance (from a shared link) opens with its next dates, the grid starting at the first of them;
+  // `openDates` opens the dates drawer too
+  const [drawer, setDrawer] = useState<'dates' | 'context' | null>(() => (openDates || over(it)) && all.length > 1 ? 'dates' : null)
   const toggle = (d: 'dates' | 'context') => setDrawer(open => open === d ? null : d)
   const anchor = over(it) ? (all.find(d => !over(d))?.day ?? it.day) : it.day
   const [copied, setCopied] = useState(false)

@@ -1,20 +1,32 @@
 'use client'
-import { useState } from 'react'
-import { ArrowUpRight } from 'lucide-react'
+import { useContext, useState } from 'react'
+import { ArrowRight, ArrowUpRight, Bookmark } from 'lucide-react'
 import { endLabel, timeRange, type Item } from '@/lib/plan'
 import { dayLabel, fmt, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT } from '@/lib/colors'
+import { CardContext } from './event-card'
 
 /**
  * "Mein Abend": every saved performance from today on, whatever day is selected, grouped by day.
  * Within a day the steps show the breaks and overlaps between them. `picks` is in date and time
  * order; `suggestion` (a performance of the selected day) fills the empty panel.
+ * A step is a short form of the event card, in the same order: kicker, title, place, "+N" button,
+ * buttons. The title opens the full card; "+N" opens it with its dates drawer open.
  */
-type Props = { picks: Item[]; today: string; suggestion?: Item; onToggle: (id: string) => void }
+type Props = {
+  picks: Item[]
+  today: string
+  suggestion?: Item
+  onToggle: (id: string) => void
+  /** Opens the event card of a performance; `dates`: with its dates drawer open. */
+  onOpen: (it: Item, dates: boolean) => void
+}
 
-export function PlanPanel({ picks, today, suggestion, onToggle }: Props) {
-  const t = useT()
+export function PlanPanel({ picks, today, suggestion, onToggle, onOpen }: Props) {
+  const t = useT(), data = useContext(CardContext)
+  /** The other upcoming dates of the production, as the event card counts them. */
+  const others = (it: Item) => (data?.dates(it).length ?? 1) - 1
   const [copied, setCopied] = useState('')
   const byDay = new Map<string, Item[]>()
   picks.forEach(it => byDay.set(it.day, [...(byDay.get(it.day) ?? []), it]))
@@ -51,11 +63,18 @@ export function PlanPanel({ picks, today, suggestion, onToggle }: Props) {
                 const leg = gap < 0 && s.endKnown ? ' x-bad' : '' // red only for a certain overlap
                 return [
                   <div className="x-step" key={s.id}>
-                    <small>{timeRange(s, t)}{s.ev.price ? ' · ' + s.ev.price : ''}</small>
-                    <h3>{s.ev.title}</h3>
-                    <p><i style={{ background: CAT[s.category].color }} />{s.venue.name} · {s.venue.city}</p>
-                    {s.ev.url && <a className="x-ticket" href={s.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets} <ArrowUpRight size={14} /></a>}
-                    <button className="x-remove" onClick={() => onToggle(s.id)}>{t.removeShort}</button>
+                    <small>{t.cat[s.category].tag} / {timeRange(s, t)}</small>
+                    <h3><button onClick={() => onOpen(s, false)} aria-label={t.detailsFor(s.ev.title)}>{s.ev.title}</button></h3>
+                    <p><i style={{ background: CAT[s.category].color }} /><span>{s.venue.name} · {s.venue.city}{s.ev.price ? ' · ' + s.ev.price : ''}</span></p>
+                    {others(s) > 0 && (
+                      <div className="x-tags">
+                        <button className="x-more" onClick={() => onOpen(s, true)}>{t.moreDates(others(s))} <ArrowRight size={13} /></button>
+                      </div>
+                    )}
+                    <div className="x-popbtns">
+                      <button onClick={() => onToggle(s.id)}><Bookmark size={15} fill="currentColor" />{t.removeShort}</button>
+                      {s.ev.url && <a href={s.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
+                    </div>
                   </div>,
                   nx && <div className={'x-leg' + leg} key={s.id + '-leg'}>
                     <b>→</b>{!s.endKnown
