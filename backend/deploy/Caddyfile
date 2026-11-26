@@ -7,7 +7,15 @@ kulturprogramm.eu {
 	# compose.yaml. Everything else under /k answers 404, so the Umami dashboard and API stay on
 	# stats.kulturprogramm.eu.
 	handle_path /k/* {
-		@umami path /s.js /e
+		# The recorder (replays and heatmaps): Umami serves it as /recorder.js and has no setting
+		# for the name. /r.js, because ad blockers block "recorder.js".
+		handle /r.js {
+			rewrite * /recorder.js
+			reverse_proxy localhost:3001
+		}
+		# /api/record: the recordings; /api/websites/<id>/recorder: the recorder's settings
+		# (sample rate, masking). The recorder sends to the folder it loads from, so /k/api/….
+		@umami path /s.js /e /api/record /api/websites/*/recorder
 		handle @umami {
 			reverse_proxy localhost:3001
 		}

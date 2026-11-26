@@ -86,6 +86,10 @@ export function privacy(lang: Lang): Content {
           body: <p>To see which pages people read, we count page views with Umami, open-source software that runs on our own server. With each page view your browser sends us the page, the page you came from, your browser, operating system, device type, screen size and language. From your IP address Umami derives country, region and city, and forms an identifier from these data so that several page views count as one visit; it does not store the IP address itself. Umami sets no cookies, and the data go to no one else. If your browser sends a “Do Not Track” signal, we do not count you. Legal basis: Art. 6 (1) (f) GDPR; our legitimate interest is to understand how the site is used and to improve it.</p>,
         },
         {
+          title: 'Session recordings and heatmaps (Umami)',
+          body: <p>For a part of the visits, Umami also records how the site is used: how the page changes, mouse movements, taps, clicks and scrolling. From this we can replay a visit and see, summed over many visits, where people click and how far they scroll. We use it to find what does not work in the interface. Input fields are hidden in the recording, so what you type does not reach us. The recording ends after a few minutes at the latest; recordings are deleted after 30 days. If your browser sends a “Do Not Track” signal, we record nothing. Legal basis: Art. 6 (1) (f) GDPR; our legitimate interest is to find and fix problems in the site.</p>,
+        },
+        {
           title: '“My evening” in your browser',
           body: <p>The performances that you pick are saved only in your browser (local storage). They are not sent to us. You can delete them in the site or in your browser&apos;s settings. This storage is strictly necessary for the function that you use (§ 25 (2) no. 2 TDDDG).</p>,
         },
@@ -122,6 +126,10 @@ export function privacy(lang: Lang): Content {
       {
         title: 'Besucherstatistik (Umami)',
         body: <p>Um zu sehen, welche Seiten gelesen werden, zählen wir Seitenaufrufe mit Umami, einer Open-Source-Software auf unserem eigenen Server. Bei jedem Seitenaufruf sendet dein Browser uns die aufgerufene Seite, die Seite, von der du kommst, Browser, Betriebssystem, Gerätetyp, Bildschirmgröße und Sprache. Aus deiner IP-Adresse leitet Umami Land, Region und Stadt ab und bildet aus diesen Angaben eine Kennung, damit mehrere Aufrufe als ein Besuch zählen; die IP-Adresse selbst speichert es nicht. Umami setzt keine Cookies, und die Daten gehen an niemanden weiter. Sendet dein Browser das Signal „Do Not Track“, zählen wir dich nicht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist, zu verstehen, wie die Website genutzt wird, und sie zu verbessern.</p>,
+      },
+      {
+        title: 'Sitzungsaufzeichnungen und Heatmaps (Umami)',
+        body: <p>Bei einem Teil der Besuche zeichnet Umami zusätzlich auf, wie die Seite genutzt wird: wie sich die Seite verändert, Mausbewegungen, Tippen, Klicks und Scrollen. Daraus können wir einen Besuch nachspielen und, über viele Besuche zusammengefasst, sehen, wo geklickt und wie weit gescrollt wird. Wir nutzen das, um zu finden, was in der Bedienung hakt. Eingabefelder sind in der Aufzeichnung verdeckt; was du eintippst, erreicht uns also nicht. Eine Aufzeichnung endet spätestens nach wenigen Minuten; nach 30 Tagen wird sie gelöscht. Sendet dein Browser das Signal „Do Not Track“, zeichnen wir nichts auf. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist, Fehler auf der Website zu finden und zu beheben.</p>,
       },
       {
         title: '„Mein Abend“ in deinem Browser',
