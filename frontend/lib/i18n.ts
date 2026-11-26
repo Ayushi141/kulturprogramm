@@ -127,7 +127,7 @@ const en = {
   /** The narrators of the context drawer (`NARRATOR` in mascots.tsx): name and one line about them. */
   narrator: {
     souffleur: { name: 'The Souffleur', about: 'Sits at the front of the stage and whispers what you should know.' },
-    opernglas: { name: 'The Opera Glass', about: 'Looks closer than anyone else in the house.' },
+    opernglas: { name: 'The Opera Glasses', about: 'Sit up in the balcony and bring what matters up close.' },
     ticket: { name: 'The Ticket', about: 'Gets into every film and knows what it is about.' },
   },
   /** Said when the enricher found nothing; one is picked per production. */
@@ -294,7 +294,7 @@ const de: Dict = {
   closeContext: 'Kontext schließen',
   narrator: {
     souffleur: { name: 'Der Souffleur', about: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.' },
-    opernglas: { name: 'Das Opernglas', about: 'Schaut genauer hin als alle anderen im Saal.' },
+    opernglas: { name: 'Das Opernglas', about: 'Sitzt im Rang und holt das Wesentliche heran.' },
     ticket: { name: 'Das Ticket', about: 'Kommt in jeden Film und weiß, worum es geht.' },
   },
   contextNothing: [

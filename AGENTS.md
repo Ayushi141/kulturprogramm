@@ -121,6 +121,19 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
   on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
   "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.
 
+## Tone of voice
+
+Interface texts (`i18n.ts`, `legal.tsx`, alt texts, share texts) read as if a native-speaking copywriter at
+a top German design agency wrote them: precise, calm, confident, with dry wit at most.
+
+- German first, then English as its own idiomatic text, never a word-for-word translation.
+- Address the reader as "du". Short sentences, active verbs, no filler ("einfach", "ganz", "jetzt").
+- No exclamation marks, superlatives or marketing words ("entdecke", "erlebe", "unvergesslich").
+- German typography: „…" quotes, a spaced en dash ( – ), the ellipsis character "…".
+- Narrators (`narrator` in `i18n.ts`): one sentence, place plus action, as "Sitzt vorn an der
+  Bühne und flüstert, was man wissen sollte."
+- When in doubt: shorter. A text that only sounds clever is wrong.
+
 ## Configuration and secrets
 
 Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, `PGPASSWORD_FILE` (frontend also `PGPORT`). libpq
