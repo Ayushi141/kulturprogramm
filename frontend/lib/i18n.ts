@@ -118,16 +118,18 @@ const en = {
   calMonths: (from: string) => `7 MONTHS FROM ${from.toUpperCase()}`,
   closeDates: 'Close dates',
   openDate: (when: string) => `Open ${when}`,
-  // the context drawer: a note by the Souffleur (the Ticket for films)
+  // the context drawer: a note by a narrator (NARRATOR in mascots.tsx)
   context: 'Context',
   contextHead: 'CONTEXT',
   /** Below a note the enricher wrote; the fixed lines are written by hand and carry no label. */
   aiGenerated: 'AI-GENERATED, MAY CONTAIN ERRORS',
   closeContext: 'Close context',
-  souffleur: 'The Souffleur',
-  souffleurAbout: 'Sits at the front of the stage and whispers what you should know.',
-  ticket: 'The Ticket',
-  ticketAbout: 'Gets into every film and knows what it is about.',
+  /** The narrators of the context drawer (`NARRATOR` in mascots.tsx): name and one line about them. */
+  narrator: {
+    souffleur: { name: 'The Souffleur', about: 'Sits at the front of the stage and whispers what you should know.' },
+    opernglas: { name: 'The Opera Glasses', about: 'Sit up in the balcony and bring what matters up close.' },
+    ticket: { name: 'The Ticket', about: 'Gets into every film and knows what it is about.' },
+  },
   /** Said when the enricher found nothing; one is picked per production. */
   contextNothing: [
     'I looked. Nothing that the listing does not already say.',
@@ -290,10 +292,11 @@ const de: Dict = {
   contextHead: 'KONTEXT',
   aiGenerated: 'KI-GENERIERT',
   closeContext: 'Kontext schließen',
-  souffleur: 'Der Souffleur',
-  souffleurAbout: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.',
-  ticket: 'Das Ticket',
-  ticketAbout: 'Kommt in jeden Film und weiß, worum es geht.',
+  narrator: {
+    souffleur: { name: 'Der Souffleur', about: 'Sitzt vorn an der Bühne und flüstert, was man wissen sollte.' },
+    opernglas: { name: 'Das Opernglas', about: 'Sitzt im Rang und holt das Wesentliche heran.' },
+    ticket: { name: 'Das Ticket', about: 'Kommt in jeden Film und weiß, worum es geht.' },
+  },
   contextNothing: [
     'Hab gesucht. Nichts gefunden, was nicht schon im Programm steht.',
     'Ehrlich: Zu diesem Abend weiß ich auch nicht mehr als das Programmheft.',

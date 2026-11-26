@@ -1,13 +1,27 @@
 /**
- * The two narrators of the context drawer, as drawn on the design canvas: the Souffleur in his
- * prompter's box (stage) and the Ticket, a torn-off cinema ticket (films). Both whisper. `MOUTH` is where
- * each mouth sits at the default width of 84 px, from the top left corner: the tail of the speech
- * bubble above points there.
+ * The narrators of the context drawer, as drawn on the design canvas: the Souffleur in his
+ * prompter's box (theatre, dance, concerts), the Opernglas, a pair of opera glasses (opera), and the
+ * Ticket, a torn-off cinema ticket (films). All whisper. `NARRATOR` gives each category its narrator.
+ * `MOUTH` is where each mouth sits at the default width of 84 px, from the top left corner: the tail
+ * of the speech bubble above points there.
  */
 import { MONO } from './svg-text'
 import { PALETTE } from '@/lib/colors'
+import type { Category } from '@/lib/types'
 
-export const MOUTH = { souffleur: [46, 57], ticket: [59, 52] } as const
+export type NarratorName = 'souffleur' | 'opernglas' | 'ticket'
+
+export const NARRATOR: Record<Category, NarratorName> = {
+  theatre: 'souffleur', dance: 'souffleur', concerts: 'souffleur', opera: 'opernglas', movies: 'ticket',
+}
+
+export const MOUTH: Record<NarratorName, readonly [number, number]> = { souffleur: [46, 57], opernglas: [16, 28], ticket: [59, 52] }
+
+/** The narrator of a category at `width` px. */
+export function Narrator({ category, width }: { category: Category; width?: number }) {
+  const N = { souffleur: Souffleur, opernglas: Opernglas, ticket: Ticket }[NARRATOR[category]]
+  return <N width={width} />
+}
 
 const { ink: INK, paper: PAPER, yellow: YELLOW, redDeep: RED } = PALETTE
 const line = { stroke: INK, strokeWidth: 3, strokeLinejoin: 'round', strokeLinecap: 'round' } as const
@@ -56,6 +70,32 @@ export function Ticket({ width = 84 }: { width?: number }) {
         <circle cx="80" cy="80" r="2.4" fill={INK} />
       </g>
       <path d="M100 66 q5 6 0 12M107 61 q8 11 0 22" {...line} strokeWidth={2.5} />
+    </svg>
+  )
+}
+
+/**
+ * Two lenses on a handle; the pupils look down. No mouth (as on the design canvas): `MOUTH` is the
+ * top left corner of the left barrel, so the bubble's tail ends there and covers nothing. Barrels and
+ * handle are red, not ink, so they stay visible on the dark card (as the Souffleur's shell).
+ */
+export function Opernglas({ width = 84 }: { width?: number }) {
+  const lens = (cx: number) => <>
+    <circle cx={cx} cy="58" r="19" fill={YELLOW} {...line} />
+    <circle cx={cx} cy="58" r="12" fill={PAPER} stroke={INK} strokeWidth={2} />
+    <path d={`M${cx - 12} 58 A12 12 0 0 1 ${cx + 12} 58 Z`} fill={INK} />
+    <circle cx={cx + 4} cy="62" r="3" fill={INK} />
+  </>
+  return (
+    <svg width={width} height={(width * 110) / 120} viewBox="0 0 120 110" fill="none" aria-hidden="true">
+      {/* 6 units lower than on the design canvas: the top stays free for the bubble's edge, as on the Souffleur */}
+      <g transform="translate(0 6)">
+      <path d="M84 70 L99 98" stroke={RED} strokeWidth={7} strokeLinecap="round" />
+      <path d="M50 36h20v12H50z" fill={RED} {...line} />
+      <rect x="22" y="28" width="32" height="24" rx="3" fill={RED} {...line} />
+      <rect x="66" y="28" width="32" height="24" rx="3" fill={RED} {...line} />
+      {lens(38)}{lens(82)}
+      </g>
     </svg>
   )
 }

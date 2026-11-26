@@ -7,7 +7,7 @@ import { dayLabel, fmt, weekday } from '@/lib/time'
 import { useLang, useT } from '../i18n'
 import { CAT } from '@/lib/colors'
 import { CardContext } from './event-card'
-import { Souffleur, Ticket } from './mascots'
+import { Narrator, Souffleur } from './mascots'
 
 type Props = {
   /** The performances to show, in the order to show them (see `guide.tsx`). */
@@ -42,7 +42,7 @@ export function ReadView({ items, contexts, planIds, onToggle, onOpen }: Props) 
         const when = `${t.wd[weekday(next.day)]} ${dayLabel(next.day)} ${fmt(next.s)}`
         return (
           <article key={id} className="x-readitem">
-            <div className="x-readmascot">{next.category === 'movies' ? <Ticket width={30} /> : <Souffleur width={30} />}</div>
+            <div className="x-readmascot"><Narrator category={next.category} width={30} /></div>
             <div className="x-readkicker">
               <i className="x-sw" style={{ background: CAT[next.category].color }} />
               <small>{t.cat[next.category].tag} · {when}</small>

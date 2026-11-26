@@ -34,8 +34,8 @@ kulturprogramm/
   (`season-timeline.tsx`) or one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
-  "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
-  speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
+  "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: its narrator
+  speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
@@ -120,6 +120,23 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 - Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
   on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
   "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.
+
+## Tone of voice
+
+Interface texts (`i18n.ts`, `legal.tsx`, alt texts, share texts) read as if a native-speaking copywriter at
+a top German design agency wrote them: confident, warm, with charisma and a wink. Test: would a friend
+with good taste say it like this, out loud?
+
+- Spoken German, not office German: „nichts los", not „läuft nichts mehr"; „Probier's", „Verschieb"
+  are fine. Verbs, not nouns. Flat and correct is not enough: a line may have attitude or a joke.
+- Concrete: an instruction says where and how („Mit dem Lesezeichen landet sie in ‚Mein Abend'").
+- One word per thing, one verb per action, everywhere.
+- Address the reader as "du". English is its own idiomatic text with the same attitude, never a
+  word-for-word translation.
+- No marketing clichés („entdecke", „erlebe", „unvergesslich") and no boasting superlatives.
+- German typography: „…" quotes, a spaced en dash ( – ), the ellipsis character "…".
+- Narrators (`narrator` in `i18n.ts`): one sentence, place plus action, as „Sitzt vorn an der
+  Bühne und flüstert, was man wissen sollte."
 
 ## Configuration and secrets
 

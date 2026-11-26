@@ -5,10 +5,10 @@ import { spanLabel, type Item } from '@/lib/plan'
 import { dayLabel, fmt, shiftDate, weekday } from '@/lib/time'
 import { shareLine, sharePath } from '@/lib/share'
 import { useLang, useT } from '../i18n'
-import type { Context } from '@/lib/types'
+import type { Category, Context } from '@/lib/types'
 import { Picture } from '../picture'
 import { CAT } from '@/lib/colors'
-import { MOUTH, Souffleur, Ticket } from './mascots'
+import { MOUTH, NARRATOR, Narrator } from './mascots'
 
 export type Relation = { text: string; strong: boolean } | null
 
@@ -147,7 +147,7 @@ export function EventCard({ it, onToggle, onClose }: {
       {drawer === 'context' && context && (
         <section className={onTop ? 'x-drawer x-drawer-note x-drawer-over' : 'x-drawer x-drawer-note'} aria-label={t.context} style={{ '--room': `${room}px` } as React.CSSProperties}>
           <button className="x-popclose" ref={closeBtn} aria-label={t.closeContext} onClick={() => setDrawer(null)}><X size={15} /></button>
-          <ContextNote context={context} movie={shown.category === 'movies'} productionId={shown.ev.productionId} />
+          <ContextNote context={context} category={shown.category} productionId={shown.ev.productionId} />
         </section>
       )}
     </div>
@@ -223,13 +223,13 @@ function OtherDates({ shown, all, anchor, over, onShow }: {
 }
 
 /**
- * The context drawer: the note as a whispered speech bubble, its narrator below it. Films get the
- * Ticket, everything else the Souffleur. A note is labelled as AI-generated. Without a note (the
+ * The context drawer: the note as a whispered speech bubble, its narrator below it (`NARRATOR`:
+ * Ticket for films, Opernglas for opera, else the Souffleur). A note is labelled as AI-generated. Without a note (the
  * enricher found nothing) the narrator says one of the fixed lines, the same one for a production
  * every time; those are written by hand and carry no label.
  */
-function ContextNote({ context, movie, productionId }: { context: Context; movie: boolean; productionId: string }) {
-  const t = useT(), lang = useLang()
+function ContextNote({ context, category, productionId }: { context: Context; category: Category; productionId: string }) {
+  const t = useT(), lang = useLang(), name = NARRATOR[category]
   const pick = [...productionId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % t.contextNothing.length
   const note = context[lang]
   return <>
@@ -237,11 +237,11 @@ function ContextNote({ context, movie, productionId }: { context: Context; movie
     <div className="x-bubble">
       <p>{note ?? t.contextNothing[pick]}</p>
       {note && <small className="x-ai">{t.aiGenerated}</small>}
-      <Tail to={MOUTH[movie ? 'ticket' : 'souffleur']} />
+      <Tail to={MOUTH[name]} />
     </div>
     <div className="x-narrator">
-      {movie ? <Ticket /> : <Souffleur />}
-      <div><b>{movie ? t.ticket : t.souffleur}</b><span>{movie ? t.ticketAbout : t.souffleurAbout}</span></div>
+      <Narrator category={category} />
+      <div><b>{t.narrator[name].name}</b><span>{t.narrator[name].about}</span></div>
     </div>
   </>
 }
