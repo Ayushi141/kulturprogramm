@@ -72,7 +72,7 @@ export function privacy(lang: Lang): Content {
         { title: 'Who is responsible', body: <><Address /><p>Email: <Mail /></p></> },
         {
           title: 'In short',
-          body: <p>This site sets no cookies and uses no tracking or advertising services. Fonts and images come from our own server, so your browser does not contact third parties when it shows the site. We store personal data only when you send us a message.</p>,
+          body: <p>This site sets no cookies and uses no advertising services. We count visits with our own statistics, without cookies and without storing your IP address. Fonts, images and statistics run on our own server, so your browser does not contact third parties when it shows the site. We store personal data about you only when you send us a message.</p>,
         },
         {
           title: 'Hosting and page requests',
@@ -80,6 +80,10 @@ export function privacy(lang: Lang): Content {
             <p>The site runs on a server rented from Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Germany, which processes the data on our behalf (Art. 28 GDPR).</p>
             <p>When you open a page, your browser sends technical data that is needed to deliver it: your IP address, the time, the requested address and the name of your browser. The server uses these data to answer the request and does not store them in an access log. Legal basis: Art. 6 (1) (f) GDPR; our legitimate interest is to deliver the site securely.</p>
           </>,
+        },
+        {
+          title: 'Visitor statistics (Umami)',
+          body: <p>To see which pages people read, we count page views with Umami, open-source software that runs on our own server. With each page view your browser sends us the page, the page you came from, your browser, operating system, device type, screen size and language. From your IP address Umami derives country, region and city, and forms an identifier from these data so that several page views count as one visit; it does not store the IP address itself. Umami sets no cookies, and the data go to no one else. If your browser sends a “Do Not Track” signal, we do not count you. Legal basis: Art. 6 (1) (f) GDPR; our legitimate interest is to understand how the site is used and to improve it.</p>,
         },
         {
           title: '“My evening” in your browser',
@@ -106,7 +110,7 @@ export function privacy(lang: Lang): Content {
       { title: 'Verantwortlich', body: <><Address /><p>E-Mail: <Mail /></p></> },
       {
         title: 'Kurz gesagt',
-        body: <p>Diese Website setzt keine Cookies und nutzt keine Tracking- oder Werbedienste. Schriften und Bilder liefert unser eigener Server; dein Browser nimmt beim Anzeigen der Seite keinen Kontakt zu Dritten auf. Personenbezogene Daten speichern wir nur, wenn du uns eine Nachricht schickst.</p>,
+        body: <p>Diese Website setzt keine Cookies und nutzt keine Werbedienste. Besuche zählen wir mit einer eigenen Statistik, ohne Cookies und ohne deine IP-Adresse zu speichern. Schriften, Bilder und Statistik laufen über unseren eigenen Server; dein Browser nimmt beim Anzeigen der Seite keinen Kontakt zu Dritten auf. Personenbezogene Daten über dich speichern wir nur, wenn du uns eine Nachricht schickst.</p>,
       },
       {
         title: 'Hosting und Seitenaufrufe',
@@ -114,6 +118,10 @@ export function privacy(lang: Lang): Content {
           <p>Die Website läuft auf einem gemieteten Server der Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, die die Daten in unserem Auftrag verarbeitet (Art. 28 DSGVO).</p>
           <p>Wenn du eine Seite aufrufst, sendet dein Browser technische Daten, die für die Auslieferung nötig sind: deine IP-Adresse, den Zeitpunkt, die aufgerufene Adresse und die Kennung deines Browsers. Der Server nutzt diese Daten, um die Anfrage zu beantworten, und speichert sie nicht in einem Zugriffsprotokoll. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist die sichere Auslieferung der Website.</p>
         </>,
+      },
+      {
+        title: 'Besucherstatistik (Umami)',
+        body: <p>Um zu sehen, welche Seiten gelesen werden, zählen wir Seitenaufrufe mit Umami, einer Open-Source-Software auf unserem eigenen Server. Bei jedem Seitenaufruf sendet dein Browser uns die aufgerufene Seite, die Seite, von der du kommst, Browser, Betriebssystem, Gerätetyp, Bildschirmgröße und Sprache. Aus deiner IP-Adresse leitet Umami Land, Region und Stadt ab und bildet aus diesen Angaben eine Kennung, damit mehrere Aufrufe als ein Besuch zählen; die IP-Adresse selbst speichert es nicht. Umami setzt keine Cookies, und die Daten gehen an niemanden weiter. Sendet dein Browser das Signal „Do Not Track“, zählen wir dich nicht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist, zu verstehen, wie die Website genutzt wird, und sie zu verbessern.</p>,
       },
       {
         title: '„Mein Abend“ in deinem Browser',

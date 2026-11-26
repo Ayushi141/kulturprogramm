@@ -1,0 +1,26 @@
+# Caddy runs on the host, not in Compose. After a change:
+#   sudo cp backend/deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+
+kulturprogramm.eu {
+	# Umami visitor statistics, from this domain: the tracker script /k/s.js and its events /k/e.
+	# The browser contacts no other host. Names: TRACKER_SCRIPT_NAME, COLLECT_API_ENDPOINT in
+	# compose.yaml. Everything else under /k answers 404, so the Umami dashboard and API stay on
+	# stats.kulturprogramm.eu.
+	handle_path /k/* {
+		@umami path /s.js /e
+		handle @umami {
+			reverse_proxy localhost:3001
+		}
+		handle {
+			respond 404
+		}
+	}
+	handle {
+		reverse_proxy localhost:3000
+	}
+}
+
+# The Umami dashboard (login: Umami's own accounts).
+stats.kulturprogramm.eu {
+	reverse_proxy localhost:3001
+}

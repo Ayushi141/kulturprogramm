@@ -92,6 +92,10 @@ services:
       APP_SECRET: ${APP_SECRET}
       # Required for two-factor authentication, generate with: openssl rand -hex 32
       TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+      # The site loads the tracker from its own domain, under /k (see Caddyfile): neutral names,
+      # so ad blockers do not match them. Change them only together with the Caddyfile.
+      TRACKER_SCRIPT_NAME: s.js
+      COLLECT_API_ENDPOINT: /e
     depends_on:
       postgres:
         condition: service_healthy
