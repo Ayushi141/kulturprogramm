@@ -10,6 +10,7 @@ services:
       - pgdata:/var/lib/postgresql
       - /etc/kulturprogramm/pg_password:/run/secrets/pg_password:ro
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./umami-db.sh:/docker-entrypoint-initdb.d/02-umami.sh:ro
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
