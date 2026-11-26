@@ -37,7 +37,7 @@ export function metadataFor(lang: Lang): Metadata {
  * domain under /k, and sends its events there too (backend/deploy/Caddyfile). Not a secret: the ID
  * is in every page. `data-do-not-track`: a browser that sends Do Not Track is not counted.
  */
-const UMAMI_WEBSITE_ID = 'WEBSITE-ID'
+const UMAMI_WEBSITE_ID = '4a1976f2-0bbb-4a67-a11f-d99b4fb190aa'
 
 export const viewport: Viewport = {
   colorScheme: 'light',
