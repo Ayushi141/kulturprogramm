@@ -144,11 +144,20 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-sum{color:var(--grey);margin:4px 0 14px}
 .x-emptyplan{margin:0}
 .x-steps{display:flex;flex-wrap:wrap;align-items:stretch}
-.x-step{border:1.5px solid var(--ink);background:var(--card);padding:10px 12px;min-width:190px;max-width:270px}
+/* a step is a short form of the event card (no photo, no share), as wide, light like the panel: the card's
+   buttons with ink and paper swapped, "+N" outlined instead of yellow */
+/* a column, so that the buttons of the steps in one row line up at the bottom */
+.x-step{display:flex;flex-direction:column;align-items:flex-start;border:1.5px solid var(--ink);background:var(--card);padding:10px 12px;min-width:190px;max-width:340px}
+.x-step h3 button{padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}.x-step h3 button:hover{text-decoration:underline}
+.x-step .x-more{background:none;transform:none}
+.x-step .x-popbtns{margin-top:auto;padding-top:10px}
+.x-step .x-popbtns button{border-color:var(--ink);color:var(--ink)}
+.x-step .x-popbtns a{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 
 .x-step h3{line-height:1.05;margin:4px 0}
-.x-step p{color:var(--grey);margin:0;display:flex;align-items:center;gap:6px}
-.x-step p i{width:10px;height:10px;border:1.5px solid var(--ink);display:inline-block}
+/* the text is one flex item, so a long line wraps as text; the square stays at the first line */
+.x-step p{color:var(--grey);margin:0;display:flex;align-items:flex-start;gap:6px}
+.x-step p i{flex:none;width:10px;height:10px;margin-top:.5lh;translate:0 -50%;border:1.5px solid var(--ink);display:inline-block}
 .x-leg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 12px;min-width:110px}
 .x-leg b{line-height:1}
 .x-leg.x-bad{color:var(--red)}
@@ -193,7 +202,6 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* the share button for 2 s after copying the link */
 .x-swap{display:grid}.x-swap>*{grid-area:1/1}.x-swap>[data-off]{visibility:hidden}
 .x-popbtns .x-copied{background:var(--yellow);color:var(--ink);border-color:var(--ink);transform:rotate(-1deg)}
-.x-remove{display:block;margin-top:6px;color:var(--grey);text-decoration:underline;text-underline-offset:2px}
 .x-ticket{display:inline-flex;align-items:center;gap:4px;margin-top:8px;text-decoration:underline;text-underline-offset:2px}
 
 /* how the event fits the evening, on the event card */
@@ -359,7 +367,7 @@ small,.tag,.featuretop,.saves,.x-lang,.x-planday>p,.saves b,.x-gc,.x-sum,.x-demo
 .x-bubble p,.x-readnote,.x-legal section p,.x-contact input,.x-contact textarea
   {font:400 calc(12 * var(--zs))/1.6 'IBM Plex Mono',var(--mono);letter-spacing:0}
 
-.filters button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket,.x-remove
+.filters button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket
   {font:700 calc(13 * var(--zs))/1.2 var(--sans);letter-spacing:0}
 
 .x-tt,.x-step h3,.x-readtitle h3,.x-legal h2,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b

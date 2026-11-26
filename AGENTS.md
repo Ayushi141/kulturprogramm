@@ -32,7 +32,8 @@ kulturprogramm/
   organizer at one venue. A venue named like its organizer gets no line of its own. The day strip shows
   7 days plus a "later" button for days 8–183: one line per production with one square per performance
   (`season-timeline.tsx`) or one card per production (`SeasonPoster`). Picks are saved under the day of
-  each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
+  each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day, each as a
+  short event card (title: the full card, "+N": the card with its dates drawer open).
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
   "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: its narrator
   speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
@@ -248,6 +249,13 @@ These rules are for every task. Each chat starts without memory of earlier chats
   not UTF-8, set `PGCLIENTENCODING=UTF8`, else psycopg returns `bytes`.
 - CSS trap: the CSS reset sets `[hidden]` to `display: none !important`. To hide an element and keep
   its space, use your own attribute (as `data-off` in `event-card.tsx`) with `visibility: hidden`.
+- CSS trap: in a flex row, each text piece between elements (`{a} · {b}`) is its own flex item and
+  wraps by itself. Put the text into one `<span>`.
+- `npx tsc` before the first `pnpm dev` fails with "Cannot find name 'RouteContext'": Next.js
+  generates that type. Start `pnpm dev` once (or run `npx next typegen`), then run `tsc`.
+- Screenshot scripts: the demo programme uses real times, so late in the day "today" can be empty.
+  Select a later day (`.x-day` buttons) before you pick events. The poster bookmarks (`.bookmark`)
+  show only on hover: wait with `{ state: 'attached' }` and click with `el.evaluate(e => e.click())`.
 
 ### After a merge
 
