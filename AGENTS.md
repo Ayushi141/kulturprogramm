@@ -34,8 +34,8 @@ kulturprogramm/
   (`season-timeline.tsx`) or one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
-  "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: the Souffleur
-  speaks, the Ticket for films (`mascots.tsx`); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
+  "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: its narrator
+  speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
 - "Kontext" view (`read-view.tsx`, `#context`): follows the day strip; one entry per production with a note, at its
