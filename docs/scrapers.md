@@ -51,6 +51,22 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
 
+## Snapshot test
+
+`backend/scraper/snapshot.py` proves that a change to the code does not change what the sources
+scrape. Use it for every refactor (a change of structure, not of behaviour).
+
+- `uv run python backend/scraper/snapshot.py record` runs all sources against the live sites. It stores
+  each HTTP response and the result in `backend/scraper/snapshots/` (not in git, about 25 MB): per
+  source the events of `scrape()` and the URL that `scrape_image()` gives for the first event of each
+  title. It takes about 25 minutes (every detail page and image page is fetched once). No database, no image downloads.
+- `uv run python backend/scraper/snapshot.py check` runs the same sources offline: each request gets its
+  stored response, `datetime.now()` stands at the time of the record, `sleep()` returns at once. It
+  prints `ok` or `CHANGED` per source with the lost and new events, and exits with 1 on a difference.
+- Add source names to work on some sources only (`record tonhalle-duesseldorf`).
+- A request that was not recorded fails and shows as a difference. Record again (that source only)
+  when a change makes a source send other requests on purpose.
+
 ## Naming
 
 - Use the source's name in ASCII CapWords for its class. Write `oe` for `ö`;

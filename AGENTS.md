@@ -249,6 +249,7 @@ These rules are for every task. Each chat starts without memory of earlier chats
 - Look at each visual change: take screenshots with Playwright (`playwright-core` with an installed
   Chrome) at desktop (1600×1000) and phone (390×844) width, and send them to the user. The demo
   notes are short: to test a long note, replace the note text in the page with a long text.
+- Scraper refactor: record and check with the snapshot test ([`docs/scrapers.md`](docs/scrapers.md#snapshot-test)).
 - Scraper or SQL: use a local PostgreSQL with the schema from `init.sql`. If the cluster encoding is
   not UTF-8, set `PGCLIENTENCODING=UTF8`, else psycopg returns `bytes`.
 - CSS trap: the CSS reset sets `[hidden]` to `display: none !important`. To hide an element and keep
