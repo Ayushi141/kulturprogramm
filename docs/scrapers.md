@@ -46,11 +46,16 @@ A new source: a new module, then one import and one entry in `sources/__init__.p
   the run loop logs them per source. Images are the exception: they are
   optional, so image errors never stop an event from being saved.
 - Store public performances and concerts. Skip cancelled cards by the site's
-  marker, then classify with `self.event_category(default, *texts)` (on
-  `Source`, with its word lists as class attributes) on short texts
-  (title, label, badge, subtitle; never descriptions): `CLOSED` (school, Kita)
-  skips, `CONCERT` words give `CONCERT`, `NON_PERFORMANCE` words (Führung,
-  Workshop, Lesung, Gespräch, Matinee, Party) skip. Prefer page structure;
+  marker, then decide with `self.classify(labels=…, texts=…, info=…)` (on `Source`). A source
+  declares only its table `LABELS` (the site's own labels: division, genre, branch, series, audience
+  → a category, or `None` to skip) and `DEFAULT` (category without a label; `None` skips). `texts` are
+  short texts (title, subtitle, badges; never descriptions), `info` the info and ticket lines. The
+  order, the same for every source: a `None` label skips; `CLOSED` (school, Kita, closed) in texts or
+  info skips; a `CONCERT` word in the texts gives `CONCERT`; a `NON_PERFORMANCE` word (Führung,
+  Workshop, Lesung, Gespräch, Matinee, Party) skips; the first label in `LABELS` order with a
+  category gives it; else `DEFAULT`. Labels are matched exactly, never as words; pass a free-text
+  label in `texts` too when its words matter („Junge Oper, Konzert“). `default=` replaces `DEFAULT`
+  when a source computes it per event (Bochum: per page). Prefer labels (page structure) over words;
   keep the word lists generic, never per event. `+ Einführung` is ignored.
   Cinemas use `self.screening_category(title, *labels)` instead, which skips
   nothing: genre/series labels matching `DANCE_LABEL`/`OPERA_LABEL` give
@@ -119,7 +124,7 @@ page has not changed.
   `Ballett`, else `OPER`. Cards give title/link, start, optional end.
 
 ### Theater Krefeld-Mönchengladbach
-- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first listed branch in `BRANCHES`
+- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first branch in `LABELS` order
   gives the default category; `Extras` keeps only concerts. Cards provide title, URL, start; no end.
   Venue: the stage of `.performance__location` ("building – stage", seating notes dropped), else the
   building ("Seidenweberhaus"); city from the address on the linked directions page (none: `SEAT`,
@@ -132,7 +137,7 @@ page has not changed.
 
 ### Theater und Philharmonie Essen
 - `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the first category in
-  `CATEGORIES` (Schauspiel, Aalto, Philharmonie) gives the default; `Treffpunkt:` locations (tours) are
+  `LABELS` (Schauspiel, Aalto, Philharmonie) gives the category; `Treffpunkt:` locations (tours) are
   skipped and the ticket line marks closed shows. Cards provide title/times/venue.
 
 ### Oper Köln
@@ -210,7 +215,7 @@ page has not changed.
 ### Musiktheater im Revier (Gelsenkirchen)
 - `https://mirgelsenkirchen.de/kalender-tickets` lists the season: one `article.m-event` per date
   (nested `m-event--subevent`: introductions, skipped). `data-filter-genre` and `data-filter-category`
-  hold ids; the filter form's labels name them. Division gives the default (`DIVISIONS`, first match:
+  hold ids; the filter form's labels name them. Division gives the category (`LABELS`, first match:
   Konzert, TanzGelsenkirchen, Musiktheater, MiR.LAB, Gastspiel; „Foyer & Mehr“ alone: skipped).
   Audiences „Mitmachen“ and „MiR offen“ (workshops, sing-alongs, open rehearsals, tours) are skipped.
   `time[datetime]` is local; end from its text; image: the card's `img`.

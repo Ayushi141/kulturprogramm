@@ -263,32 +263,61 @@ class Source(ABC):
         """
         return f"{self.name:<{CTX_WIDTH}.{CTX_WIDTH}} |"
 
-    def event_category(
-        self, default: Category | None, *labels: str
+    # The site's own labels (division, genre, branch, series, audience) and
+    # what each one means: a category, or None to skip events with this
+    # label. Matched exactly, never as words. Each source sets its own.
+    LABELS: dict[str, Category | None] = {}
+    # The category of an event whose labels give none; None skips it.
+    DEFAULT: Category | None = None
+    # classify(default=…) when a source computes the default per event
+    _UNSET = object()
+
+    def classify(
+        self,
+        labels: tuple[str, ...] | list[str] = (),
+        texts: tuple[str, ...] | list[str] = (),
+        info: tuple[str, ...] | list[str] = (),
+        default: "Category | None | object" = _UNSET,
     ) -> Category | None:
         """
-        The category of an event with these short texts, or None to skip it.
-        Closed performances are skipped. A concert word gives CONCERT and wins
-        over NON_PERFORMANCE ("Benefiz-Matinee" with the label "Konzert"),
-        which skips the event. Otherwise the event gets `default`; None skips
-        it.
+        The one decision for every event: its category, or None to skip it.
+
+        `labels`: the site's labels of the event, looked up in LABELS.
+        `texts`: short texts (title, subtitle, badges; never descriptions),
+        matched against the word lists. `info`: info and ticket lines, checked
+        for CLOSED only. `default`: replaces DEFAULT for this event.
+
+        In this order:
+        1. A label that LABELS maps to None skips the event.
+        2. CLOSED in the texts or the info lines skips it (school, Kita).
+        3. A CONCERT word in the texts gives CONCERT. It wins over 4
+           ("Benefiz-Matinee" with the subtitle "Konzert").
+        4. A NON_PERFORMANCE word in the texts skips it (tours, workshops).
+        5. The first label that LABELS maps to a category gives it (in the
+           order of LABELS, so the table also sets the priority), else the
+           default; a None default skips the event.
         """
+        if any(label in self.LABELS and self.LABELS[label] is None for label in labels):
+            return None
         # "+ Einführung", "+ Gespräch": an extra before or after a performance
-        text = " ".join(re.sub(r"\+[^+]*", " ", label) for label in labels)
-        if self.CLOSED.search(text):
+        text = " ".join(re.sub(r"\+[^+]*", " ", t) for t in texts)
+        if self.CLOSED.search(text) or any(self.CLOSED.search(line) for line in info):
             return None
         if self.CONCERT.search(text):
             return Category.CONCERT
         if self.NON_PERFORMANCE.search(text):
             return None
-        return default
+        found = next((c for label, c in self.LABELS.items() if c is not None and label in labels), None)
+        if found:
+            return found
+        return self.DEFAULT if default is self._UNSET else default
 
     def screening_category(self, title: str, *labels: str) -> Category:
         """
         The category of a cinema screening: TANZ or OPER when its labels
         (genre, series badge) name a ballet or opera broadcast, CONCERT for a
         concert word in the title or labels ("Weihnachtskonzert", "Live
-        Viewing"), otherwise FILM. Unlike event_category() it skips nothing.
+        Viewing"), otherwise FILM. Unlike classify() it skips nothing.
         """
         text = " ".join(labels)
         if self.DANCE_LABEL.search(text):

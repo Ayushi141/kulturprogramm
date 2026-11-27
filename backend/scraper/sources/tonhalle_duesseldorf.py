@@ -20,7 +20,8 @@ class TonhalleDuesseldorf(Source):
 
     CITY = "Düsseldorf"
     API = "https://www.tonhalle.de/api/events"
-    SKIPPED_SERIES = {"komet"}
+    LABELS = {"komet": None}  # the series of the guest promoters
+    DEFAULT = Category.CONCERT
     SKIPPED_STATES = {"CANCELLED", "POSTPONED"}
     PAGE_DATA = re.compile(r'<script data-page="app" type="application/json">(.*?)</script>', re.S)
     MAX_PAGES = 20
@@ -56,8 +57,8 @@ class TonhalleDuesseldorf(Source):
             parts = item["link"].strip("/").split("/")
             series = parts[1] if len(parts) == 3 else ""
             title = item["title"].strip()
-            category = self.event_category(Category.CONCERT, title, item.get("subTitle") or "")
-            if series in self.SKIPPED_SERIES or not category:
+            category = self.classify(labels=[series], texts=[title, item.get("subTitle") or ""])
+            if not category:
                 log.debug(f"{self.ctx}   skipped {title!r} ({series})")
                 continue
             url = absolute_url(httpx.URL(self.API), item["link"])

@@ -15,14 +15,16 @@ class KoelnerPhilharmonie(Source):
     """
 
     API = "https://www.koelner-philharmonie.de/de/api/events/"
-    SKIPPED_GENRES = {"Sonstiges (Lesungen, Kabarett)", "Begleitprogramm"}
     # genre -> category; the first in this order wins, else CONCERT
-    GENRES = {
+    LABELS = {
+        "Sonstiges (Lesungen, Kabarett)": None,
+        "Begleitprogramm": None,
         "Tanz": Category.TANZ,
         "Oper": Category.OPER,
         "Operette": Category.OPER,
         "Oper/Operette konzertant": Category.OPER,
     }
+    DEFAULT = Category.CONCERT
     MAX_PAGES = 100
 
     def scrape(self) -> list[Event]:
@@ -44,10 +46,9 @@ class KoelnerPhilharmonie(Source):
         for item in items:
             title = item["name"].strip()
             genres = [g["name"] for g in item["genres"]]
-            default = next((c for g, c in self.GENRES.items() if g in genres), Category.CONCERT)
             # "Familienkonzert", "Grundschulkonzert", "Geschlossene Veranstaltung"
-            category = self.event_category(default, title, item.get("subtitle") or "")
-            if not category or self.SKIPPED_GENRES.intersection(genres):
+            category = self.classify(labels=genres, texts=[title, item.get("subtitle") or ""])
+            if not category:
                 log.debug(f"{self.ctx}   skipped {title!r} ({genres})")
                 continue
             room = item["room"]

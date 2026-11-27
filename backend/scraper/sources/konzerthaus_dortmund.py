@@ -16,11 +16,12 @@ class KonzerthausDortmund(Source):
     """
 
     CITY = "Dortmund"
-    GENRES = {
+    LABELS = {
         "Konzertante Oper": Category.OPER,
         "Tanz & Show": Category.TANZ,
+        "Musik & Dialog": None,
     }
-    SKIPPED_GENRES = {"Musik & Dialog"}
+    DEFAULT = Category.CONCERT
     # the ticket button's text for a moved or cancelled date ("Verschoben auf 17.03.2027")
     CANCELLED = re.compile(r"\b(?:verschoben|abgesagt|entfällt)\b", re.IGNORECASE)
 
@@ -35,11 +36,9 @@ class KonzerthausDortmund(Source):
             genre_tag = card.select_one("p.genre")
             genre = genre_tag.get_text(" ", strip=True) if genre_tag else ""
             subtitle = card.select_one("p.h2 + p")
-            category = self.event_category(
-                self.GENRES.get(genre, Category.CONCERT), title, subtitle.get_text(" ", strip=True) if subtitle else ""
-            )
+            category = self.classify(labels=[genre], texts=[title, subtitle.get_text(" ", strip=True) if subtitle else ""])
             footer = card.select_one(".card-footer").get_text(" ", strip=True)
-            if not category or genre in self.SKIPPED_GENRES or self.CANCELLED.search(footer):
+            if not category or self.CANCELLED.search(footer):
                 log.debug(f"{self.ctx}   skipped {title!r} ({genre})")
                 continue
             # "Fr 27.11.2026", then "20.00 Uhr" (one item per start time)

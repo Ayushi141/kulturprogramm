@@ -24,8 +24,9 @@ class RheinischesLandestheater(Source):
     AJAX = "https://www.rheinisches-landestheater.de/spielplan/programm.html"
     # The pages set <base href> to the site root: the list's links ("./produktionen/…") are relative to it.
     BASE = httpx.URL("https://www.rheinisches-landestheater.de/")
-    # sparte-N classes of the stage divisions (names: the Spielplan's filter)
-    DIVISIONS = {
+    # sparte-N classes of the stage divisions (names: the Spielplan's filter);
+    # the other divisions are community offers and are skipped (DEFAULT None)
+    LABELS = {
         "2": Category.THEATER,  # Schauspiel
         "5": Category.THEATER,  # Kabarett/Comedy
         "9": Category.THEATER,  # Kinder- und Jugendtheater
@@ -79,17 +80,19 @@ class RheinischesLandestheater(Source):
         link = card.select_one(".head-bold-l a[href]")
         title = card.select_one(".head-bold-l").get_text(strip=True).replace("\xad", "")
         divisions = re.findall(r"\bsparte-(\d+)\b", classes)
-        default = next((self.DIVISIONS[d] for d in divisions if d in self.DIVISIONS), None)
         # "Märchen von Michael Ende | ab 6 Jahren", "Comedy zu Gast"
         subtitle = card.select_one(".spielplan-uebertitel")
-        category = self.event_category(default, title, subtitle.get_text(" ", strip=True) if subtitle else "")
         # "nur Gruppenbuchung über die Theaterkasse", "Geschlossene Veranstaltung"
         comment = card.select_one(".spielplan-kommentar")
-        closed = comment and self.CLOSED.search(comment.get_text(" ", strip=True))
+        category = self.classify(
+            labels=divisions,
+            texts=[title, subtitle.get_text(" ", strip=True) if subtitle else ""],
+            info=[comment.get_text(" ", strip=True)] if comment else [],
+        )
         # "Große Bühne" with the city in span.spielplan-ort
         place = card.select_one(".spielplan-raum > div")
         city = place.select_one(".spielplan-ort") if place else None
-        if not category or closed or not city or city.get_text(strip=True) != self.CITY:
+        if not category or not city or city.get_text(strip=True) != self.CITY:
             log.debug(f"{self.ctx}   skipped {title!r} ({divisions}, {place.get_text(' ', strip=True) if place else None})")
             return None
         stage = place.find(string=True, recursive=False).strip()

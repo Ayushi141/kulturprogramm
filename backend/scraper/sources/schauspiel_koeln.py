@@ -16,6 +16,7 @@ class Production:
 
 
 class SchauspielKoeln(Source):
+    DEFAULT = Category.THEATER
     # Used when a production page names no single stage or cannot be loaded.
     VENUE = Venue(
         name="Schauspiel Köln",
@@ -77,7 +78,7 @@ class SchauspielKoeln(Source):
             label = label_tag.get_text(strip=True) if label_tag else ""
             link = activity.select_one(".field--name-production a")
             title = link.get_text(strip=True)
-            category = self.event_category(Category.THEATER, title, label)
+            category = self.classify(texts=[title, label])
             if not category:
                 log.debug(f"{self.ctx}   skip {title!r} [{label}]")
                 continue

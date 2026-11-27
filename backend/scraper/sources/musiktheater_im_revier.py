@@ -13,16 +13,18 @@ class MusiktheaterImRevier(Source):
     """
 
     CITY = "Gelsenkirchen"
-    # division name -> category; the first in this order wins
-    DIVISIONS = {
+    # division -> category, the first in this order wins; other divisions
+    # ("Foyer & Mehr") give none (DEFAULT None). Audiences that are not
+    # performances (workshops, sing-alongs, open rehearsals, tours) skip.
+    LABELS = {
+        "Mitmachen": None,
+        "MiR offen": None,
         "Konzert": Category.CONCERT,
         "TanzGelsenkirchen": Category.TANZ,
         "Musiktheater": Category.OPER,
         "MiR.LAB": Category.THEATER,  # the theatre lab's productions
         "Gastspiel": Category.THEATER,
     }
-    # audiences that are not performances: workshops, sing-alongs, open rehearsals, tours
-    SKIPPED = {"Mitmachen", "MiR offen"}
 
     def scrape(self) -> list[Event]:
         response, soup = self.fetch_soup(self.website)
@@ -43,11 +45,11 @@ class MusiktheaterImRevier(Source):
             title = link.get_text(" ", strip=True)
             # "Oper von Giacomo Puccini", "Workshop Plans & Plants"
             subtitle = card.select_one(".m-event__content__details__subtitle")
-            default = next((c for d, c in self.DIVISIONS.items() if d in divisions), None)
-            category = self.event_category(
-                default, title, subtitle.get_text(" ", strip=True) if subtitle else "", *divisions
+            category = self.classify(
+                labels=divisions + audiences,
+                texts=[title, subtitle.get_text(" ", strip=True) if subtitle else "", *divisions],
             )
-            if not category or self.SKIPPED.intersection(audiences):
+            if not category:
                 log.debug(f"{self.ctx}   skipped {title!r} ({divisions}, {audiences})")
                 continue
             time_tag = card.select_one(".m-event__content__info time[datetime]")

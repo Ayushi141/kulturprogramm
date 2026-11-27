@@ -40,13 +40,15 @@ class OperKoeln(Source):
                 if re.search(r"Schauspiel", category_text, re.IGNORECASE)
                 else Category.OPER
             )
-            category = self.event_category(default, title, category_text)
-            if not category:
-                continue
             # The info line names who books it, e.g. "Mobile Kinderoper vor
             # Ort in Ihrer Kita"; only closed bookings are read from it.
             info = activity.select_one(".s-bko-activity__text-infos")
-            if info and self.CLOSED.search(info.get_text(" ", strip=True)):
+            category = self.classify(
+                texts=[title, category_text],
+                info=[info.get_text(" ", strip=True)] if info else [],
+                default=default,
+            )
+            if not category:
                 continue
             if not link:
                 raise ValueError(f"{self.name}: event has no production URL")

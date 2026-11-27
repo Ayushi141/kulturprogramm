@@ -18,13 +18,14 @@ class TheaterDortmund(Source):
     """
 
     CITY = "Dortmund"
-    DIVISIONS = {
+    LABELS = {
         "Oper": Category.OPER,
         "Ballett": Category.TANZ,
         "Philharmoniker": Category.CONCERT,
         "Schauspiel": Category.THEATER,
+        "KJT": None,  # Kinder- und Jugendtheater
     }
-    SKIPPED = {"KJT"}  # Kinder- und Jugendtheater
+    DEFAULT = Category.THEATER
     # The house orchestra: events of the "Philharmoniker" division are its own.
     ORCHESTRA = "Dortmunder Philharmoniker"
     # A venue named after another theatre or a festival: a guest performance
@@ -72,15 +73,11 @@ class TheaterDortmund(Source):
                 title = card.select_one("h2").get_text(" ", strip=True).replace("\xad", "")
                 division_tag = card.select_one(".event__division")
                 division = division_tag.get_text(" ", strip=True) if division_tag else ""
-                if division in self.SKIPPED:
-                    continue
                 details = card.select_one(".event__details")
                 subtitle = details.select_one("p") if details else None
-                category = self.event_category(
-                    self.DIVISIONS.get(division, Category.THEATER),
-                    title,
-                    division,
-                    subtitle.get_text(" ", strip=True) if subtitle else "",
+                category = self.classify(
+                    labels=[division],
+                    texts=[title, division, subtitle.get_text(" ", strip=True) if subtitle else ""],
                 )
                 venue = self.venue(details)
                 if not category or not venue:

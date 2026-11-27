@@ -14,7 +14,8 @@ class TheaterOberhausen(Source):
     """
 
     CITY = "Oberhausen"
-    DIVISIONS = {
+    # the other divisions are skipped (DEFAULT None)
+    LABELS = {
         "Schauspiel": Category.THEATER,
         "Junges Theater": Category.THEATER,
         "Urban Arts": Category.TANZ,  # urban dance
@@ -47,9 +48,9 @@ class TheaterOberhausen(Source):
                 age.extract()
             title = heading.get_text(" ", strip=True)
             division = text(".kategorie")
-            category = self.event_category(self.DIVISIONS.get(division), title, text(".untertitel1"))
             # info line: "Einführung 30 Minuten vor …", "Eintritt frei: Buchen Sie sich …"
-            if not category or self.CLOSED.search(text(".untertitel3")):
+            category = self.classify(labels=[division], texts=[title, text(".untertitel1")], info=[text(".untertitel3")])
+            if not category:
                 log.debug(f"{self.ctx}   skipped {title!r} ({division})")
                 continue
             clock = datetime.strptime(text(".zeit").removesuffix("Uhr").strip(), "%H:%M").time()

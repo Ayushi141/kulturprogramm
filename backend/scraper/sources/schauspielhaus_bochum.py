@@ -41,14 +41,9 @@ class SchauspielhausBochum(Source):
                     title = link.get_text(" ", strip=True).replace("\xad", "")
                     # e.g. "Premiere", "Schulvorstellung"
                     attributes = item.select_one(".schedule__attributes")
-                    category = self.event_category(
-                        default,
-                        title,
-                        (
-                            attributes.get_text(" ", strip=True)
-                            if attributes
-                            else ""
-                        ),
+                    category = self.classify(
+                        texts=[title, attributes.get_text(" ", strip=True) if attributes else ""],
+                        default=default,
                     )
                     if not category:
                         continue

@@ -55,9 +55,7 @@ class OperWuppertal(Source):
                 production.get("shortDescription") or "",
                 "html.parser",
             ).get_text(" ", strip=True)
-            category = self.event_category(
-                default, title, event_label.get("title", ""), description
-            )
+            category = self.classify(texts=[title, event_label.get("title", ""), description], default=default)
             if not category:
                 continue
             venue = (

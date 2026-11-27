@@ -11,7 +11,7 @@ class TheaterKrefeldMoenchengladbach(Source):
     # Category by the first listed branch an event has. Other branches
     # ("Extras": tours, talks, trips) give no category, so only their
     # concerts are kept.
-    BRANCHES = {
+    LABELS = {
         "Musiktheater": Category.OPER,
         "Ballett": Category.TANZ,
         "Konzerte": Category.CONCERT,
@@ -76,20 +76,19 @@ class TheaterKrefeldMoenchengladbach(Source):
             branches = {
                 tag.get_text(" ", strip=True) for tag in branch_tags
             }
-            default = next(
-                (c for b, c in self.BRANCHES.items() if b in branches), None
-            )
 
             title_tag = performance.select_one(".performance__title")
             title = title_tag.get_text(" ", strip=True).replace("\xad", "")
             # badges, e.g. "Premiere", "Soiree", "+ Einführung"
             meta = performance.select_one(".performance__meta")
             subtitle = performance.select_one(".performance__subtitle")
-            category = self.event_category(
-                default,
-                title,
-                meta.get_text(" ", strip=True) if meta else "",
-                subtitle.get_text(" ", strip=True) if subtitle else "",
+            category = self.classify(
+                labels=list(branches),
+                texts=[
+                    title,
+                    meta.get_text(" ", strip=True) if meta else "",
+                    subtitle.get_text(" ", strip=True) if subtitle else "",
+                ],
             )
             if not category:
                 continue

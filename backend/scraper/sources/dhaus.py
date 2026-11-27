@@ -6,6 +6,8 @@ from core import BERLIN, Category, Event, Source, Venue, end_time_from_text, log
 
 
 class Dhaus(Source):
+    DEFAULT = Category.THEATER
+
     def scrape(self) -> list[Event]:
         response, soup = self.fetch_soup(self.website)
 
@@ -28,7 +30,7 @@ class Dhaus(Source):
                     ".performance__infos .performance__text"
                 )
             ]
-            category = self.event_category(Category.THEATER, title, *subtitles)
+            category = self.classify(texts=[title, *subtitles])
             if not category:
                 continue
             url = str(response.url.join(link["href"]))

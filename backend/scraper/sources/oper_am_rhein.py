@@ -47,11 +47,10 @@ class OperAmRhein(Source):
                 tag.get_text(" ", strip=True)
                 for tag in performance.select(".attribute")
             ]
-            category = self.event_category(
-                Category.TANZ if "Ballett" in label else Category.OPER,
-                title,
-                label,
-                *attributes,
+            # The label is free text ("Junge Oper, Konzert"): read as a text.
+            category = self.classify(
+                texts=[title, label, *attributes],
+                default=Category.TANZ if "Ballett" in label else Category.OPER,
             )
             if not category:
                 continue

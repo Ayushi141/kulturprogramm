@@ -5,8 +5,8 @@ from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_
 
 
 class TheaterEssen(Source):
-    # by the first category the card lists
-    CATEGORIES = {
+    # the first category the card lists; others are skipped (DEFAULT None)
+    LABELS = {
         "Aalto Ballett Essen": Category.TANZ,
         "Aalto Musiktheater": Category.OPER,
         "Schauspiel Essen": Category.THEATER,
@@ -29,9 +29,6 @@ class TheaterEssen(Source):
             category_name = (
                 category_tag.get_text(" ", strip=True) if category_tag else ""
             )
-            default = self.CATEGORIES.get(category_name)
-            if not default:
-                continue
             location = performance.select_one(
                 ".performance__location"
             ).get_text(" ", strip=True)
@@ -44,17 +41,15 @@ class TheaterEssen(Source):
             )
             title = title_tag.get_text(" ", strip=True).replace("\xad", "")
             subtitle = performance.select_one(".performance__subtitle")
-            category = self.event_category(
-                default,
-                title,
-                subtitle.get_text(" ", strip=True) if subtitle else "",
-            )
-            if not category:
-                continue
             # The ticket line says "Schulvorstellung" or "geschlossene
             # Vorstellung"; only closed bookings are read from it.
             ticket = performance.select_one(".performance__ticketbutton")
-            if ticket and self.CLOSED.search(ticket.get_text(" ", strip=True)):
+            category = self.classify(
+                labels=[category_name],
+                texts=[title, subtitle.get_text(" ", strip=True) if subtitle else ""],
+                info=[ticket.get_text(" ", strip=True)] if ticket else [],
+            )
+            if not category:
                 continue
 
             link = performance.select_one(".performance__title a")
