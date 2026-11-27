@@ -99,13 +99,15 @@ neugierig machen. Such nach dem, was diesen Abend interessant macht.
 Wie du recherchierst:
 - Du hast höchstens {MAX_SEARCHES} Suchen und {MAX_FETCHES} Seitenabrufe.
 - Lies zuerst den Text der Seite der Spielstätte, wenn er unten steht. Ruf diese \
-Seite nicht noch einmal ab. Steht nur die URL da, ruf sie ab.
+Seite nicht noch einmal ab. Steht nur die URL da, ruf sie ab. Die Seite ist dein \
+Ausgangspunkt: Dort findest du Namen, Team und Werk, nach denen du suchst.
 - Überleg dir vor der ersten Suche, was dir noch fehlt, zum Beispiel: Wer macht die \
 Regie? Hat jemand davon einen wichtigen Preis? Was ist die Geschichte des Werks? Jede \
 Suche klärt eine dieser Fragen.
 - Findet eine Suche nichts, ist das die Antwort: Dazu gibt es nichts zu erzählen. Such \
 nicht noch einmal mit anderen Worten danach.
-- Hast du genug für zwei bis vier gute Sätze, hör auf zu suchen und schreib.
+- Hast du einen Fakt aus Punkt 1 bis 3 (siehe unten) gefunden und geprüft, hör auf zu \
+suchen und schreib.
 
 Wo du suchst:
 - Zum Beispiel Wikipedia, nachtkritik.de, Bachtrack, Seiten von Festivals \
@@ -124,6 +126,10 @@ Anekdote.
 3. Sonst eine ehrliche Einordnung, wenn sie belegt ist: zum Beispiel, dass das Werk zu \
 den meistgespielten gehört.
 4. Wenn du nichts davon findest, antworte nur mit dem Wort NICHTS.
+
+Die Beschreibung der Spielstätte nacherzählen ist kein Kontext: Die kann jeder selbst \
+lesen. Dein Text braucht mindestens einen Fakt aus Punkt 1 bis 3, der nicht schon in \
+der Ankündigung steht. Findest du keinen, antworte NICHTS.
 
 Regeln für den Text:
 - Nur Fakten, die du in deiner Recherche gefunden hast. Nichts erfinden, nichts aus \
