@@ -1,12 +1,14 @@
 # Scrapers
 
-Details for work on `backend/scraper/main.py`: the code model, the rules for a new or changed
+Details for work on the scraper (`backend/scraper/`): the code model, the rules for a new or changed
 source, and how each source reads its website. The general notes (database, logging, deploy) are in
 [`AGENTS.md`](../AGENTS.md).
 
 ## Code model
 
-All scraper classes and the run loop are in `backend/scraper/main.py`.
+`core.py` holds the shared code below, `sources/<key>.py` one class per website (key `oper-am-rhein`:
+`sources/oper_am_rhein.py`), `sources/__init__.py` the list `sources` in run order, `main.py` the run loop.
+A new source: a new module, then one import and one entry in `sources/__init__.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`, `OPER =
   "oper"`, `CONCERT = "konzert"`, and `TANZ = "tanz"` (ballet and dance

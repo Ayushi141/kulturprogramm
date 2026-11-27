@@ -153,7 +153,9 @@ the repository. PostgreSQL and frontend ports are bound to `127.0.0.1` on the ho
 
 ## Scraper
 
-`backend/scraper/main.py` holds all sources (one `Source` class per website) and the run loop. Before
+`backend/scraper/`: `core.py` (data model, images, saving, the `Source` base class), `sources/` (one
+module per website, named after its key; `sources/__init__.py` lists them in run order), `main.py`
+(the run loop), `snapshot.py` (test, not in the image). Before
 you add or change a source, read [`docs/scrapers.md`](docs/scrapers.md): code model, rules, naming,
 and the notes per source.
 
