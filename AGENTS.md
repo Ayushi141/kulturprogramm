@@ -22,8 +22,8 @@ kulturprogramm/
 - `backend/deploy/compose.yaml` defines PostgreSQL, scraper, enricher, frontend, pgAdmin and Umami services
   (paths relative to `backend/deploy/`; run Compose there, project `deploy`).
 - PostgreSQL uses `postgres:18`; the configured database and user are both `kultur`.
-- Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `psycopg[binary]` 3 (scraper
-  also `beautifulsoup4`, `pillow`).
+- Scraper and enricher use `python:3.15-slim` with unpinned `httpx`, `beautifulsoup4`, `psycopg[binary]` 3
+  (scraper also `pillow`).
 - The frontend is a Next.js application (`node:22-alpine` image, `frontend/Dockerfile`). `getProgramme()`
   (`frontend/lib/get-programme.ts`) reads the events from 6 hours ago to 183 days ahead and maps
   `theater`, `oper`, `tanz`, `konzert`, `film` to `theatre`, `opera`, `dance`, `concerts`, `movies`.
@@ -203,7 +203,9 @@ DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title 
 
 Enricher (`backend/enricher/main.py`): for productions with upcoming dates and `enriched_at` NULL,
 one request through OpenRouter with its server tools (`TOOLS`: search via Parallel turbo, fetch via
-plain HTTP; model `ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`); the answer is
+plain HTTP; budget `MAX_SEARCHES`, `MAX_FETCHES`, also told to the model in `SYSTEM`; model
+`ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`). The request holds the venue page as text
+(`venue_text()`, downloaded by the enricher: some venues block OpenRouter's fetch). The answer is
 `<de>…</de><en>…</en>` (text outside is dropped) or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
 OpenRouter key into `/etc/kulturprogramm/openrouter_api_key`. Try it: `docker compose run --rm
 --build enricher python main.py --dry-run --limit 5`. Run: `docker compose up -d --build enricher`

@@ -30,6 +30,7 @@ from time import monotonic, sleep
 
 import httpx
 import psycopg
+from bs4 import BeautifulSoup
 
 # a model slug from openrouter.ai/models; it needs tool calling
 MODEL = os.environ.get("ENRICH_MODEL", "deepseek/deepseek-v4.1-flash")
@@ -43,20 +44,39 @@ BATCH = int(os.environ.get("ENRICH_BATCH", "30"))
 PARALLEL = int(os.environ.get("ENRICH_PARALLEL", str(BATCH)))
 # hours between batches
 INTERVAL_HOURS = float(os.environ.get("ENRICH_INTERVAL_HOURS", "6"))
+# The research budget per production. SYSTEM tells the model these numbers,
+# so it can plan; TOOLS enforces them.
+MAX_SEARCHES = 3
+MAX_FETCHES = 3
 # OpenRouter runs both tools during the request. Results and fetched pages
-# are input tokens, so the limits keep the cost per production low.
+# are input tokens, and every later step reads them again, so the limits
+# keep the cost per production low.
 TOOLS = [
     {
         "type": "openrouter:web_search",
-        # Parallel in turbo mode: the cheapest engine, short excerpts
-        "parameters": {"engine": "parallel", "mode": "turbo", "max_uses": 5, "max_results": 3},
+        # Parallel in turbo mode: $0.001 per search with up to 10 results, so
+        # one wide search costs the same as a narrow one. max_characters caps
+        # the excerpt per result (about 400 tokens).
+        "parameters": {
+            "engine": "parallel",
+            "mode": "turbo",
+            "max_uses": MAX_SEARCHES,
+            "max_results": 8,
+            "max_characters": 1500,
+        },
     },
     {
         "type": "openrouter:web_fetch",
         # a plain HTTP download, free; it does not run JavaScript
-        "parameters": {"engine": "openrouter", "max_uses": 3, "max_content_tokens": 10000},
+        "parameters": {"engine": "openrouter", "max_uses": MAX_FETCHES, "max_content_tokens": 10000},
     },
 ]
+# The venue page goes into the request as text (venue_text()): some venues
+# block OpenRouter's download (theater-oberhausen.de: 403), and the model
+# gets its best source before the first step. About 2,000 tokens.
+VENUE_CHARS = 8000
+# one venue download at a time: a batch often holds many productions of one site
+VENUE_LOCK = Lock()
 # Which provider serves the model (many host DeepSeek): always the cheapest
 # one that supports every parameter of the request, so tool calling too.
 # Data collection is allowed: the notes are about public facts.
@@ -64,7 +84,7 @@ PROVIDER = {"sort": "price", "require_parameters": True}
 # the answer when the model found nothing worth telling
 NOTHING = "NICHTS"
 
-SYSTEM = """\
+SYSTEM = f"""\
 Du bist der Souffleur von kulturprogramm.eu, einer Seite mit dem Kulturprogramm in NRW. \
 Du arbeitest seit vierzig Jahren am Theater, kennst die Stücke, die Leute und die \
 Geschichten dahinter, und du erzählst gern davon. Bei Filmen gilt dieselbe Stimme.
@@ -72,9 +92,19 @@ Geschichten dahinter, und du erzählst gern davon. Bei Filmen gilt dieselbe Stim
 Deine Aufgabe: Recherchiere zu einer Produktion und schreib zwei bis vier Sätze, die \
 neugierig machen. Such nach dem, was diesen Abend interessant macht.
 
+Wie du recherchierst:
+- Du hast höchstens {MAX_SEARCHES} Suchen und {MAX_FETCHES} Seitenabrufe.
+- Lies zuerst den Text der Seite der Spielstätte, wenn er unten steht. Ruf diese \
+Seite nicht noch einmal ab. Steht nur die URL da, ruf sie ab.
+- Überleg dir vor der ersten Suche, was dir noch fehlt, zum Beispiel: Wer macht die \
+Regie? Hat jemand davon einen wichtigen Preis? Was ist die Geschichte des Werks? Jede \
+Suche klärt eine dieser Fragen.
+- Findet eine Suche nichts, ist das die Antwort: Dazu gibt es nichts zu erzählen. Such \
+nicht noch einmal mit anderen Worten danach.
+- Hast du genug für zwei bis vier gute Sätze, hör auf zu suchen und schreib.
+
 Wo du suchst:
-- Fang mit der Seite der Spielstätte an, wenn eine URL dabei ist.
-- Dann zum Beispiel Wikipedia, nachtkritik.de, Bachtrack, Seiten von Festivals \
+- Zum Beispiel Wikipedia, nachtkritik.de, Bachtrack, Seiten von Festivals \
 (Theatertreffen, Ruhrtriennale, Salzburger Festspiele), Künstlerseiten. Bei Filmen \
 zum Beispiel TMDB, Wikipedia und Festivalseiten.
 - Prüf, ob eine Person zu genau dieser Produktion gehört (Name und Rolle oder Haus), \
@@ -280,6 +310,35 @@ def pending(limit: int, title: str | None) -> list[tuple]:
         ).fetchall()
 
 
+def venue_text(url: str, label: str) -> str | None:
+    """
+    The readable text of the venue page at `url`, at most VENUE_CHARS
+    characters, or None when the download fails or gives no HTML. Drops
+    scripts, menus, header and footer, and reads <main> or <article> if the
+    page has one. A failure only costs the model a fetch, so it never raises.
+    """
+    try:
+        with VENUE_LOCK:
+            # some sites answer 403 to httpx's default User-Agent (as in the scraper)
+            response = httpx.get(
+                url, follow_redirects=True, timeout=30, headers={"User-Agent": "Mozilla/5.0"}
+            )
+        response.raise_for_status()
+    except Exception as error:
+        log.debug(f"{ctx(label)} venue page not read: {type(error).__name__} {error}")
+        return None
+    if "html" not in response.headers.get("content-type", ""):
+        return None
+    soup = BeautifulSoup(response.text, "html.parser")
+    for tag in soup(["script", "style", "noscript", "template", "svg", "nav", "header", "footer", "aside", "form"]):
+        tag.decompose()
+    root = soup.find("main") or soup.find("article") or soup.body or soup
+    lines = (" ".join(line.split()) for line in root.get_text("\n").splitlines())
+    text = "\n".join(line for line in lines if line)[:VENUE_CHARS]
+    log.debug(f"{ctx(label)} venue page: {len(text)} characters")
+    return text or None
+
+
 def ask(production: tuple, key: str, batch: Batch) -> str:
     """
     Sends one production to the model and returns the text of the answer.
@@ -296,6 +355,9 @@ def ask(production: tuple, key: str, batch: Batch) -> str:
     ]
     if url:
         lines.append(f"Seite der Spielstätte: {url}")
+        text = venue_text(url, title)
+        if text:
+            lines.append(f"\nText dieser Seite (schon abgerufen):\n{text}")
     response = httpx.post(
         API_URL,
         headers={
