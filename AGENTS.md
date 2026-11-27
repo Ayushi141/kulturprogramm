@@ -147,7 +147,8 @@ with good taste say it like this, out loud?
 
 Compose sets `PGHOST`, `PGUSER`, `PGDATABASE`, `PGPASSWORD_FILE` (frontend also `PGPORT`). libpq
 ignores `PGPASSWORD_FILE`: scraper, enricher and frontend read the file and pass the password on.
-All receive the `pg_password` Compose secret at `/run/secrets/pg_password`; PostgreSQL bind-mounts
+Telegram: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from `backend/deploy/.env` (as Umami's
+values); empty or missing: no reports. All receive the `pg_password` Compose secret at `/run/secrets/pg_password`; PostgreSQL bind-mounts
 the host file to that path and reads it through `POSTGRES_PASSWORD_FILE`. Do not put credentials in
 the repository. PostgreSQL and frontend ports are bound to `127.0.0.1` on the host.
 
@@ -162,6 +163,9 @@ and the notes per source.
 - Logging (scraper and enricher): `log.info(f"{self.ctx} …")`, every line `time LEVEL <source or
   production, fixed column> | message`, stdout only. INFO: a few lines per source; per-event detail
   is `log.debug` (`LOG_LEVEL=DEBUG`). Keep this format; no `print()`.
+- Run report (Telegram, one message per scraper run and per enricher batch): the counts in `Run`
+  (`scraper/main.py`, from the `Saved` that `Source.save()` returns) and `Batch` (`enricher/main.py`),
+  sent by `send_telegram()` (a copy in `core.py` and in `enricher/main.py`). The log does not go to Telegram.
 
 ## Common operations
 
