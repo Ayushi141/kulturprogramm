@@ -51,10 +51,12 @@ if __name__ == "__main__":
                 # what is new at this source, at once; the summary after the run
                 if message := saved.message(source.name):
                     send_telegram(message)
-            except Exception:
+            except Exception as error:
                 run.failed.append(source.name)
                 # the traceback follows on the next lines
                 log.exception(f"{source.ctx} failed, nothing saved")
+                # at once, as the enricher does: the summary comes only after all sources
+                send_telegram(f"❌ {source.name} · failed: {type(error).__name__}: {error}"[:500])
         log.info(
             f"{'run':<{CTX_WIDTH}} | {len(run.saved)}/{len(sources)} sources saved"
             + (f", failed: {', '.join(run.failed)}" if run.failed else "")

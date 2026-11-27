@@ -29,7 +29,7 @@ A new source: a new module, then one import and one entry in `sources/__init__.p
   PNG if transparent), keyed by a hash of the bytes. It never raises: a failure is a warning, the event
   keeps no image. A production's stored image (same source and title) is reused, so a run only looks up
   new productions. After lowering `MAX_SIDE`, run `shrink_stored()` once (new keys, same productions).
-- The run loop scrapes each source, adds images, saves, logs which sources failed, sleeps one day.
+- The run loop scrapes each source, adds images, saves, logs which sources failed and reports each failure to Telegram at once, sleeps one day.
   A raising source is logged with its traceback; the others continue.
 ## Implementation rules
 
