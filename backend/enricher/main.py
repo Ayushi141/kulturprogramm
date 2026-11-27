@@ -23,7 +23,9 @@ import os
 import sys
 import re
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
+from threading import Lock
 from time import monotonic, sleep
 
 import httpx
@@ -136,6 +138,81 @@ def ctx(label: str) -> str:
     return f"{label:<{CTX_WIDTH}.{CTX_WIDTH}} |"
 
 
+@dataclass
+class Batch:
+    """
+    The results of one batch, for the report. The worker threads add the
+    usage of each answer, also of failed ones: they cost too.
+    """
+
+    dry_run: bool = False
+    results: list[str] = field(default_factory=list)  # "note", "nothing", "failed" per production
+    requests: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    searches: int = 0
+    cost: float = 0.0  # US dollars: OpenRouter's usage.cost, the amount charged
+    started: float = field(default_factory=monotonic)
+    lock: Lock = field(default_factory=Lock, repr=False)
+
+    def add_usage(self, usage: dict) -> None:
+        """Adds the `usage` of one OpenRouter answer. Called from the worker threads."""
+        with self.lock:
+            self.requests += 1
+            self.prompt_tokens += usage.get("prompt_tokens", 0)
+            self.completion_tokens += usage.get("completion_tokens", 0)
+            self.searches += usage.get("server_tool_use_details", {}).get("web_search_requests", 0)
+            self.cost += usage.get("cost") or 0.0
+
+    @property
+    def cost_per_request(self) -> float:
+        return self.cost / self.requests if self.requests else 0.0
+
+    @property
+    def minutes(self) -> float:
+        return (monotonic() - self.started) / 60
+
+    def report(self) -> str:
+        count = self.results.count
+        return "\n".join([
+            f"📊 Enricher · {len(self.results)} productions" + (" (dry run)" if self.dry_run else ""),
+            f"{count('note')} Kontexte · {count('nothing')} nothing found · {count('failed')} failed",
+            f"${self.cost:.2f} (${self.cost_per_request:.3f} per production)"
+            f" · {short(self.prompt_tokens)} in / {short(self.completion_tokens)} out tokens"
+            f" · {self.searches} searches · {self.minutes:.0f} min",
+        ])
+
+
+def short(number: int) -> str:
+    """A token count in short form: 1.9M, 140k."""
+    if number >= 1_000_000:
+        return f"{number / 1_000_000:.1f}M"
+    return f"{number / 1000:.0f}k" if number >= 1000 else str(number)
+
+
+def send_telegram(text: str) -> None:
+    """
+    Sends `text` to the Telegram chat TELEGRAM_CHAT_ID through the bot
+    TELEGRAM_BOT_TOKEN (both from backend/deploy/.env). Without them: does
+    nothing. Never raises: a failed report must not stop the loop. A copy of
+    send_telegram() in backend/scraper/core.py.
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return
+    try:
+        httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text[:4096]},  # Telegram's limit
+            timeout=10,
+        ).raise_for_status()
+    except Exception as error:
+        # the token is in the URL: log only the error type and the status
+        status = getattr(getattr(error, "response", None), "status_code", "")
+        log.warning(f"{ctx('telegram')} report not sent: {type(error).__name__} {status}")
+
+
 def secret(name: str) -> str:
     """Reads the file that the environment variable `name` points to."""
     return Path(os.environ[name]).read_text().strip()
@@ -171,10 +248,11 @@ def pending(limit: int, title: str | None) -> list[tuple]:
         ).fetchall()
 
 
-def ask(production: tuple, key: str) -> str:
+def ask(production: tuple, key: str, batch: Batch) -> str:
     """
     Sends one production to the model and returns the text of the answer.
     OpenRouter runs the web searches and page fetches during the request.
+    Adds the answer's usage to `batch`.
     """
     _, title, category, organizer, venues, city, url = production
     started = monotonic()
@@ -210,6 +288,7 @@ def ask(production: tuple, key: str) -> str:
     body = response.json()
     choice = body["choices"][0]
     usage = body.get("usage", {})
+    batch.add_usage(usage)
     tools = usage.get("server_tool_use_details", {})
     log.info(
         f"{ctx(title)} {usage.get('prompt_tokens', 0)} in,"
@@ -256,7 +335,7 @@ def save(production_id: int, note_de: str | None, note_en: str | None) -> None:
         )
 
 
-def enrich(production: tuple, key: str, dry_run: bool) -> str:
+def enrich(production: tuple, key: str, batch: Batch) -> str:
     """
     Looks up one production and saves its notes. Returns "note", "nothing"
     or "failed". A failed production stays not looked up, so the next batch
@@ -265,8 +344,8 @@ def enrich(production: tuple, key: str, dry_run: bool) -> str:
     label = production[1]
     log.info(f"{ctx(label)} looking up at {production[4]}, {production[5]} ({production[3]})")
     try:
-        note_de, note_en = parse(ask(production, key))
-        if not dry_run:
+        note_de, note_en = parse(ask(production, key, batch))
+        if not batch.dry_run:
             save(production[0], note_de, note_en)
     except ValueError as error:
         # an answer in the wrong format: no traceback, the answer says it all
@@ -284,23 +363,26 @@ def enrich(production: tuple, key: str, dry_run: bool) -> str:
     return "note"
 
 
-def run_batch(limit: int, title: str | None, dry_run: bool) -> None:
+def run_batch(limit: int, title: str | None, dry_run: bool) -> Batch:
     """
     Looks up one batch of productions, PARALLEL requests at a time. The
     requests mostly wait for the API, so threads are enough. Each log line
-    names its production, so the interleaved lines stay readable.
+    names its production, so the interleaved lines stay readable. Returns
+    the results and the usage.
     """
+    batch = Batch(dry_run=dry_run)
     key = secret("OPENROUTER_API_KEY_FILE")
     productions = pending(limit, title)
     log.info(f"{ctx('batch')} {len(productions)} productions to look up,"
              f" {PARALLEL} at a time"
              + (" (dry run: nothing is saved)" if dry_run else ""))
     with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
-        results = list(pool.map(lambda p: enrich(p, key, dry_run), productions))
+        batch.results = list(pool.map(lambda p: enrich(p, key, batch), productions))
     log.info(
-        f"{ctx('batch')} {results.count('note')} notes,"
-        f" {results.count('nothing')} nothing found, {results.count('failed')} failed"
+        f"{ctx('batch')} {batch.results.count('note')} notes,"
+        f" {batch.results.count('nothing')} nothing found, {batch.results.count('failed')} failed"
     )
+    return batch
 
 
 def main() -> None:
@@ -312,13 +394,15 @@ def main() -> None:
     args = parser.parse_args()
     while True:
         if args.once or args.dry_run:
-            return run_batch(args.limit, args.title, args.dry_run)
+            send_telegram(run_batch(args.limit, args.title, args.dry_run).report())
+            return
         try:
-            run_batch(args.limit, args.title, args.dry_run)
-        except Exception:
+            send_telegram(run_batch(args.limit, args.title, args.dry_run).report())
+        except Exception as error:
             # e.g. the database is down or its schema changed under a running container:
             # wait like after a batch, instead of crashing into a restart loop
             log.exception(f"{ctx('batch')} failed")
+            send_telegram(f"❌ Enricher · batch failed: {type(error).__name__}: {error}"[:500])
         log.info(f"{ctx('batch')} next batch in {INTERVAL_HOURS:g} h")
         sleep(INTERVAL_HOURS * 3600)
 

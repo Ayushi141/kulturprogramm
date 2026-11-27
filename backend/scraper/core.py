@@ -82,9 +82,41 @@ class StoredImage:
     data: bytes
 
 
+@dataclass(frozen=True)
+class Saved:
+    """What one Source.save() wrote: the counts for the run report."""
+    images: int  # new images (known ones are not saved again)
+    productions: int
+    new_productions: int  # not in the database before: the enricher looks these up
+    events: int
+
+
 def connect() -> psycopg.Connection:
     password = Path(os.environ["PGPASSWORD_FILE"]).read_text().strip()
     return psycopg.connect(password=password)
+
+
+def send_telegram(text: str) -> None:
+    """
+    Sends `text` to the Telegram chat TELEGRAM_CHAT_ID through the bot
+    TELEGRAM_BOT_TOKEN (both from backend/deploy/.env). Without them: does
+    nothing. Never raises: a failed report must not stop a run. The enricher
+    has a copy of this function.
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return
+    try:
+        httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text[:4096]},  # Telegram's limit
+            timeout=10,
+        ).raise_for_status()
+    except Exception as error:
+        # the token is in the URL: log only the error type and the status
+        status = getattr(getattr(error, "response", None), "status_code", "")
+        log.warning(f"{'telegram':<{CTX_WIDTH}} | report not sent: {type(error).__name__} {status}")
 
 
 # Longest side of a stored image. Larger ones are shrunk: the site shows them
@@ -413,11 +445,11 @@ class Source(ABC):
         )
         return list(new.values())
 
-    def save(self, events: list[Event], images: list[StoredImage]) -> None:
+    def save(self, events: list[Event], images: list[StoredImage]) -> Saved:
         """
         Upserts new images and the productions, then the events with their
         organizer, venue and city. Writes only the scraper's columns of `productions`:
-        the enricher's notes stay as they are.
+        the enricher's notes stay as they are. Returns the counts.
         """
         image_rows = [
             (i.key, i.source_url, i.content_type, i.data) for i in images
@@ -439,8 +471,9 @@ class Source(ABC):
                 image_rows,
             )
             production_ids = {}
+            new_productions = 0
             for row in productions.values():
-                production_ids[row[1]] = cursor.execute(
+                production_ids[row[1]], inserted = cursor.execute(
                     """
                     INSERT INTO productions (source, title, category, image_key)
                     VALUES (%s, %s, %s, %s)
@@ -449,10 +482,13 @@ class Source(ABC):
                         category = EXCLUDED.category,
                         -- a failed image lookup keeps the image found earlier
                         image_key = COALESCE(EXCLUDED.image_key, productions.image_key)
-                    RETURNING id
+                    -- xmax (a PostgreSQL system column) is 0 in a new row and set in an
+                    -- updated one: so this tells an insert from an update
+                    RETURNING id, xmax = 0
                     """,
                     row,
-                ).fetchone()[0]
+                ).fetchone()
+                new_productions += inserted
             cursor.executemany(
                 """
                 INSERT INTO events
@@ -474,3 +510,4 @@ class Source(ABC):
             f"{self.ctx} saved {len(image_rows)} images,"
             f" {len(productions)} productions, {len(events)} events"
         )
+        return Saved(len(image_rows), len(productions), new_productions, len(events))

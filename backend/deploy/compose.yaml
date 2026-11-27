@@ -22,6 +22,9 @@ services:
     build: ../scraper
     restart: unless-stopped
     environment:
+      # the run report (send_telegram); from .env, no reports when empty
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       PGHOST: postgres
       PGUSER: kultur
       PGDATABASE: kultur
@@ -36,6 +39,9 @@ services:
     build: ../enricher
     restart: unless-stopped
     environment:
+      # the run report (send_telegram); from .env, no reports when empty
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       PGHOST: postgres
       PGUSER: kultur
       PGDATABASE: kultur
