@@ -1,0 +1,4 @@
+# only the scraper's code goes into the image
+snapshots/
+snapshot.py
+__pycache__/

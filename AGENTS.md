@@ -153,7 +153,9 @@ the repository. PostgreSQL and frontend ports are bound to `127.0.0.1` on the ho
 
 ## Scraper
 
-`backend/scraper/main.py` holds all sources (one `Source` class per website) and the run loop. Before
+`backend/scraper/`: `core.py` (data model, images, saving, the `Source` base class), `sources/` (one
+module per website, named after its key; `sources/__init__.py` lists them in run order), `main.py`
+(the run loop), `snapshot.py` (test, not in the image). Before
 you add or change a source, read [`docs/scrapers.md`](docs/scrapers.md): code model, rules, naming,
 and the notes per source.
 
@@ -249,6 +251,7 @@ These rules are for every task. Each chat starts without memory of earlier chats
 - Look at each visual change: take screenshots with Playwright (`playwright-core` with an installed
   Chrome) at desktop (1600×1000) and phone (390×844) width, and send them to the user. The demo
   notes are short: to test a long note, replace the note text in the page with a long text.
+- Scraper refactor: record and check with the snapshot test ([`docs/scrapers.md`](docs/scrapers.md#snapshot-test)).
 - Scraper or SQL: use a local PostgreSQL with the schema from `init.sql`. If the cluster encoding is
   not UTF-8, set `PGCLIENTENCODING=UTF8`, else psycopg returns `bytes`.
 - CSS trap: the CSS reset sets `[hidden]` to `display: none !important`. To hide an element and keep

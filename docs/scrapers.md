@@ -1,12 +1,14 @@
 # Scrapers
 
-Details for work on `backend/scraper/main.py`: the code model, the rules for a new or changed
+Details for work on the scraper (`backend/scraper/`): the code model, the rules for a new or changed
 source, and how each source reads its website. The general notes (database, logging, deploy) are in
 [`AGENTS.md`](../AGENTS.md).
 
 ## Code model
 
-All scraper classes and the run loop are in `backend/scraper/main.py`.
+`core.py` holds the shared code below, `sources/<key>.py` one class per website (key `oper-am-rhein`:
+`sources/oper_am_rhein.py`), `sources/__init__.py` the list `sources` in run order, `main.py` the run loop.
+A new source: a new module, then one import and one entry in `sources/__init__.py`.
 
 - `Category` is a `StrEnum`: `FILM = "film"`, `THEATER = "theater"`, `OPER =
   "oper"`, `CONCERT = "konzert"`, and `TANZ = "tanz"` (ballet and dance
@@ -31,25 +33,51 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
   A raising source is logged with its traceback; the others continue.
 ## Implementation rules
 
-- Make datetimes aware using `ZoneInfo("Europe/Berlin")`.
+- Make datetimes aware with `BERLIN` (`core.py`, `Europe/Berlin`).
 - Use `%s` placeholders in SQL. Do not interpolate values into SQL strings.
-- Set an HTTP timeout; the current scrapers use `timeout=60`. Sites that
-  answer 403 to httpx get `User-Agent: Mozilla/5.0`, as `download_image()` sends.
+- Fetch with `self.fetch(url)` (a `Response`) or `self.fetch_soup(url)` (`Response` and parsed HTML):
+  redirects followed, 60 s timeout, the INFO log line, an exception on an error status. `detail=True`
+  for detail pages (log line at DEBUG). Extra arguments go to `httpx.get` (`params`, `headers`). Sites
+  that answer 403 to httpx get `headers={"User-Agent": "Mozilla/5.0"}`, as `download_image()` sends.
+- An end time given as text („19:00 – 20:15“): `end_time_from_text(starts_at, text)` (next day if not
+  after the start). Dates and times otherwise: `strptime` with the site's exact format, so that an
+  unknown format raises.
 - Let parse errors surface instead of silently dropping malformed records;
   the run loop logs them per source. Images are the exception: they are
   optional, so image errors never stop an event from being saved.
 - Store public performances and concerts. Skip cancelled cards by the site's
-  marker, then classify with `self.event_category(default, *texts)` (on
-  `Source`, with its word lists as class attributes) on short texts
-  (title, label, badge, subtitle; never descriptions): `CLOSED` (school, Kita)
-  skips, `CONCERT` words give `CONCERT`, `NON_PERFORMANCE` words (Führung,
-  Workshop, Lesung, Gespräch, Matinee, Party) skip. Prefer page structure;
+  marker, then decide with `self.classify(labels=…, texts=…, info=…)` (on `Source`). A source
+  declares only its table `LABELS` (the site's own labels: division, genre, branch, series, audience
+  → a category, or `None` to skip) and `DEFAULT` (category without a label; `None` skips). `texts` are
+  short texts (title, subtitle, badges; never descriptions), `info` the info and ticket lines. The
+  order, the same for every source: a `None` label skips; `CLOSED` (school, Kita, closed) in texts or
+  info skips; a `CONCERT` word in the texts gives `CONCERT`; a `NON_PERFORMANCE` word (Führung,
+  Workshop, Lesung, Gespräch, Matinee, Party) skips; the first label in `LABELS` order with a
+  category gives it; else `DEFAULT`. Labels are matched exactly, never as words; pass a free-text
+  label in `texts` too when its words matter („Junge Oper, Konzert“). `default=` replaces `DEFAULT`
+  when a source computes it per event (Bochum: per page). Prefer labels (page structure) over words;
   keep the word lists generic, never per event. `+ Einführung` is ignored.
   Cinemas use `self.screening_category(title, *labels)` instead, which skips
   nothing: genre/series labels matching `DANCE_LABEL`/`OPERA_LABEL` give
   `TANZ`/`OPER` (never titles), a `CONCERT` word gives `CONCERT`, else `FILM`.
 - Pass `category.value` to PostgreSQL.
 - Use built-in generic types such as `list[Event]` in type hints.
+
+## Snapshot test
+
+`backend/scraper/snapshot.py` proves that a change to the code does not change what the sources
+scrape. Use it for every refactor (a change of structure, not of behaviour).
+
+- `uv run python backend/scraper/snapshot.py record` runs all sources against the live sites. It stores
+  each HTTP response and the result in `backend/scraper/snapshots/` (not in git, about 25 MB): per
+  source the events of `scrape()` and the URL that `scrape_image()` gives for the first event of each
+  title. It takes about 25 minutes (every detail page and image page is fetched once). No database, no image downloads.
+- `uv run python backend/scraper/snapshot.py check` runs the same sources offline: each request gets its
+  stored response, `datetime.now()` stands at the time of the record, `sleep()` returns at once. It
+  prints `ok` or `CHANGED` per source with the lost and new events, and exits with 1 on a difference.
+- Add source names to work on some sources only (`record tonhalle-duesseldorf`).
+- A request that was not recorded fails and shows as a difference. Record again (that source only)
+  when a change makes a source send other requests on purpose.
 
 ## Naming
 
@@ -96,7 +124,7 @@ page has not changed.
   `Ballett`, else `OPER`. Cards give title/link, start, optional end.
 
 ### Theater Krefeld-Mönchengladbach
-- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first listed branch in `BRANCHES`
+- `https://theater-kr-mg.de/kalender/` (`article.performance`): the first branch in `LABELS` order
   gives the default category; `Extras` keeps only concerts. Cards provide title, URL, start; no end.
   Venue: the stage of `.performance__location` ("building – stage", seating notes dropped), else the
   building ("Seidenweberhaus"); city from the address on the linked directions page (none: `SEAT`,
@@ -109,7 +137,7 @@ page has not changed.
 
 ### Theater und Philharmonie Essen
 - `https://www.theater-essen.de/programm/kalender/` (`div.performance`): the first category in
-  `CATEGORIES` (Schauspiel, Aalto, Philharmonie) gives the default; `Treffpunkt:` locations (tours) are
+  `LABELS` (Schauspiel, Aalto, Philharmonie) gives the category; `Treffpunkt:` locations (tours) are
   skipped and the ticket line marks closed shows. Cards provide title/times/venue.
 
 ### Oper Köln
@@ -187,7 +215,7 @@ page has not changed.
 ### Musiktheater im Revier (Gelsenkirchen)
 - `https://mirgelsenkirchen.de/kalender-tickets` lists the season: one `article.m-event` per date
   (nested `m-event--subevent`: introductions, skipped). `data-filter-genre` and `data-filter-category`
-  hold ids; the filter form's labels name them. Division gives the default (`DIVISIONS`, first match:
+  hold ids; the filter form's labels name them. Division gives the category (`LABELS`, first match:
   Konzert, TanzGelsenkirchen, Musiktheater, MiR.LAB, Gastspiel; „Foyer & Mehr“ alone: skipped).
   Audiences „Mitmachen“ and „MiR offen“ (workshops, sing-alongs, open rehearsals, tours) are skipped.
   `time[datetime]` is local; end from its text; image: the card's `img`.

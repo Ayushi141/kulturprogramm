@@ -28,7 +28,7 @@ For the full stack with Docker Compose, see [`backend/deploy/`](backend/deploy/c
 ## Contribute
 
 A venue is missing, or a scraper reads a page wrong? Open an issue or a pull request. Each website is
-one `Source` class in [`backend/scraper/main.py`](backend/scraper/main.py); the rules are in [`docs/scrapers.md`](docs/scrapers.md).
+one `Source` class per website in [`backend/scraper/sources/`](backend/scraper/sources/); the rules are in [`docs/scrapers.md`](docs/scrapers.md).
 
 ## License
 

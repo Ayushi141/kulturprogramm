@@ -15,3 +15,6 @@ pg_password
 
 # personal Claude Code permissions (may name your own server)
 .claude/settings.local.json
+
+# scraper snapshot test: recorded responses (large, local only)
+backend/scraper/snapshots/
