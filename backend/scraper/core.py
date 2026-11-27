@@ -13,6 +13,7 @@ import httpx
 import psycopg
 from enum import StrEnum
 from datetime import datetime, timedelta
+from threading import Lock
 from time import sleep
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -29,6 +30,9 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-7s %(message)s",
     datefmt="%H:%M:%S",
 )
+# httpx logs each request with its URL at INFO. The Telegram URL holds the bot
+# token, so these lines must not reach the log (and they skip the format above).
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("scraper")
 # width of the source column (Source.ctx): the longest names but one fit
 CTX_WIDTH = 22
@@ -92,6 +96,17 @@ class Saved:
     new_productions: list[str]  # titles not in the database before: the enricher looks these up
     new_dates: dict[str, int]  # title of a known production -> number of new events
 
+    def message(self, source: str) -> str | None:
+        """The Telegram message about what is new at `source`; None when nothing is new."""
+        if not self.new_productions and not self.new_dates:
+            return None
+        lines = [f"🆕 {source}"]
+        lines += [f"• {title}" for title in self.new_productions]
+        if self.new_dates:
+            lines.append("New dates:")
+            lines += [f"• {title} (+{n})" for title, n in self.new_dates.items()]
+        return "\n".join(lines)
+
 
 def connect() -> psycopg.Connection:
     password = Path(os.environ["PGPASSWORD_FILE"]).read_text().strip()
@@ -104,30 +119,34 @@ def send_telegram(text: str) -> None:
     TELEGRAM_BOT_TOKEN (both from backend/deploy/.env). Without them: does
     nothing. A text longer than one message becomes several, split between
     lines. Waits SEND_INTERVAL_S after each message: Telegram accepts about
-    20 messages per minute in one chat. Never raises: a failed report must not
+    20 messages per minute in one chat. One call at a time (the enricher
+    sends from its worker threads), so the waits add up. Never raises: a failed report must not
     stop a run. The enricher has a copy of this function.
     """
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         return
-    for chunk in split_message(text):
-        try:
-            httpx.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": chunk},
-                timeout=10,
-            ).raise_for_status()
-        except Exception as error:
-            # the token is in the URL: log only the error type and the status
-            status = getattr(getattr(error, "response", None), "status_code", "")
-            log.warning(f"{'telegram':<{CTX_WIDTH}} | report not sent: {type(error).__name__} {status}")
-            return
-        sleep(SEND_INTERVAL_S)
+    with SEND_LOCK:
+        for chunk in split_message(text):
+            try:
+                httpx.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": chunk},
+                    timeout=10,
+                ).raise_for_status()
+            except Exception as error:
+                # the token is in the URL: log only the error type and the status
+                status = getattr(getattr(error, "response", None), "status_code", "")
+                log.warning(f"{'telegram':<{CTX_WIDTH}} | report not sent: {type(error).__name__} {status}")
+                return
+            sleep(SEND_INTERVAL_S)
 
 
 # 3 s: at most 20 messages per minute
 SEND_INTERVAL_S = 3
+# one send_telegram() at a time
+SEND_LOCK = Lock()
 # Telegram refuses longer messages
 MAX_MESSAGE = 4096
 

@@ -1,4 +1,4 @@
-"""The scraper's run loop: scrape, add images and save each source, report, then sleep one day."""
+"""The scraper's run loop: scrape, add images, save and report each source, report the run, then sleep one day."""
 
 from dataclasses import dataclass, field
 from time import sleep
@@ -27,20 +27,6 @@ class Run:
         """Sources that saved no events: often a changed website, not a real empty programme."""
         return [name for name, s in self.saved.items() if not s.events]
 
-    def changes(self) -> list[str]:
-        """One message per source with new productions or new dates of known ones."""
-        messages = []
-        for name, saved in self.saved.items():
-            if not saved.new_productions and not saved.new_dates:
-                continue
-            lines = [f"🆕 {name}"]
-            lines += [f"• {title}" for title in saved.new_productions]
-            if saved.new_dates:
-                lines.append("New dates:")
-                lines += [f"• {title} (+{n})" for title, n in saved.new_dates.items()]
-            messages.append("\n".join(lines))
-        return messages
-
     def report(self) -> str:
         lines = [
             f"📊 Scraper · {len(self.saved)}/{len(self.saved) + len(self.failed)} sources saved",
@@ -61,7 +47,10 @@ if __name__ == "__main__":
                 events = source.scrape()
                 log.info(f"{source.ctx} scraped {len(events)} events")
                 images = source.add_images(events)
-                run.saved[source.name] = source.save(events, images)
+                saved = run.saved[source.name] = source.save(events, images)
+                # what is new at this source, at once; the summary after the run
+                if message := saved.message(source.name):
+                    send_telegram(message)
             except Exception:
                 run.failed.append(source.name)
                 # the traceback follows on the next lines
@@ -71,7 +60,5 @@ if __name__ == "__main__":
             + (f", failed: {', '.join(run.failed)}" if run.failed else "")
             + "; next run in 24 h"
         )
-        # the changes per source first, the summary last: it is the newest message in the chat
-        for message in run.changes() + [run.report()]:
-            send_telegram(message)
+        send_telegram(run.report())
         sleep(60 * 60 * 24)
