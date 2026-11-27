@@ -217,7 +217,7 @@ class Source(ABC):
     # Closed performances: booked by schools or kindergartens, or not on sale.
     CLOSED = re.compile(
         r"\b(?:\w*schul(?:vorstellung|konzert)\w*|kita\w*|\w*kindergarten\w*|"
-        r"für\s+schulen|geschlossene\s+vorstellung\w*)\b",
+        r"für\s+\w*schulen|geschlossene\s+vorstellung\w*)\b",
         re.IGNORECASE,
     )
     # "live viewing": a concert shown live in cinemas
@@ -1709,6 +1709,213 @@ class TheaterDortmund(Source):
         raise RuntimeError(f"more than {self.MAX_PAGES} pages")
 
 
+class TonhalleDuesseldorf(Source):
+    """
+    The calendar reads /api/events?type=dynamic (upcoming events, pages by
+    nextOffset). An event has one or more dates (isoDateStrings, UTC) with
+    one ticket id each (projectEventEvisIds); /api/events/metadata gives each
+    ticket id's state. The second path part of the link is the series:
+    "komet" is the guest promoters' programme (pop tours, comedy, readings)
+    and is skipped, as the halls' own programme is what this source shows.
+    The event page names the hall and holds the share image.
+    """
+
+    CITY = "Düsseldorf"
+    API = "https://www.tonhalle.de/api/events"
+    SKIPPED_SERIES = {"komet"}
+    SKIPPED_STATES = {"CANCELLED", "POSTPONED"}
+    PAGE_DATA = re.compile(r'<script data-page="app" type="application/json">(.*?)</script>', re.S)
+    MAX_PAGES = 20
+
+    def page(self, url: str) -> tuple[str | None, str | None]:
+        """The hall ("Mendelssohn-Saal") and share image of an event page; (None, None) if it fails."""
+        try:
+            response = httpx.get(url, follow_redirects=True, timeout=60)
+            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+            response.raise_for_status()
+            props = json.loads(self.PAGE_DATA.search(response.text)[1])["props"]
+        except Exception as error:
+            log.warning(f"{self.ctx} no event page {url}: {error!r}")
+            return None, None
+        hall = next((i["text"] for i in props["event"].get("iconTextList", []) if i["icon"] == "marker"), None)
+        return hall, props.get("meta", {}).get("ogImage")
+
+    def scrape(self) -> list[Event]:
+        items, offset = [], 0
+        for _ in range(self.MAX_PAGES):
+            response = httpx.get(self.API, params={"type": "dynamic", "size": 500, "from": offset}, timeout=60)
+            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
+            response.raise_for_status()
+            data = response.json()
+            items += data["events"]
+            offset = data.get("nextOffset")
+            if not offset:
+                break
+        else:
+            raise RuntimeError(f"more than {self.MAX_PAGES} pages")
+        response = httpx.get(f"{self.API}/metadata", timeout=60)
+        response.raise_for_status()
+        states = {m["evisId"]: m["state"] for m in response.json()}
+
+        berlin = ZoneInfo("Europe/Berlin")
+        events = []
+        for item in items:
+            # "/veranstaltung/<series>/<id>-<slug>"; some links have no series
+            parts = item["link"].strip("/").split("/")
+            series = parts[1] if len(parts) == 3 else ""
+            title = item["title"].strip()
+            category = self.event_category(Category.CONCERT, title, item.get("subTitle") or "")
+            if series in self.SKIPPED_SERIES or not category:
+                log.debug(f"{self.ctx}   skipped {title!r} ({series})")
+                continue
+            url = absolute_url(httpx.URL(self.API), item["link"])
+            hall, image_url = self.page(url)
+            venue = Venue(name=hall or self.organizer, city=self.CITY)
+            for iso, ticket in zip(item["isoDateStrings"], item["projectEventEvisIds"], strict=True):
+                if states.get(ticket) in self.SKIPPED_STATES:
+                    continue
+                events.append(
+                    Event(
+                        title=title,
+                        venue=venue,
+                        category=category,
+                        starts_at=datetime.fromisoformat(iso).astimezone(berlin),
+                        ends_at=None,  # neither the list nor the page gives an end
+                        url=url,
+                        image_url=image_url,
+                    )
+                )
+        return events
+
+
+class KoelnerPhilharmonie(Source):
+    """
+    The concert calendar reads /de/api/events/?date=<from> (10 per page,
+    "next" links the following page). An event has genres, a room with its
+    venue and city, aware start and end times and a share image. The genre
+    "Sonstiges (Lesungen, Kabarett)" marks readings and cabaret, and
+    "Begleitprogramm" talks around concerts: both are skipped.
+    """
+
+    API = "https://www.koelner-philharmonie.de/de/api/events/"
+    SKIPPED_GENRES = {"Sonstiges (Lesungen, Kabarett)", "Begleitprogramm"}
+    # genre -> category; the first in this order wins, else CONCERT
+    GENRES = {
+        "Tanz": Category.TANZ,
+        "Oper": Category.OPER,
+        "Operette": Category.OPER,
+        "Oper/Operette konzertant": Category.OPER,
+    }
+    MAX_PAGES = 100
+
+    def scrape(self) -> list[Event]:
+        berlin = ZoneInfo("Europe/Berlin")
+        items = []
+        url = f"{self.API}?date={datetime.now(berlin).date().isoformat()}"
+        for _ in range(self.MAX_PAGES):
+            response = httpx.get(url, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            items += data["results"]
+            url = data["next"]
+            if not url:
+                break
+        else:
+            raise RuntimeError(f"more than {self.MAX_PAGES} pages")
+        log.info(f"{self.ctx} GET {self.API} -> {len(items)} events of {data['count']}")
+
+        base = httpx.URL(self.API)
+        events = []
+        for item in items:
+            title = item["name"].strip()
+            genres = [g["name"] for g in item["genres"]]
+            default = next((c for g, c in self.GENRES.items() if g in genres), Category.CONCERT)
+            # "Familienkonzert", "Grundschulkonzert", "Geschlossene Veranstaltung"
+            category = self.event_category(default, title, item.get("subtitle") or "")
+            if not category or self.SKIPPED_GENRES.intersection(genres):
+                log.debug(f"{self.ctx}   skipped {title!r} ({genres})")
+                continue
+            room = item["room"]
+            starts_at = datetime.fromisoformat(item["date_start"]).astimezone(berlin)
+            ends_at = datetime.fromisoformat(item["date_end"]).astimezone(berlin) if item.get("date_end") else None
+            image = (item.get("header_image_thumbs") or {}).get("og_image")
+            events.append(
+                Event(
+                    title=title,
+                    # "Kölner Philharmonie", "COMEDIA Theater", "Bürgerhaus Kalk"
+                    venue=Venue(name=room["name"], city=room["venue"]["city"]),
+                    category=category,
+                    starts_at=starts_at,
+                    ends_at=ends_at if ends_at and ends_at > starts_at else None,
+                    url=absolute_url(base, f"/de/konzerte/{item['slug']['de']}/{item['id']}"),
+                    image_url=absolute_url(base, image) if image else None,
+                )
+            )
+        return events
+
+
+class KonzerthausDortmund(Source):
+    """
+    The programme page lists all announced events: one div.card per event,
+    with one date and one or more start times. The class "kd" marks the
+    Konzerthaus's own productions; the others are guests (promoters, and the
+    Dortmunder Philharmoniker, whose concerts the TheaterDortmund source
+    already reads) and are skipped. p.genre is the genre; "Musik & Dialog"
+    (tours, talks, masterclasses, season presentation) is skipped.
+    """
+
+    CITY = "Dortmund"
+    GENRES = {
+        "Konzertante Oper": Category.OPER,
+        "Tanz & Show": Category.TANZ,
+    }
+    SKIPPED_GENRES = {"Musik & Dialog"}
+    # the ticket button's text for a moved or cancelled date ("Verschoben auf 17.03.2027")
+    CANCELLED = re.compile(r"\b(?:verschoben|abgesagt|entfällt)\b", re.IGNORECASE)
+
+    def scrape(self) -> list[Event]:
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        cards = soup.select("div.card.grid.kd")
+        log.info(f"{self.ctx} found {len(cards)} div.card.kd of {len(soup.select('div.card.grid'))}")
+        for card in cards:
+            title = card.select_one("p.h2").get_text(" ", strip=True)
+            genre_tag = card.select_one("p.genre")
+            genre = genre_tag.get_text(" ", strip=True) if genre_tag else ""
+            subtitle = card.select_one("p.h2 + p")
+            category = self.event_category(
+                self.GENRES.get(genre, Category.CONCERT), title, subtitle.get_text(" ", strip=True) if subtitle else ""
+            )
+            footer = card.select_one(".card-footer").get_text(" ", strip=True)
+            if not category or genre in self.SKIPPED_GENRES or self.CANCELLED.search(footer):
+                log.debug(f"{self.ctx}   skipped {title!r} ({genre})")
+                continue
+            # "Fr 27.11.2026", then "20.00 Uhr" (one item per start time)
+            date_text, *times = [li.get_text(" ", strip=True) for li in card.select(".timebox li")]
+            day = datetime.strptime(date_text.split()[-1], "%d.%m.%Y").date()
+            link = card.select_one('a[aria-label^="Zur Detailseite"][href]')
+            photo = card.select_one(".card-img img[src]")
+            for time_text in times:
+                clock = datetime.strptime(time_text.removesuffix("Uhr").strip(), "%H.%M").time()
+                events.append(
+                    Event(
+                        title=title,
+                        venue=Venue(name=self.organizer, city=self.CITY),
+                        category=category,
+                        starts_at=datetime.combine(day, clock, tzinfo=berlin),
+                        ends_at=None,  # the list gives only the start
+                        url=absolute_url(response.url, link["href"]) if link else None,
+                        image_url=absolute_url(response.url, photo["src"]) if photo else None,
+                    )
+                )
+        return events
+
+
 # name (stored as productions.source), website, organizer (written to events; shown in full)
 sources = [
     # each event names its cinema as organizer
@@ -1756,6 +1963,13 @@ sources = [
         "Filmmuseum Düsseldorf",
     ),
     TheaterDortmund("theater-dortmund", "https://www.theaterdo.de/kalender/", "Theater Dortmund"),
+    TonhalleDuesseldorf("tonhalle-duesseldorf", "https://www.tonhalle.de/", "Tonhalle Düsseldorf"),
+    KoelnerPhilharmonie(
+        "koelner-philharmonie", "https://www.koelner-philharmonie.de/de/konzerte", "Kölner Philharmonie"
+    ),
+    KonzerthausDortmund(
+        "konzerthaus-dortmund", "https://www.konzerthaus-dortmund.de/de/programm/", "Konzerthaus Dortmund"
+    ),
 ]
 
 if __name__ == "__main__":
