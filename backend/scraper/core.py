@@ -13,6 +13,7 @@ import httpx
 import psycopg
 from enum import StrEnum
 from datetime import datetime, timedelta
+from time import sleep
 from bs4 import BeautifulSoup
 from pathlib import Path
 from PIL import Image, ImageOps
@@ -84,11 +85,12 @@ class StoredImage:
 
 @dataclass(frozen=True)
 class Saved:
-    """What one Source.save() wrote: the counts for the run report."""
+    """What one Source.save() wrote, for the run report."""
     images: int  # new images (known ones are not saved again)
     productions: int
-    new_productions: int  # not in the database before: the enricher looks these up
     events: int
+    new_productions: list[str]  # titles not in the database before: the enricher looks these up
+    new_dates: dict[str, int]  # title of a known production -> number of new events
 
 
 def connect() -> psycopg.Connection:
@@ -100,23 +102,48 @@ def send_telegram(text: str) -> None:
     """
     Sends `text` to the Telegram chat TELEGRAM_CHAT_ID through the bot
     TELEGRAM_BOT_TOKEN (both from backend/deploy/.env). Without them: does
-    nothing. Never raises: a failed report must not stop a run. The enricher
-    has a copy of this function.
+    nothing. A text longer than one message becomes several, split between
+    lines. Waits SEND_INTERVAL_S after each message: Telegram accepts about
+    20 messages per minute in one chat. Never raises: a failed report must not
+    stop a run. The enricher has a copy of this function.
     """
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         return
-    try:
-        httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text[:4096]},  # Telegram's limit
-            timeout=10,
-        ).raise_for_status()
-    except Exception as error:
-        # the token is in the URL: log only the error type and the status
-        status = getattr(getattr(error, "response", None), "status_code", "")
-        log.warning(f"{'telegram':<{CTX_WIDTH}} | report not sent: {type(error).__name__} {status}")
+    for chunk in split_message(text):
+        try:
+            httpx.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": chunk},
+                timeout=10,
+            ).raise_for_status()
+        except Exception as error:
+            # the token is in the URL: log only the error type and the status
+            status = getattr(getattr(error, "response", None), "status_code", "")
+            log.warning(f"{'telegram':<{CTX_WIDTH}} | report not sent: {type(error).__name__} {status}")
+            return
+        sleep(SEND_INTERVAL_S)
+
+
+# 3 s: at most 20 messages per minute
+SEND_INTERVAL_S = 3
+# Telegram refuses longer messages
+MAX_MESSAGE = 4096
+
+
+def split_message(text: str) -> list[str]:
+    """Splits `text` into parts of at most MAX_MESSAGE characters, between lines."""
+    parts, current = [], ""
+    for line in text.split("\n"):
+        # a line longer than one message: cut it into pieces
+        for piece in [line[i : i + MAX_MESSAGE] for i in range(0, len(line), MAX_MESSAGE)] or [""]:
+            if current and len(current) + 1 + len(piece) > MAX_MESSAGE:
+                parts.append(current)
+                current = piece
+            else:
+                current = f"{current}\n{piece}" if current else piece
+    return parts + [current] if current else parts
 
 
 # Longest side of a stored image. Larger ones are shrunk: the site shows them
@@ -471,7 +498,7 @@ class Source(ABC):
                 image_rows,
             )
             production_ids = {}
-            new_productions = 0
+            new_productions = []
             for row in productions.values():
                 production_ids[row[1]], inserted = cursor.execute(
                     """
@@ -488,7 +515,8 @@ class Source(ABC):
                     """,
                     row,
                 ).fetchone()
-                new_productions += inserted
+                if inserted:
+                    new_productions.append(row[1])
             cursor.executemany(
                 """
                 INSERT INTO events
@@ -500,14 +528,24 @@ class Source(ABC):
                     ends_at = EXCLUDED.ends_at,
                     url = EXCLUDED.url,
                     updated_at = now()
+                RETURNING production_id, xmax = 0
                 """,
                 [
                     (production_ids[e.title], e.organizer or self.organizer, e.venue.name, e.venue.city, e.starts_at, e.ends_at, e.url)
                     for e in events
                 ],
+                returning=True,
             )
+            # one result per event (returning=True): count the new events of known productions
+            titles = {id: title for title, id in production_ids.items()}
+            new_dates: dict[str, int] = {}
+            for result in cursor.results():
+                production_id, inserted = result.fetchone()
+                title = titles[production_id]
+                if inserted and title not in new_productions:
+                    new_dates[title] = new_dates.get(title, 0) + 1
         log.info(
             f"{self.ctx} saved {len(image_rows)} images,"
             f" {len(productions)} productions, {len(events)} events"
         )
-        return Saved(len(image_rows), len(productions), new_productions, len(events))
+        return Saved(len(image_rows), len(productions), len(events), new_productions, new_dates)

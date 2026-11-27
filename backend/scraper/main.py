@@ -20,12 +20,26 @@ class Run:
 
     @property
     def new_productions(self) -> int:
-        return sum(s.new_productions for s in self.saved.values())
+        return sum(len(s.new_productions) for s in self.saved.values())
 
     @property
     def empty(self) -> list[str]:
         """Sources that saved no events: often a changed website, not a real empty programme."""
         return [name for name, s in self.saved.items() if not s.events]
+
+    def changes(self) -> list[str]:
+        """One message per source with new productions or new dates of known ones."""
+        messages = []
+        for name, saved in self.saved.items():
+            if not saved.new_productions and not saved.new_dates:
+                continue
+            lines = [f"🆕 {name}"]
+            lines += [f"• {title}" for title in saved.new_productions]
+            if saved.new_dates:
+                lines.append("New dates:")
+                lines += [f"• {title} (+{n})" for title, n in saved.new_dates.items()]
+            messages.append("\n".join(lines))
+        return messages
 
     def report(self) -> str:
         lines = [
@@ -57,5 +71,7 @@ if __name__ == "__main__":
             + (f", failed: {', '.join(run.failed)}" if run.failed else "")
             + "; next run in 24 h"
         )
-        send_telegram(run.report())
+        # the changes per source first, the summary last: it is the newest message in the chat
+        for message in run.changes() + [run.report()]:
+            send_telegram(message)
         sleep(60 * 60 * 24)

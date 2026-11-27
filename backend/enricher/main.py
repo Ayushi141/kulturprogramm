@@ -147,6 +147,7 @@ class Batch:
 
     dry_run: bool = False
     results: list[str] = field(default_factory=list)  # "note", "nothing", "failed" per production
+    notes: list[str] = field(default_factory=list)  # one Telegram message per new note
     requests: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -172,6 +173,12 @@ class Batch:
     def minutes(self) -> float:
         return (monotonic() - self.started) / 60
 
+    def add_note(self, production: tuple, note: str) -> None:
+        """Keeps a new note for its own message. Called from the worker threads."""
+        _, title, category, organizer, venues, city, _ = production
+        with self.lock:
+            self.notes.append(f"💬 {title}\n{CATEGORY_DE.get(category, category)} · {venues}, {city}\n\n{note}")
+
     def report(self) -> str:
         count = self.results.count
         return "\n".join([
@@ -194,23 +201,48 @@ def send_telegram(text: str) -> None:
     """
     Sends `text` to the Telegram chat TELEGRAM_CHAT_ID through the bot
     TELEGRAM_BOT_TOKEN (both from backend/deploy/.env). Without them: does
-    nothing. Never raises: a failed report must not stop the loop. A copy of
-    send_telegram() in backend/scraper/core.py.
+    nothing. A text longer than one message becomes several, split between
+    lines. Waits SEND_INTERVAL_S after each message: Telegram accepts about
+    20 messages per minute in one chat. Never raises: a failed report must not
+    stop the loop. A copy of send_telegram() in backend/scraper/core.py.
     """
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         return
-    try:
-        httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text[:4096]},  # Telegram's limit
-            timeout=10,
-        ).raise_for_status()
-    except Exception as error:
-        # the token is in the URL: log only the error type and the status
-        status = getattr(getattr(error, "response", None), "status_code", "")
-        log.warning(f"{ctx('telegram')} report not sent: {type(error).__name__} {status}")
+    for chunk in split_message(text):
+        try:
+            httpx.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": chunk},
+                timeout=10,
+            ).raise_for_status()
+        except Exception as error:
+            # the token is in the URL: log only the error type and the status
+            status = getattr(getattr(error, "response", None), "status_code", "")
+            log.warning(f"{ctx('telegram')} report not sent: {type(error).__name__} {status}")
+            return
+        sleep(SEND_INTERVAL_S)
+
+
+# 3 s: at most 20 messages per minute
+SEND_INTERVAL_S = 3
+# Telegram refuses longer messages
+MAX_MESSAGE = 4096
+
+
+def split_message(text: str) -> list[str]:
+    """Splits `text` into parts of at most MAX_MESSAGE characters, between lines."""
+    parts, current = [], ""
+    for line in text.split("\n"):
+        # a line longer than one message: cut it into pieces
+        for piece in [line[i : i + MAX_MESSAGE] for i in range(0, len(line), MAX_MESSAGE)] or [""]:
+            if current and len(current) + 1 + len(piece) > MAX_MESSAGE:
+                parts.append(current)
+                current = piece
+            else:
+                current = f"{current}\n{piece}" if current else piece
+    return parts + [current] if current else parts
 
 
 def secret(name: str) -> str:
@@ -358,6 +390,7 @@ def enrich(production: tuple, key: str, batch: Batch) -> str:
     if not note_de:
         log.info(f"{ctx(label)} nothing found")
         return "nothing"
+    batch.add_note(production, note_de)
     log.info(f"{ctx(label)} DE {note_de}")
     log.info(f"{ctx(label)} EN {note_en}")
     return "note"
@@ -385,6 +418,12 @@ def run_batch(limit: int, title: str | None, dry_run: bool) -> Batch:
     return batch
 
 
+def report(batch: Batch) -> None:
+    """Sends one message per new note, then the summary: it is the newest message in the chat."""
+    for message in batch.notes + [batch.report()]:
+        send_telegram(message)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--once", action="store_true", help="one batch, then stop")
@@ -394,10 +433,10 @@ def main() -> None:
     args = parser.parse_args()
     while True:
         if args.once or args.dry_run:
-            send_telegram(run_batch(args.limit, args.title, args.dry_run).report())
+            report(run_batch(args.limit, args.title, args.dry_run))
             return
         try:
-            send_telegram(run_batch(args.limit, args.title, args.dry_run).report())
+            report(run_batch(args.limit, args.title, args.dry_run))
         except Exception as error:
             # e.g. the database is down or its schema changed under a running container:
             # wait like after a batch, instead of crashing into a restart loop
