@@ -163,12 +163,13 @@ and the notes per source.
 - Logging (scraper and enricher): `log.info(f"{self.ctx} …")`, every line `time LEVEL <source or
   production, fixed column> | message`, stdout only. INFO: a few lines per source; per-event detail
   is `log.debug` (`LOG_LEVEL=DEBUG`). Keep this format; no `print()`.
-- Run report (Telegram, after each scraper run and enricher batch): `Run` (`scraper/main.py`, from the
-  `Saved` that `Source.save()` returns: new productions, new dates of known ones) sends one message per
-  changed source; `Batch` (`enricher/main.py`) one per new note (German). Then a summary, the newest
-  message. `send_telegram()` (a copy in `core.py` and in `enricher/main.py`) splits long texts and waits
-  3 s per message (Telegram: about 20 per minute). After a database refill, every production is new.
-  The log does not go to Telegram.
+- Telegram reports, sent when they happen: after each source's save, what is new there
+  (`Saved.message()`: new productions, new dates of known ones); after each new note, the note (German);
+  after a scraper run or enricher batch, the summary (`Run`, `Batch`). `send_telegram()` (a copy in
+  `core.py` and in `enricher/main.py`) sends one text at a time (a lock: the enricher's threads), splits
+  long texts and waits 3 s per message (Telegram: about 20 per minute). After a database refill, every
+  production is new. The log does not go to Telegram; the `httpx` logger is at WARNING, because its
+  INFO lines hold the request URL, and the Telegram URL holds the bot token.
 
 ## Common operations
 
