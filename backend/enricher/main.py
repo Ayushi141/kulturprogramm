@@ -73,8 +73,9 @@ TOOLS = [
 ]
 # The venue page goes into the request as text (venue_text()): some venues
 # block OpenRouter's download (theater-oberhausen.de: 403), and the model
-# gets its best source before the first step. About 2,000 tokens.
-VENUE_CHARS = 8000
+# gets its best source before the first step. The whole visible text, menus
+# included; the limit only stops a runaway page (about 15,000 tokens).
+VENUE_CHARS = 60000
 # one venue download at a time: a batch often holds many productions of one site
 VENUE_LOCK = Lock()
 # Which provider serves the model (many host DeepSeek): always the cheapest
@@ -312,10 +313,11 @@ def pending(limit: int, title: str | None) -> list[tuple]:
 
 def venue_text(url: str, label: str) -> str | None:
     """
-    The readable text of the venue page at `url`, at most VENUE_CHARS
-    characters, or None when the download fails or gives no HTML. Drops
-    scripts, menus, header and footer, and reads <main> or <article> if the
-    page has one. A failure only costs the model a fetch, so it never raises.
+    The visible text of the venue page at `url`, at most VENUE_CHARS
+    characters, or None when the download fails or gives no HTML. Drops only
+    what a browser does not show as text (scripts, styles, SVG), not menus or
+    footers: guessing what is content would lose content on some sites. A
+    failure only costs the model a fetch, so it never raises.
     """
     try:
         with VENUE_LOCK:
@@ -330,9 +332,9 @@ def venue_text(url: str, label: str) -> str | None:
     if "html" not in response.headers.get("content-type", ""):
         return None
     soup = BeautifulSoup(response.text, "html.parser")
-    for tag in soup(["script", "style", "noscript", "template", "svg", "nav", "header", "footer", "aside", "form"]):
+    for tag in soup(["script", "style", "noscript", "template", "svg"]):
         tag.decompose()
-    root = soup.find("main") or soup.find("article") or soup.body or soup
+    root = soup.body or soup
     lines = (" ".join(line.split()) for line in root.get_text("\n").splitlines())
     text = "\n".join(line for line in lines if line)[:VENUE_CHARS]
     log.debug(f"{ctx(label)} venue page: {len(text)} characters")
