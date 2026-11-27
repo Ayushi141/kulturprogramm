@@ -55,20 +55,23 @@ TOOLS = [
     {
         "type": "openrouter:web_search",
         # Parallel in turbo mode: $0.001 per search with up to 10 results, so
-        # one wide search costs the same as a narrow one. max_characters caps
-        # the excerpt per result (about 400 tokens).
+        # one wide search costs the same as a narrow one. max_characters: the
+        # excerpt per result, the passages that match the query (about 750
+        # tokens; Parallel's default is 1500 characters).
         "parameters": {
             "engine": "parallel",
             "mode": "turbo",
             "max_uses": MAX_SEARCHES,
             "max_results": 8,
-            "max_characters": 1500,
+            "max_characters": 3000,
         },
     },
     {
         "type": "openrouter:web_fetch",
-        # a plain HTTP download, free; it does not run JavaScript
-        "parameters": {"engine": "openrouter", "max_uses": MAX_FETCHES, "max_content_tokens": 10000},
+        # Parallel's extract API: the text of the page, not its HTML ($0.001 per
+        # page). The free "openrouter" engine passed raw HTML through
+        # (Wikipedia: 10,000 tokens of menu before the article began).
+        "parameters": {"engine": "parallel", "max_uses": MAX_FETCHES, "max_content_tokens": 30000},
     },
 ]
 # The venue page goes into the request as text (venue_text()): some venues

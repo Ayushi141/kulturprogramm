@@ -203,7 +203,7 @@ DELETE FROM featured USING productions p WHERE p.id = production_id AND p.title 
 
 Enricher (`backend/enricher/main.py`): for productions with upcoming dates and `enriched_at` NULL,
 one request through OpenRouter with its server tools (`TOOLS`: search via Parallel turbo, fetch via
-plain HTTP; budget `MAX_SEARCHES`, `MAX_FETCHES`, also told to the model in `SYSTEM`; model
+Parallel's extract API; budget `MAX_SEARCHES`, `MAX_FETCHES`, also told to the model in `SYSTEM`; model
 `ENRICH_MODEL`, default `deepseek/deepseek-v4.1-flash`). The request holds the venue page as text
 (`venue_text()`, downloaded by the enricher: some venues block OpenRouter's fetch). The answer is
 `<de>…</de><en>…</en>` (text outside is dropped) or `NICHTS`. The prompt (`SYSTEM`) holds the Souffleur's voice and rules. Once: put an
