@@ -214,10 +214,10 @@ class Source(ABC):
     # CLOSED. The same for every source: keep them generic and do not
     # override them per source.
     #
-    # Closed performances: booked by schools or kindergartens, or not on sale.
+    # Closed performances: booked by schools or kindergartens, by groups only, or not on sale.
     CLOSED = re.compile(
         r"\b(?:\w*schul(?:vorstellung|konzert)\w*|kita\w*|\w*kindergarten\w*|"
-        r"für\s+\w*schulen|geschlossene\s+vorstellung\w*)\b",
+        r"für\s+\w*schulen|geschlossene\s+(?:vorstellung|veranstaltung)\w*|nur\s+gruppenbuchung\w*)\b",
         re.IGNORECASE,
     )
     # "live viewing": a concert shown live in cinemas
@@ -237,7 +237,7 @@ class Source(ABC):
         r"\w*tour(?:en)?|open\s+classes?|mitmach\w*|trainings?|"
         r"\w*kurs(?:e|en)?|labs?|"
         r"\w*lesung(?:en)?|liest|talks?|vortr[aä]g\w*|gespr[aä]ch\w*|"
-        r"diskussion\w*|moderation|salon\w*|soiree|\w*matinee|partys?)\b",
+        r"diskussion\w*|moderation|salon\w*|soiree|\w*matinee|\w*partys?)\b",
         re.IGNORECASE,
     )
 
@@ -1916,6 +1916,251 @@ class KonzerthausDortmund(Source):
         return events
 
 
+class RheinischesLandestheater(Source):
+    """
+    The Spielplan page loads its list with POST requests to
+    spielplan/programm.html, one month per request (offset 0, 1, …). Each
+    answer ends with a hidden div.letzterTermin, which the next request sends
+    back; the last answer is the text "ende erreicht.". A div.performance
+    carries its date (date-DDMMYY) and its divisions (sparte-N) as classes.
+    Only the stage divisions are kept: the others are community offers
+    (workshops, choir, crafts, knitting, quiz). Touring dates outside Neuss
+    are skipped.
+    """
+
+    CITY = "Neuss"
+    AJAX = "https://www.rheinisches-landestheater.de/spielplan/programm.html"
+    # The pages set <base href> to the site root: the list's links ("./produktionen/…") are relative to it.
+    BASE = httpx.URL("https://www.rheinisches-landestheater.de/")
+    # sparte-N classes of the stage divisions (names: the Spielplan's filter)
+    DIVISIONS = {
+        "2": Category.THEATER,  # Schauspiel
+        "5": Category.THEATER,  # Kabarett/Comedy
+        "9": Category.THEATER,  # Kinder- und Jugendtheater
+        "17": Category.TANZ,  # Tanz
+        "26": Category.TANZ,  # Tanz/Ballett
+    }
+    MAX_PAGES = 30
+
+    def scrape_image(self, event: Event) -> str | None:
+        """The wide header photo of the production page (no og:image), else the list's small photo."""
+        if event.url:
+            response = httpx.get(event.url, follow_redirects=True, timeout=60)
+            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+            response.raise_for_status()
+            header = BeautifulSoup(response.text, "html.parser").select_one("main img.w-100[src]")
+            if header:
+                return absolute_url(response.url, header["src"])
+        return event.image_url
+
+    def page(self, client: httpx.Client, offset: int, last: str) -> httpx.Response:
+        """One month of the Spielplan. The site throttles by IP: after a 429 it waits and asks once more."""
+        url = f"{self.AJAX}?ajax=1&offset={offset}&letzterTermin={last}"
+        response = client.post(url)
+        if response.status_code == 429:
+            wait = int(response.headers.get("Retry-After", "60"))
+            log.info(f"{self.ctx} 429 for offset {offset}, waiting {wait} s")
+            sleep(wait)
+            response = client.post(url)
+        log.info(f"{self.ctx} POST offset {offset} -> {size(response)}")
+        response.raise_for_status()
+        return response
+
+    def scrape(self) -> list[Event]:
+        berlin = ZoneInfo("Europe/Berlin")
+        events = []
+        last = "0"
+        with httpx.Client(follow_redirects=True, timeout=60, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            for offset in range(self.MAX_PAGES):
+                response = self.page(client, offset, last)
+                if response.text.strip() == "ende erreicht.":
+                    return events
+                soup = BeautifulSoup(response.text, "html.parser")
+                last = soup.select_one("div.letzterTermin").get_text(strip=True)
+                for card in soup.select("div.performance"):
+                    event = self.event(card, self.BASE, berlin)
+                    if event:
+                        events.append(event)
+                sleep(1)  # the site answers 429 to fast requests
+        raise RuntimeError(f"more than {self.MAX_PAGES} pages")
+
+    def event(self, card: Tag, base: httpx.URL, berlin: ZoneInfo) -> Event | None:
+        """The event of one div.performance, or None to skip it."""
+        classes = " ".join(card["class"])
+        link = card.select_one(".head-bold-l a[href]")
+        title = card.select_one(".head-bold-l").get_text(strip=True).replace("\xad", "")
+        divisions = re.findall(r"\bsparte-(\d+)\b", classes)
+        default = next((self.DIVISIONS[d] for d in divisions if d in self.DIVISIONS), None)
+        # "Märchen von Michael Ende | ab 6 Jahren", "Comedy zu Gast"
+        subtitle = card.select_one(".spielplan-uebertitel")
+        category = self.event_category(default, title, subtitle.get_text(" ", strip=True) if subtitle else "")
+        # "nur Gruppenbuchung über die Theaterkasse", "Geschlossene Veranstaltung"
+        comment = card.select_one(".spielplan-kommentar")
+        closed = comment and self.CLOSED.search(comment.get_text(" ", strip=True))
+        # "Große Bühne" with the city in span.spielplan-ort
+        place = card.select_one(".spielplan-raum > div")
+        city = place.select_one(".spielplan-ort") if place else None
+        if not category or closed or not city or city.get_text(strip=True) != self.CITY:
+            log.debug(f"{self.ctx}   skipped {title!r} ({divisions}, {place.get_text(' ', strip=True) if place else None})")
+            return None
+        stage = place.find(string=True, recursive=False).strip()
+
+        day = datetime.strptime(re.search(r"\bdate-(\d{6})\b", classes)[1], "%d%m%y")
+        # "19:30 Uhr", "09:30–10:40 Uhr"
+        clock = card.select_one(".spielplan-zeit").get_text(" ", strip=True)
+        start = datetime.strptime(re.match(r"(\d{1,2}:\d{2})", clock)[1], "%H:%M").time()
+        starts_at = datetime.combine(day.date(), start, tzinfo=berlin)
+        photo = card.select_one("img[src]:not(.img-fluid)")  # .img-fluid: partner logos
+        return Event(
+            title=title,
+            venue=Venue(name=stage, city=self.CITY),
+            category=category,
+            starts_at=starts_at,
+            ends_at=end_time_from_text(starts_at, clock),
+            url=absolute_url(base, link["href"]) if link else None,
+            image_url=absolute_url(base, photo["src"]) if photo else None,
+        )
+
+
+class MusiktheaterImRevier(Source):
+    """
+    The calendar page lists the whole season: one article.m-event per date,
+    with an introduction or talk as a nested article.m-event--subevent. The
+    article's data attributes hold the ids of its divisions (data-filter-genre)
+    and audiences (data-filter-category); the filter form names them.
+    """
+
+    CITY = "Gelsenkirchen"
+    # division name -> category; the first in this order wins
+    DIVISIONS = {
+        "Konzert": Category.CONCERT,
+        "TanzGelsenkirchen": Category.TANZ,
+        "Musiktheater": Category.OPER,
+        "MiR.LAB": Category.THEATER,  # the theatre lab's productions
+        "Gastspiel": Category.THEATER,
+    }
+    # audiences that are not performances: workshops, sing-alongs, open rehearsals, tours
+    SKIPPED = {"Mitmachen", "MiR offen"}
+
+    def scrape(self) -> list[Event]:
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+        # ("genre", "3") -> "Konzert", ("category", "27") -> "Mitmachen"
+        names = {
+            (group["data-group"], label.input["value"]): label.get_text(" ", strip=True)
+            for group in soup.select("fieldset.a-checkbox-group[data-group]")
+            for label in group.select("label:has(input[value])")
+        }
+
+        events = []
+        cards = soup.select("article.m-event:not(.m-event--subevent)")
+        log.info(f"{self.ctx} found {len(cards)} article.m-event")
+        for card in cards:
+            divisions = [names.get(("genre", i), i) for i in card.get("data-filter-genre", "").split(",") if i]
+            audiences = [names.get(("category", i), i) for i in card.get("data-filter-category", "").split(",") if i]
+            link = card.select_one("a.m-event__content__title")
+            title = link.get_text(" ", strip=True)
+            # "Oper von Giacomo Puccini", "Workshop Plans & Plants"
+            subtitle = card.select_one(".m-event__content__details__subtitle")
+            default = next((c for d, c in self.DIVISIONS.items() if d in divisions), None)
+            category = self.event_category(
+                default, title, subtitle.get_text(" ", strip=True) if subtitle else "", *divisions
+            )
+            if not category or self.SKIPPED.intersection(audiences):
+                log.debug(f"{self.ctx}   skipped {title!r} ({divisions}, {audiences})")
+                continue
+            time_tag = card.select_one(".m-event__content__info time[datetime]")
+            # "2026-11-27 19:00"
+            starts_at = datetime.strptime(time_tag["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=berlin)
+            stage = card.select_one(".m-event__content__info__location").get_text(" ", strip=True)
+            photo = card.select_one(".m-event__content__media img[src]")
+            events.append(
+                Event(
+                    title=title,
+                    venue=Venue(name=stage, city=self.CITY),
+                    category=category,
+                    starts_at=starts_at,
+                    # "19:00 – 21:15 Uhr"
+                    ends_at=end_time_from_text(starts_at, time_tag.get_text(" ", strip=True)),
+                    url=absolute_url(response.url, link["href"]),
+                    image_url=absolute_url(response.url, photo["src"]) if photo else None,
+                )
+            )
+        return events
+
+
+class TheaterOberhausen(Source):
+    """
+    The Spielplan page lists all published dates: in div.programmlisting, an
+    h3 ("Fr. 27.11.26") starts a day, each div.programm-item is one event of
+    that day. Its .kategorie is the division; only the stage divisions are
+    kept ("Open Haus" holds neighbourhood meetings, quizzes and readings;
+    city concerts in other halls are not the theatre's).
+    """
+
+    CITY = "Oberhausen"
+    DIVISIONS = {
+        "Schauspiel": Category.THEATER,
+        "Junges Theater": Category.THEATER,
+        "Urban Arts": Category.TANZ,  # urban dance
+    }
+
+    def scrape_image(self, event: Event) -> str | None:
+        """The first photo of the event page's gallery (the og:image is the logo)."""
+        if not event.url:
+            return None
+        response = httpx.get(event.url, follow_redirects=True, timeout=60)
+        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        photo = soup.select_one(".entry-content-wrap .kb-gallery-figure img[src]")
+        return absolute_url(response.url, photo["src"]) if photo else None
+
+    def scrape(self) -> list[Event]:
+        response = httpx.get(self.website, follow_redirects=True, timeout=60)
+        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        berlin = ZoneInfo("Europe/Berlin")
+
+        events = []
+        day = None
+        items = soup.select(".programmlisting > h3, .programmlisting > div.programm-item")
+        log.info(f"{self.ctx} found {sum(1 for i in items if i.name == 'div')} div.programm-item")
+        for item in items:
+            if item.name == "h3":
+                # "Fr. 27.11.26"
+                day = datetime.strptime(item.get_text(strip=True).split()[-1], "%d.%m.%y").date()
+                continue
+            text = lambda selector: " ".join(t.get_text(" ", strip=True) for t in item.select(selector))
+            heading = item.select_one(".inhalt h4")
+            age = heading.select_one(".altersfreigabe")  # "6+"
+            if age:
+                age.extract()
+            title = heading.get_text(" ", strip=True)
+            division = text(".kategorie")
+            category = self.event_category(self.DIVISIONS.get(division), title, text(".untertitel1"))
+            # info line: "Einführung 30 Minuten vor …", "Eintritt frei: Buchen Sie sich …"
+            if not category or self.CLOSED.search(text(".untertitel3")):
+                log.debug(f"{self.ctx}   skipped {title!r} ({division})")
+                continue
+            clock = datetime.strptime(text(".zeit").removesuffix("Uhr").strip(), "%H:%M").time()
+            events.append(
+                Event(
+                    title=title,
+                    venue=Venue(name=text(".location"), city=self.CITY),
+                    category=category,
+                    starts_at=datetime.combine(day, clock, tzinfo=berlin),
+                    ends_at=None,  # the list gives only the start
+                    url=heading.get("data-href"),
+                )
+            )
+        return events
+
+
 # name (stored as productions.source), website, organizer (written to events; shown in full)
 sources = [
     # each event names its cinema as organizer
@@ -1969,6 +2214,17 @@ sources = [
     ),
     KonzerthausDortmund(
         "konzerthaus-dortmund", "https://www.konzerthaus-dortmund.de/de/programm/", "Konzerthaus Dortmund"
+    ),
+    RheinischesLandestheater(
+        "rheinisches-landestheater",
+        "https://www.rheinisches-landestheater.de/spielplan/index.html",
+        "Rheinisches Landestheater Neuss",
+    ),
+    MusiktheaterImRevier(
+        "musiktheater-im-revier", "https://mirgelsenkirchen.de/kalender-tickets", "Musiktheater im Revier"
+    ),
+    TheaterOberhausen(
+        "theater-oberhausen", "https://theater-oberhausen.de/programm/spielplan/", "Theater Oberhausen"
     ),
 ]
 
