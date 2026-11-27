@@ -152,3 +152,24 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
 - `/kalender/`, pages via "»": `div.event`, start `data-start` (Unix; 0: school bookings, skipped;
   `data-endtime` is a fixed +6 h), end from the "19:00 Uhr – 22:00 Uhr" line. Skips KJT, mobile shows,
   `ELSEWHERE` guests. Image: no og:image; last (widest) `#tx-ra-eventim-header-*` CSS background.
+
+### Tonhalle Düsseldorf
+- `https://www.tonhalle.de/api/events?type=dynamic&size=500&from=N` (upcoming events, pages by `nextOffset`):
+  per event several `isoDateStrings` (UTC) with one ticket id each (`projectEventEvisIds`, same order);
+  `/api/events/metadata` gives each id's state (`CANCELLED`, `POSTPONED`: skipped). The series is the
+  second link part; `komet` (guest promoters: pop tours, comedy, readings) is skipped. The event page's
+  `script[data-page]` JSON names the hall (`iconTextList`, icon `marker`) and the share image
+  (`meta.ogImage`; no og:image tag). `CONCERT`, no end.
+
+### Kölner Philharmonie
+- `https://www.koelner-philharmonie.de/de/api/events/?date=<today>` (10 per page, `next`): genres, room
+  with venue and city, aware `date_start`/`date_end`, image `header_image_thumbs.og_image`. Genres
+  „Sonstiges (Lesungen, Kabarett)“ and „Begleitprogramm“ are skipped; Tanz gives `TANZ`, Oper/Operette
+  `OPER`, else `CONCERT`. Page: `/de/konzerte/<slug.de>/<id>`.
+
+### Konzerthaus Dortmund
+- `https://www.konzerthaus-dortmund.de/de/programm/` lists all announced events (`div.card.grid`).
+  Only `div.card.kd` (the house's own productions) is kept: the guests include the Dortmunder
+  Philharmoniker, which `TheaterDortmund` already reads. `p.genre`: „Konzertante Oper“ `OPER`, „Tanz &
+  Show“ `TANZ`, „Musik & Dialog“ (tours, talks) skipped, else `CONCERT`. `.timebox li`: the date, then one
+  item per start time („20.00 Uhr“). A ticket button „Verschoben …“/„Abgesagt“ skips the card. No end.
