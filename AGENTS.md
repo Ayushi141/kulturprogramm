@@ -164,7 +164,8 @@ and the notes per source.
   production, fixed column> | message`, stdout only. INFO: a few lines per source; per-event detail
   is `log.debug` (`LOG_LEVEL=DEBUG`). Keep this format; no `print()`.
 - Telegram reports, sent when they happen: after each source's save, what is new there
-  (`Saved.message()`: new productions, new dates of known ones); after each new note, the note (German);
+  (`Saved.message()`: new productions, new dates of known ones); after each failed source or enricher
+  batch, the error type and text; after each new note, the note (German);
   after a scraper run or enricher batch, the summary (`Run`, `Batch`). `send_telegram()` (a copy in
   `core.py` and in `enricher/main.py`) sends one text at a time (a lock: the enricher's threads), splits
   long texts and waits 3 s per message (Telegram: about 20 per minute). After a database refill, every
