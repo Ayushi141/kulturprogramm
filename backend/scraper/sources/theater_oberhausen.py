@@ -1,10 +1,7 @@
 
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class TheaterOberhausen(Source):
@@ -27,19 +24,12 @@ class TheaterOberhausen(Source):
         """The first photo of the event page's gallery (the og:image is the logo)."""
         if not event.url:
             return None
-        response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(event.url, detail=True)
         photo = soup.select_one(".entry-content-wrap .kb-gallery-figure img[src]")
         return absolute_url(response.url, photo["src"]) if photo else None
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         day = None
@@ -68,7 +58,7 @@ class TheaterOberhausen(Source):
                     title=title,
                     venue=Venue(name=text(".location"), city=self.CITY),
                     category=category,
-                    starts_at=datetime.combine(day, clock, tzinfo=berlin),
+                    starts_at=datetime.combine(day, clock, tzinfo=BERLIN),
                     ends_at=None,  # the list gives only the start
                     url=heading.get("data-href"),
                 )

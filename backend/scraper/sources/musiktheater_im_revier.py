@@ -1,10 +1,7 @@
 
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_from_text, log
 
 
 class MusiktheaterImRevier(Source):
@@ -28,11 +25,7 @@ class MusiktheaterImRevier(Source):
     SKIPPED = {"Mitmachen", "MiR offen"}
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
         # ("genre", "3") -> "Konzert", ("category", "27") -> "Mitmachen"
         names = {
             (group["data-group"], label.input["value"]): label.get_text(" ", strip=True)
@@ -59,7 +52,7 @@ class MusiktheaterImRevier(Source):
                 continue
             time_tag = card.select_one(".m-event__content__info time[datetime]")
             # "2026-11-27 19:00"
-            starts_at = datetime.strptime(time_tag["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=berlin)
+            starts_at = datetime.strptime(time_tag["datetime"], "%Y-%m-%d %H:%M").replace(tzinfo=BERLIN)
             stage = card.select_one(".m-event__content__info__location").get_text(" ", strip=True)
             photo = card.select_one(".m-event__content__media img[src]")
             events.append(

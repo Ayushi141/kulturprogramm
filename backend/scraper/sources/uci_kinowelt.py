@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Event, Source, Venue, absolute_url, log
 
 
 class UciKinowelt(Source):
@@ -22,16 +19,7 @@ class UciKinowelt(Source):
 
     def scrape(self) -> list[Event]:
         # the site answers 403 to httpx's default User-Agent
-        response = httpx.get(
-            self.website,
-            follow_redirects=True,
-            timeout=60,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website, headers={"User-Agent": "Mozilla/5.0"})
 
         events = []
         films = soup.select("div.film-container")
@@ -56,7 +44,7 @@ class UciKinowelt(Source):
                 # local clock time; after midnight it is already the next date
                 starts_at = datetime.strptime(
                     f"{show['data-date']} {show['data-time']}", "%Y%m%d %H:%M"
-                ).replace(tzinfo=berlin)
+                ).replace(tzinfo=BERLIN)
                 events.append(
                     Event(
                         title=title,

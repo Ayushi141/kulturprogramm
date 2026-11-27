@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Event, Source, Venue, log, size
+from core import BERLIN, Event, Source, Venue, log
 
 
 class Filmkunstkinos(Source):
@@ -14,10 +11,7 @@ class Filmkunstkinos(Source):
     CITY = "Düsseldorf"
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         articles = soup.select("article.col-group")
@@ -49,7 +43,7 @@ class Filmkunstkinos(Source):
             for time_element in times:
                 starts_at = datetime.fromisoformat(
                     time_element["datetime"]
-                ).replace(tzinfo=ZoneInfo("Europe/Berlin"))
+                ).replace(tzinfo=BERLIN)
                 events.append(
                     Event(
                         title=title,

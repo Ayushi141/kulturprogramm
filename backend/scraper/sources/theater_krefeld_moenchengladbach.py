@@ -3,9 +3,8 @@ import re
 import httpx
 from datetime import datetime
 from bs4 import BeautifulSoup, Tag
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class TheaterKrefeldMoenchengladbach(Source):
@@ -50,9 +49,7 @@ class TheaterKrefeldMoenchengladbach(Source):
     def city(self, url: str) -> str:
         """The city in the address of a directions page ("…, 5911 HH Venlo")."""
         try:
-            response = httpx.get(url, follow_redirects=True, timeout=60)
-            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-            response.raise_for_status()
+            response = self.fetch(url, detail=True)
         except httpx.HTTPError as error:
             log.warning(f"{self.ctx} no address from {url}: {error!r}; city {self.SEAT}")
             return self.SEAT
@@ -65,11 +62,7 @@ class TheaterKrefeldMoenchengladbach(Source):
         return re.sub(r"^\s*\d{4,5}(?: [A-Z]{2})?\s+", "", place).strip()
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         cities: dict[str, str] = {}  # directions page URL -> city
@@ -105,9 +98,9 @@ class TheaterKrefeldMoenchengladbach(Source):
             date_tag = performance.select_one("time.date[datetime]")
             starts_at = datetime.fromisoformat(date_tag["datetime"])
             if starts_at.tzinfo is None:
-                starts_at = starts_at.replace(tzinfo=berlin)
+                starts_at = starts_at.replace(tzinfo=BERLIN)
             else:
-                starts_at = starts_at.astimezone(berlin)
+                starts_at = starts_at.astimezone(BERLIN)
 
             venue = self.venue(performance.select_one(".performance__location"), cities)
             url = absolute_url(response.url, link["href"]) if link else None

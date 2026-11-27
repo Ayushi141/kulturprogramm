@@ -1,11 +1,9 @@
 
 import re
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup, Tag
-from zoneinfo import ZoneInfo
+from bs4 import Tag
 
-from core import Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
 
 
 class TheaterDortmund(Source):
@@ -54,21 +52,17 @@ class TheaterDortmund(Source):
         """URL of the widest header photo on the event's production page, or None."""
         if not event.url:
             return None
-        response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
+        response = self.fetch(event.url, detail=True)
         found = self.HEADER_IMAGE.findall(response.text)
         log.debug(f"{self.ctx}   header image {found[-1] if found else None}")
         return absolute_url(response.url, found[-1]) if found else None
 
     def scrape(self) -> list[Event]:
-        berlin = ZoneInfo("Europe/Berlin")
         events = []
         url = self.website
         for _ in range(self.MAX_PAGES):
-            response = httpx.get(url, follow_redirects=True, timeout=60)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
+            # one INFO line per page, with the number of cards
+            response, soup = self.fetch_soup(url, detail=True)
             cards = soup.select("div.event")
             log.info(f"{self.ctx} GET {response.url} -> {size(response)}, {len(cards)} div.event")
             for card in cards:
@@ -92,7 +86,7 @@ class TheaterDortmund(Source):
                 if not category or not venue:
                     log.debug(f"{self.ctx}   skipped {title!r} ({division}, {venue})")
                     continue
-                starts_at = datetime.fromtimestamp(start, berlin)
+                starts_at = datetime.fromtimestamp(start, BERLIN)
                 link = card.select_one(".event__info a[href]")
                 events.append(
                     Event(

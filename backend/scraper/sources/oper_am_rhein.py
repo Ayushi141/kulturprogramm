@@ -1,11 +1,7 @@
 
-import re
-import httpx
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
+from datetime import datetime
 
-from core import Category, Event, Source, Venue, log, size
+from core import BERLIN, Category, Event, Source, Venue, end_time_from_text, log
 
 
 class OperAmRhein(Source):
@@ -24,11 +20,7 @@ class OperAmRhein(Source):
         return [e for key, venue in self.HOUSES.items() for e in self.scrape_city(key, venue)]
 
     def scrape_city(self, key: str, house: Venue) -> list[Event]:
-        response = httpx.get(f"{self.website}{key}/", follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(f"{self.website}{key}/")
 
         events = []
         performances = soup.select("div.performance")
@@ -69,26 +61,15 @@ class OperAmRhein(Source):
                 performance.select_one('meta[itemprop="startDate"]')["content"]
             )
             if starts_at.tzinfo is None:
-                starts_at = starts_at.replace(tzinfo=berlin)
+                starts_at = starts_at.replace(tzinfo=BERLIN)
             else:
-                starts_at = starts_at.astimezone(berlin)
+                starts_at = starts_at.astimezone(BERLIN)
 
             time_tag = performance.select_one(
                 ".performance__col--date .performance__time"
             )
             time_text = time_tag.get_text(" ", strip=True)
-            end_match = re.search(
-                r"\b\d{1,2}:\d{2}\s*[-–]\s*(\d{1,2}:\d{2})\b",
-                time_text,
-            )
-            ends_at = None
-            if end_match:
-                end_clock = datetime.strptime(end_match[1], "%H:%M").time()
-                ends_at = datetime.combine(
-                    starts_at.date(), end_clock, tzinfo=berlin
-                )
-                if ends_at <= starts_at:
-                    ends_at += timedelta(days=1)
+            ends_at = end_time_from_text(starts_at, time_text)
 
             log.debug(f"{self.ctx}   {title!r} at {house.name}: {starts_at} - {ends_at}")
             events.append(

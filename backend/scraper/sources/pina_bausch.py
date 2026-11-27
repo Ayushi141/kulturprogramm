@@ -1,11 +1,8 @@
 
 import json
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class PinaBausch(Source):
@@ -18,17 +15,8 @@ class PinaBausch(Source):
     CITY = "Wuppertal"
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(
-            self.website,
-            follow_redirects=True,
-            timeout=60,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(self.website, headers={"User-Agent": "Mozilla/5.0"})
         page = json.loads(soup.select_one("[data-page]")["data-page"])
-        berlin = ZoneInfo("Europe/Berlin")
 
         events = []
         dates = [d for month in page["props"]["months"] for d in month["dates"]]
@@ -49,7 +37,7 @@ class PinaBausch(Source):
                     # UTC, e.g. "2027-01-15T18:30:00.000000Z"
                     starts_at=datetime.fromisoformat(
                         date["date_time"]
-                    ).astimezone(berlin),
+                    ).astimezone(BERLIN),
                     ends_at=None,
                     url=absolute_url(response.url, piece["route"]),
                 )
@@ -58,14 +46,6 @@ class PinaBausch(Source):
 
     def scrape_image(self, event: Event) -> str | None:
         """The share image from the event page's data-page (no og:image)."""
-        response = httpx.get(
-            event.url,
-            follow_redirects=True,
-            timeout=60,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(event.url, detail=True, headers={"User-Agent": "Mozilla/5.0"})
         page = json.loads(soup.select_one("[data-page]")["data-page"])
         return page["props"]["event"]["data"]["meta"]["thumbnail"]

@@ -1,11 +1,9 @@
 
 import re
-import httpx
 from datetime import datetime
 from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class OperWuppertal(Source):
@@ -18,8 +16,7 @@ class OperWuppertal(Source):
     )
 
     def scrape(self) -> list[Event]:
-        berlin = ZoneInfo("Europe/Berlin")
-        after = datetime.now(berlin).isoformat(timespec="seconds")
+        after = datetime.now(BERLIN).isoformat(timespec="seconds")
         performances = []
         page = 1
         while True:
@@ -30,14 +27,7 @@ class OperWuppertal(Source):
                 "itemsPerPage": 50,
                 "page": page,
             }
-            response = httpx.get(
-                self.API,
-                params=params,
-                headers={"Accept": "application/ld+json"},
-                timeout=60,
-            )
-            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-            response.raise_for_status()
+            response = self.fetch(self.API, params=params, headers={"Accept": "application/ld+json"})
             data = response.json()
             performances += data["hydra:member"]
             if "hydra:next" not in data.get("hydra:view", {}):
@@ -83,16 +73,16 @@ class OperWuppertal(Source):
                 performance["startDateTime"]
             )
             if starts_at.tzinfo is None:
-                starts_at = starts_at.replace(tzinfo=berlin)
+                starts_at = starts_at.replace(tzinfo=BERLIN)
             else:
-                starts_at = starts_at.astimezone(berlin)
+                starts_at = starts_at.astimezone(BERLIN)
             end_value = performance.get("endDateTime")
             ends_at = datetime.fromisoformat(end_value) if end_value else None
             if ends_at:
                 if ends_at.tzinfo is None:
-                    ends_at = ends_at.replace(tzinfo=berlin)
+                    ends_at = ends_at.replace(tzinfo=BERLIN)
                 else:
-                    ends_at = ends_at.astimezone(berlin)
+                    ends_at = ends_at.astimezone(BERLIN)
                 if ends_at <= starts_at:
                     ends_at = None
 
@@ -122,10 +112,6 @@ class OperWuppertal(Source):
         if not match:
             return None
         url = f"{self.API}/{match[1]}"
-        response = httpx.get(
-            url, headers={"Accept": "application/ld+json"}, timeout=60
-        )
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
+        response = self.fetch(url, detail=True, headers={"Accept": "application/ld+json"})
         image = response.json()["production"].get("image") or {}
         return image.get("src")

@@ -3,10 +3,9 @@ import re
 import httpx
 from datetime import datetime
 from bs4 import BeautifulSoup, Tag
-from zoneinfo import ZoneInfo
 from time import sleep
 
-from core import Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
 
 
 class RheinischesLandestheater(Source):
@@ -38,9 +37,7 @@ class RheinischesLandestheater(Source):
     def scrape_image(self, event: Event) -> str | None:
         """The wide header photo of the production page (no og:image), else the list's small photo."""
         if event.url:
-            response = httpx.get(event.url, follow_redirects=True, timeout=60)
-            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-            response.raise_for_status()
+            response = self.fetch(event.url, detail=True)
             header = BeautifulSoup(response.text, "html.parser").select_one("main img.w-100[src]")
             if header:
                 return absolute_url(response.url, header["src"])
@@ -60,7 +57,6 @@ class RheinischesLandestheater(Source):
         return response
 
     def scrape(self) -> list[Event]:
-        berlin = ZoneInfo("Europe/Berlin")
         events = []
         last = "0"
         with httpx.Client(follow_redirects=True, timeout=60, headers={"User-Agent": "Mozilla/5.0"}) as client:
@@ -71,13 +67,13 @@ class RheinischesLandestheater(Source):
                 soup = BeautifulSoup(response.text, "html.parser")
                 last = soup.select_one("div.letzterTermin").get_text(strip=True)
                 for card in soup.select("div.performance"):
-                    event = self.event(card, self.BASE, berlin)
+                    event = self.event(card, self.BASE)
                     if event:
                         events.append(event)
                 sleep(1)  # the site answers 429 to fast requests
         raise RuntimeError(f"more than {self.MAX_PAGES} pages")
 
-    def event(self, card: Tag, base: httpx.URL, berlin: ZoneInfo) -> Event | None:
+    def event(self, card: Tag, base: httpx.URL) -> Event | None:
         """The event of one div.performance, or None to skip it."""
         classes = " ".join(card["class"])
         link = card.select_one(".head-bold-l a[href]")
@@ -102,7 +98,7 @@ class RheinischesLandestheater(Source):
         # "19:30 Uhr", "09:30–10:40 Uhr"
         clock = card.select_one(".spielplan-zeit").get_text(" ", strip=True)
         start = datetime.strptime(re.match(r"(\d{1,2}:\d{2})", clock)[1], "%H:%M").time()
-        starts_at = datetime.combine(day.date(), start, tzinfo=berlin)
+        starts_at = datetime.combine(day.date(), start, tzinfo=BERLIN)
         photo = card.select_one("img[src]:not(.img-fluid)")  # .img-fluid: partner logos
         return Event(
             title=title,

@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class OperKoeln(Source):
@@ -15,11 +12,7 @@ class OperKoeln(Source):
     )
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         activities = soup.select("li.s-bko-activity--schedule")
@@ -67,7 +60,7 @@ class OperKoeln(Source):
             starts_at = datetime.combine(
                 datetime.fromisoformat(date_tag["datetime"]).date(),
                 datetime.strptime(clock_match[1], "%H:%M").time(),
-                tzinfo=berlin,
+                tzinfo=BERLIN,
             )
 
             ends_at = None
@@ -76,8 +69,8 @@ class OperKoeln(Source):
                     time_tags[-1]["datetime"].replace("Z", "+00:00")
                 )
                 if end_datetime.tzinfo is None:
-                    end_datetime = end_datetime.replace(tzinfo=berlin)
-                ends_at = end_datetime.astimezone(berlin)
+                    end_datetime = end_datetime.replace(tzinfo=BERLIN)
+                ends_at = end_datetime.astimezone(BERLIN)
 
             events.append(
                 Event(

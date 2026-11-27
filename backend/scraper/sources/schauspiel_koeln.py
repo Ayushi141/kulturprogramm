@@ -1,12 +1,9 @@
 from dataclasses import dataclass
 
 import re
-import httpx
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, log, size
+from core import BERLIN, Category, Event, Source, Venue, log
 
 
 @dataclass(frozen=True)
@@ -30,10 +27,7 @@ class SchauspielKoeln(Source):
         Stage, length and image from a production page. Missing details fall
         back to the general venue, no length and no image.
         """
-        response = httpx.get(url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(url, detail=True)
 
         # e.g. "Kleines Haus"; a page listing several stages
         # ("Erfrischungsraum & Kleines Haus") does not say which one is meant
@@ -68,10 +62,7 @@ class SchauspielKoeln(Source):
         return Production(venue, length, image_url)
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         productions: dict[str, Production] = {}  # one fetch per production page
@@ -96,7 +87,7 @@ class SchauspielKoeln(Source):
             clock = list(time_tag.stripped_strings)[-1]
             starts_at = datetime.strptime(
                 f"{time_tag['datetime']} {clock}", "%Y-%m-%d %H.%M Uhr"
-            ).replace(tzinfo=ZoneInfo("Europe/Berlin"))
+            ).replace(tzinfo=BERLIN)
 
             if url not in productions:
                 try:

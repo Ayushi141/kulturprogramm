@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from pathlib import Path
 from PIL import Image, ImageOps
+from zoneinfo import ZoneInfo
 
 
 # Every line: time, level, then "<source> | message" (see Source.ctx), so a
@@ -30,6 +31,8 @@ logging.basicConfig(
 log = logging.getLogger("scraper")
 # width of the source column (Source.ctx): the longest names but one fit
 CTX_WIDTH = 22
+# All sites give local times: make them aware with this zone.
+BERLIN = ZoneInfo("Europe/Berlin")
 
 
 def size(response: httpx.Response) -> str:
@@ -296,6 +299,25 @@ class Source(ABC):
             return Category.CONCERT
         return Category.FILM
 
+    def fetch(self, url: str, *, detail: bool = False, **kwargs) -> httpx.Response:
+        """
+        GETs `url` (redirects followed, 60 s timeout), logs it and raises on an
+        error status. `detail`: a detail page, logged at DEBUG only (a run
+        opens many). Other keyword arguments go to httpx.get (headers, params).
+        """
+        response = httpx.get(url, follow_redirects=True, timeout=60, **kwargs)
+        if detail:
+            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
+        else:
+            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
+        response.raise_for_status()
+        return response
+
+    def fetch_soup(self, url: str, *, detail: bool = False, **kwargs) -> tuple[httpx.Response, BeautifulSoup]:
+        """fetch(), then the parsed HTML. The response gives the final URL (for absolute_url)."""
+        response = self.fetch(url, detail=detail, **kwargs)
+        return response, BeautifulSoup(response.text, "html.parser")
+
     @abstractmethod
     def scrape(self) -> list[Event]: ...
 
@@ -308,10 +330,7 @@ class Source(ABC):
             return event.image_url
         if not event.url:
             return None
-        response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(event.url, detail=True)
         tag = soup.select_one('meta[property="og:image"][content]')
         log.debug(f"{self.ctx}   og:image {tag['content'] if tag else None}")
         return str(response.url.join(tag["content"])) if tag else None

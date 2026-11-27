@@ -33,10 +33,15 @@ A new source: a new module, then one import and one entry in `sources/__init__.p
   A raising source is logged with its traceback; the others continue.
 ## Implementation rules
 
-- Make datetimes aware using `ZoneInfo("Europe/Berlin")`.
+- Make datetimes aware with `BERLIN` (`core.py`, `Europe/Berlin`).
 - Use `%s` placeholders in SQL. Do not interpolate values into SQL strings.
-- Set an HTTP timeout; the current scrapers use `timeout=60`. Sites that
-  answer 403 to httpx get `User-Agent: Mozilla/5.0`, as `download_image()` sends.
+- Fetch with `self.fetch(url)` (a `Response`) or `self.fetch_soup(url)` (`Response` and parsed HTML):
+  redirects followed, 60 s timeout, the INFO log line, an exception on an error status. `detail=True`
+  for detail pages (log line at DEBUG). Extra arguments go to `httpx.get` (`params`, `headers`). Sites
+  that answer 403 to httpx get `headers={"User-Agent": "Mozilla/5.0"}`, as `download_image()` sends.
+- An end time given as text („19:00 – 20:15“): `end_time_from_text(starts_at, text)` (next day if not
+  after the start). Dates and times otherwise: `strptime` with the site's exact format, so that an
+  unknown format raises.
 - Let parse errors surface instead of silently dropping malformed records;
   the run loop logs them per source. Images are the exception: they are
   optional, so image errors never stop an event from being saved.

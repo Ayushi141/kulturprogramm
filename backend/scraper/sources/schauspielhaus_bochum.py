@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_from_text, log
 
 
 class SchauspielhausBochum(Source):
@@ -16,15 +13,11 @@ class SchauspielhausBochum(Source):
         # The Schauspiel page also lists the dance pieces; the first listing
         # wins, so the dance page is read first.
         seen: set[tuple[str, str, datetime]] = set()
-        berlin = ZoneInfo("Europe/Berlin")
         for url, default in (
             (self.DANCE_URL, Category.TANZ),
             (self.website, Category.THEATER),
         ):
-            response = httpx.get(url, follow_redirects=True, timeout=60)
-            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
+            response, soup = self.fetch_soup(url)
             groups = soup.select(".schedule__group[data-groupdate]")
             log.info(f"{self.ctx} found {len(groups)} schedule groups")
 
@@ -62,7 +55,7 @@ class SchauspielhausBochum(Source):
 
                     starts_at = datetime.fromisoformat(
                         group["data-groupdate"]
-                    ).replace(tzinfo=berlin)
+                    ).replace(tzinfo=BERLIN)
                     time_text = time_tag.get_text(" ", strip=True)
                     clock_match = re.search(
                         r"\b(\d{1,2}:\d{2})\b", time_text
@@ -71,7 +64,7 @@ class SchauspielhausBochum(Source):
                         clock_match[1], "%H:%M"
                     ).time()
                     starts_at = datetime.combine(
-                        starts_at.date(), start_clock, tzinfo=berlin
+                        starts_at.date(), start_clock, tzinfo=BERLIN
                     )
                     venue = Venue(
                         name=stage,
@@ -101,10 +94,7 @@ class SchauspielhausBochum(Source):
         """
         if not event.url:
             return None
-        response = httpx.get(event.url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        response, soup = self.fetch_soup(event.url, detail=True)
         title = soup.select_one(".production__title-image[style]")
         match = title and re.search(
             r"background-image:\s*url\(['\"]?([^'\")]+)", title["style"]

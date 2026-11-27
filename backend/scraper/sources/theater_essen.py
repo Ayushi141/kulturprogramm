@@ -1,10 +1,7 @@
 
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, end_time_from_text, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, end_time_from_text, log
 
 
 class TheaterEssen(Source):
@@ -20,11 +17,7 @@ class TheaterEssen(Source):
     ORCHESTRA = "Essener Philharmoniker"
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         performances = soup.select("div.performance")
@@ -71,9 +64,9 @@ class TheaterEssen(Source):
                 )["content"]
             )
             if starts_at.tzinfo is None:
-                starts_at = starts_at.replace(tzinfo=berlin)
+                starts_at = starts_at.replace(tzinfo=BERLIN)
             else:
-                starts_at = starts_at.astimezone(berlin)
+                starts_at = starts_at.astimezone(BERLIN)
 
             time_tag = performance.select_one(
                 ".performance__col--date .performance__time"

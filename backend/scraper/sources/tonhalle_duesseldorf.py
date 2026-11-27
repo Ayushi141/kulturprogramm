@@ -3,9 +3,8 @@ import json
 import re
 import httpx
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class TonhalleDuesseldorf(Source):
@@ -29,9 +28,7 @@ class TonhalleDuesseldorf(Source):
     def page(self, url: str) -> tuple[str | None, str | None]:
         """The hall ("Mendelssohn-Saal") and share image of an event page; (None, None) if it fails."""
         try:
-            response = httpx.get(url, follow_redirects=True, timeout=60)
-            log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-            response.raise_for_status()
+            response = self.fetch(url, detail=True)
             props = json.loads(self.PAGE_DATA.search(response.text)[1])["props"]
         except Exception as error:
             log.warning(f"{self.ctx} no event page {url}: {error!r}")
@@ -42,9 +39,7 @@ class TonhalleDuesseldorf(Source):
     def scrape(self) -> list[Event]:
         items, offset = [], 0
         for _ in range(self.MAX_PAGES):
-            response = httpx.get(self.API, params={"type": "dynamic", "size": 500, "from": offset}, timeout=60)
-            log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-            response.raise_for_status()
+            response = self.fetch(self.API, params={"type": "dynamic", "size": 500, "from": offset})
             data = response.json()
             items += data["events"]
             offset = data.get("nextOffset")
@@ -52,11 +47,9 @@ class TonhalleDuesseldorf(Source):
                 break
         else:
             raise RuntimeError(f"more than {self.MAX_PAGES} pages")
-        response = httpx.get(f"{self.API}/metadata", timeout=60)
-        response.raise_for_status()
+        response = self.fetch(f"{self.API}/metadata", detail=True)
         states = {m["evisId"]: m["state"] for m in response.json()}
 
-        berlin = ZoneInfo("Europe/Berlin")
         events = []
         for item in items:
             # "/veranstaltung/<series>/<id>-<slug>"; some links have no series
@@ -78,7 +71,7 @@ class TonhalleDuesseldorf(Source):
                         title=title,
                         venue=venue,
                         category=category,
-                        starts_at=datetime.fromisoformat(iso).astimezone(berlin),
+                        starts_at=datetime.fromisoformat(iso).astimezone(BERLIN),
                         ends_at=None,  # neither the list nor the page gives an end
                         url=url,
                         image_url=image_url,

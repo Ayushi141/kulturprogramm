@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class KonzerthausDortmund(Source):
@@ -28,11 +25,7 @@ class KonzerthausDortmund(Source):
     CANCELLED = re.compile(r"\b(?:verschoben|abgesagt|entfällt)\b", re.IGNORECASE)
 
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         cards = soup.select("div.card.grid.kd")
@@ -61,7 +54,7 @@ class KonzerthausDortmund(Source):
                         title=title,
                         venue=Venue(name=self.organizer, city=self.CITY),
                         category=category,
-                        starts_at=datetime.combine(day, clock, tzinfo=berlin),
+                        starts_at=datetime.combine(day, clock, tzinfo=BERLIN),
                         ends_at=None,  # the list gives only the start
                         url=absolute_url(response.url, link["href"]) if link else None,
                         image_url=absolute_url(response.url, photo["src"]) if photo else None,

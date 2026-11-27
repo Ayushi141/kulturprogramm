@@ -1,9 +1,8 @@
 
 import httpx
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-from core import Category, Event, Source, Venue, absolute_url, log
+from core import BERLIN, Category, Event, Source, Venue, absolute_url, log
 
 
 class KoelnerPhilharmonie(Source):
@@ -27,12 +26,10 @@ class KoelnerPhilharmonie(Source):
     MAX_PAGES = 100
 
     def scrape(self) -> list[Event]:
-        berlin = ZoneInfo("Europe/Berlin")
         items = []
-        url = f"{self.API}?date={datetime.now(berlin).date().isoformat()}"
+        url = f"{self.API}?date={datetime.now(BERLIN).date().isoformat()}"
         for _ in range(self.MAX_PAGES):
-            response = httpx.get(url, timeout=60)
-            response.raise_for_status()
+            response = self.fetch(url, detail=True)  # 30+ pages: one INFO line after the loop
             data = response.json()
             items += data["results"]
             url = data["next"]
@@ -54,8 +51,8 @@ class KoelnerPhilharmonie(Source):
                 log.debug(f"{self.ctx}   skipped {title!r} ({genres})")
                 continue
             room = item["room"]
-            starts_at = datetime.fromisoformat(item["date_start"]).astimezone(berlin)
-            ends_at = datetime.fromisoformat(item["date_end"]).astimezone(berlin) if item.get("date_end") else None
+            starts_at = datetime.fromisoformat(item["date_start"]).astimezone(BERLIN)
+            ends_at = datetime.fromisoformat(item["date_end"]).astimezone(BERLIN) if item.get("date_end") else None
             image = (item.get("header_image_thumbs") or {}).get("og_image")
             events.append(
                 Event(

@@ -1,11 +1,8 @@
 
 import re
-import httpx
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
 
-from core import Event, Source, Venue, absolute_url, log, size
+from core import BERLIN, Event, Source, Venue, absolute_url, log, size
 
 
 class FilmmuseumDuesseldorf(Source):
@@ -24,12 +21,6 @@ class FilmmuseumDuesseldorf(Source):
     )
     WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]  # Python's order
     MAX_PAGES = 20  # stops a "Weiter" link that never ends
-
-    def get(self, url: str) -> tuple[httpx.Response, BeautifulSoup]:
-        response = httpx.get(url, follow_redirects=True, timeout=60)
-        log.debug(f"{self.ctx} page {response.url} -> {size(response)}")
-        response.raise_for_status()
-        return response, BeautifulSoup(response.text, "html.parser")
 
     def date(self, text: str, today: datetime) -> datetime:
         """
@@ -52,7 +43,7 @@ class FilmmuseumDuesseldorf(Source):
 
     def film(self, url: str) -> tuple[timedelta | None, str | None]:
         """Length and image from a film page; None for what it does not give."""
-        response, soup = self.get(url)
+        response, soup = self.fetch_soup(url, detail=True)
         length = None
         for p in soup.select("p"):
             # e.g. "USA 1925 · 83 min · engl. Zwischentitel · digitalDCP · FSK 6"
@@ -65,13 +56,12 @@ class FilmmuseumDuesseldorf(Source):
         return length, image_url
 
     def scrape(self) -> list[Event]:
-        berlin = ZoneInfo("Europe/Berlin")
-        today = datetime.now(berlin)
+        today = datetime.now(BERLIN)
         events = []
         films: dict[str, tuple[timedelta | None, str | None]] = {}  # one fetch per film page
         url = self.website
         for _ in range(self.MAX_PAGES):
-            response, soup = self.get(url)
+            response, soup = self.fetch_soup(url, detail=True)
             cards = soup.select("div.event-item")
             log.info(f"{self.ctx} GET {response.url} -> {size(response)}, {len(cards)} div.event-item")
             for card in cards:
@@ -84,7 +74,7 @@ class FilmmuseumDuesseldorf(Source):
                 starts_at = datetime.combine(
                     self.date(when, today).date(),
                     datetime.strptime(clock, "%H:%M Uhr").time(),
-                    tzinfo=berlin,
+                    tzinfo=BERLIN,
                 )
                 if film_url not in films:
                     try:

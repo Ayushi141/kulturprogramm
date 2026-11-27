@@ -1,20 +1,13 @@
 
 import re
-import httpx
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
+from datetime import datetime
 
-from core import Category, Event, Source, Venue, log, size
+from core import BERLIN, Category, Event, Source, Venue, end_time_from_text, log
 
 
 class Dhaus(Source):
     def scrape(self) -> list[Event]:
-        response = httpx.get(self.website, follow_redirects=True, timeout=60)
-        log.info(f"{self.ctx} GET {response.url} -> {size(response)}")
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        berlin = ZoneInfo("Europe/Berlin")
+        response, soup = self.fetch_soup(self.website)
 
         events = []
         performances = soup.select("div.performance")
@@ -57,23 +50,12 @@ class Dhaus(Source):
 
             starts_at = datetime.fromisoformat(
                 performance.select_one("meta[itemprop=startDate]")["content"]
-            ).replace(tzinfo=berlin)
+            ).replace(tzinfo=BERLIN)
 
             # The end time is only given as text, e.g. "19:00 – 20:15".
             # Some performances list only the start time.
-            time_text = performance.select_one(
-                ".performance__time"
-            ).get_text(strip=True)
-            ends_at = None
-            if "–" in time_text:
-                end_clock = datetime.strptime(
-                    time_text.split("–")[1].strip(), "%H:%M"
-                ).time()
-                ends_at = datetime.combine(
-                    starts_at.date(), end_clock, tzinfo=berlin
-                )
-                if ends_at <= starts_at:
-                    ends_at += timedelta(days=1)
+            time_text = performance.select_one(".performance__time").get_text(strip=True)
+            ends_at = end_time_from_text(starts_at, time_text)
 
             log.debug(f"{self.ctx}   {title!r} at {venue.name}: {starts_at} - {ends_at}")
             events.append(
