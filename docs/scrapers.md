@@ -63,7 +63,7 @@ All scraper classes and the run loop are in `backend/scraper/main.py`.
 ## Sources
 
 The notes below describe the parser implementation. They are not a guarantee that a venue's live
-page has not changed. Rheinisches Landestheater is not registered: no dated events yet.
+page has not changed.
 
 ### Filmkunstkinos
 - `https://filmkunstkinos.de/programm/`: one `article.col-group` per film and cinema. Title: direct
@@ -173,3 +173,28 @@ page has not changed. Rheinisches Landestheater is not registered: no dated even
   Philharmoniker, which `TheaterDortmund` already reads. `p.genre`: „Konzertante Oper“ `OPER`, „Tanz &
   Show“ `TANZ`, „Musik & Dialog“ (tours, talks) skipped, else `CONCERT`. `.timebox li`: the date, then one
   item per start time („20.00 Uhr“). A ticket button „Verschoben …“/„Abgesagt“ skips the card. No end.
+
+### Rheinisches Landestheater (Neuss)
+- The Spielplan loads one month per POST to `spielplan/programm.html?ajax=1&offset=N&letzterTermin=…`;
+  each answer's hidden `div.letzterTermin` goes into the next request, `ende erreicht.` ends. The site
+  answers 429 to fast requests: one second between months, one retry after `Retry-After`.
+- `div.performance`: date in the class `date-DDMMYY`, divisions in `sparte-N`; kept: 2 Schauspiel,
+  5 Kabarett/Comedy, 9 Kinder- und Jugendtheater (`THEATER`), 17 and 26 Tanz (`TANZ`). The others are
+  community offers. `.spielplan-kommentar` marks closed dates („nur Gruppenbuchung“). Stage and city
+  in `.spielplan-raum`; only Neuss (no city: skipped). Links are relative to the site root (`<base>`).
+  Image: `main img.w-100` of the production page (no og:image), else the list photo.
+
+### Musiktheater im Revier (Gelsenkirchen)
+- `https://mirgelsenkirchen.de/kalender-tickets` lists the season: one `article.m-event` per date
+  (nested `m-event--subevent`: introductions, skipped). `data-filter-genre` and `data-filter-category`
+  hold ids; the filter form's labels name them. Division gives the default (`DIVISIONS`, first match:
+  Konzert, TanzGelsenkirchen, Musiktheater, MiR.LAB, Gastspiel; „Foyer & Mehr“ alone: skipped).
+  Audiences „Mitmachen“ and „MiR offen“ (workshops, sing-alongs, open rehearsals, tours) are skipped.
+  `time[datetime]` is local; end from its text; image: the card's `img`.
+
+### Theater Oberhausen
+- `https://theater-oberhausen.de/programm/spielplan/`: in `.programmlisting`, an `h3` („Fr. 27.11.26“)
+  starts a day, each `div.programm-item` is one event. `.kategorie` Schauspiel and Junges Theater give
+  `THEATER`, Urban Arts `TANZ`; others (Open Haus, city concerts) are skipped. Title `h4` without
+  `.altersfreigabe` („6+“), link `h4[data-href]`, venue `.location`, no end. `.untertitel3` is the info
+  line (checked for `CLOSED` only). Image: first gallery photo of the event page (og:image is the logo).
