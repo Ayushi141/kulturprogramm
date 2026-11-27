@@ -17,6 +17,19 @@
 .x-wrap{width:min(92%,1500px);margin:auto}
 .navwrap .saves{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:0 7px;border:1px solid var(--ink);box-shadow:none}
 .navwrap .saves b{padding:0 4px}
+/* the visitor's cities: a button like the language switch, its list drops below it */
+.x-city{position:relative;display:flex}
+.x-city>button{display:flex;align-items:center;gap:6px;white-space:nowrap;padding:0 7px;border:1px solid var(--ink);background:var(--paper)}
+.x-city>button[aria-expanded=true]{background:var(--ink);color:var(--paper)}
+.x-city>button b{display:none;padding:0 4px;background:var(--ink);color:var(--paper)}
+.x-citylist{position:absolute;top:calc(100% + 6px);right:0;z-index:20;display:flex;flex-direction:column;gap:6px;
+  min-width:230px;padding:10px;background:var(--paper);border:1.5px solid var(--ink);box-shadow:3px 3px var(--ink)}
+.x-citylist p{margin:0 0 2px;color:var(--grey);white-space:nowrap}
+.x-citylist button{text-align:left;padding:6px 9px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink)}
+.x-citylist button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.x-citylist button[aria-pressed=false]{color:var(--grey)}
+.x-citylist .x-cityall{border-style:dashed}
+.x-citylist .x-cityall:disabled{opacity:.45;cursor:default}
 footer{gap:8px 16px;flex-wrap:wrap}
 /* footer: the same logo as the header, smaller */
 footer .x-footbrand{font:20px/.95 var(--display);letter-spacing:-1px;transform:none;flex-shrink:0}
@@ -289,6 +302,8 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 /* narrow phones: "My evening" shows icon and count only */
 @media(max-width:480px){
   .x-saves-label{display:none}
+  .x-city>button span{display:none}
+  .x-city>button b{display:inline}
   .navwrap .saves b{display:inline}
 }
 
@@ -358,16 +373,16 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 :root{--zs:clamp(1px,.092vw,1.5px);--sans:Arial,Helvetica,sans-serif}
 button,input{font:inherit;letter-spacing:inherit}
 
-small,.tag,.featuretop,.saves,.x-lang,.x-planday>p,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-readnew,.x-contact label
+small,.tag,.featuretop,.saves,.x-lang,.x-city>button,.x-city>button b,.x-planday>p,.saves b,.x-gc,.x-sum,.x-demo,.x-step small,.x-peeksticker,.x-readnew,.x-contact label
   {font:700 calc(11 * var(--zs))/1.3 var(--mono);letter-spacing:.08em}
 
-.x-note,.x-empty,.x-emptyplan,.x-tm,.x-more,.x-narrator span,.x-readai p,.x-readvenue,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand),.x-legalnote,.x-footlinks a
+.x-note,.x-empty,.x-emptyplan,.x-citylist p,.x-tm,.x-more,.x-narrator span,.x-readai p,.x-readvenue,.x-cal>*,.x-daterow,.x-step p,.x-leg,.x-rel,.cardtext p,.dialogbody p,footer>span:not(.brand),.x-legalnote,.x-footlinks a
   {font:400 calc(12 * var(--zs))/1.6 var(--mono);letter-spacing:0}
 
 .x-bubble p,.x-readnote,.x-legal section p,.x-contact input,.x-contact textarea
   {font:400 calc(12 * var(--zs))/1.6 'IBM Plex Mono',var(--mono);letter-spacing:0}
 
-.filters button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket
+.filters button,.x-citylist button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket
   {font:700 calc(13 * var(--zs))/1.2 var(--sans);letter-spacing:0}
 
 .x-tt,.x-step h3,.x-readtitle h3,.x-legal h2,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b

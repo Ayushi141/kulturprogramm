@@ -34,6 +34,10 @@ kulturprogramm/
   (`season-timeline.tsx`) or one card per production (`SeasonPoster`). Picks are saved under the day of
   each performance; "Mein Abend" (`plan-panel.tsx`) lists all of them from today on, by day, each as a
   short event card (title: the full card, "+N": the card with its dates drawer open).
+- Cities: a setting in the header (`city-picker.tsx`), which cities' events the page shows. It is saved in
+  localStorage (`kulturprogramm.cities.v1`, a list; no entry: all cities, so new cities show up). One
+  predicate, `shown` in `guide.tsx`, applies cities and categories everywhere; picks always stay visible.
+  "In focus" ignores the categories but not the cities.
 - Event card: "+N" opens a drawer of the production's dates (`CardContext`, `guide.tsx`), a 14-day or 7-month grid, then rows; a tap switches the card in place.
   "Kontext" (looked-up productions only) opens the note as a whispered speech bubble: its narrator
   speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.

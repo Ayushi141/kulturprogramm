@@ -90,8 +90,8 @@ export function privacy(lang: Lang): Content {
           body: <p>For a part of the visits, Umami also records how the site is used: how the page changes, mouse movements, taps, clicks and scrolling. From this we can replay a visit and see, summed over many visits, where people click and how far they scroll. We use it to find what does not work in the interface. Input fields are hidden in the recording, so what you type does not reach us. The recording ends after a few minutes at the latest; recordings are deleted after 30 days. If your browser sends a “Do Not Track” signal, we record nothing. Legal basis: Art. 6 (1) (f) GDPR; our legitimate interest is to find and fix problems in the site.</p>,
         },
         {
-          title: '“My evening” in your browser',
-          body: <p>The performances that you pick are saved only in your browser (local storage). They are not sent to us. You can delete them in the site or in your browser&apos;s settings. This storage is strictly necessary for the function that you use (§ 25 (2) no. 2 TDDDG).</p>,
+          title: '“My evening” and your cities in your browser',
+          body: <p>The performances that you pick, and the cities whose events you choose to see, are saved only in your browser (local storage). They are not sent to us. You can change them in the site or delete them in your browser&apos;s settings. This storage is strictly necessary for the function that you use (§ 25 (2) no. 2 TDDDG).</p>,
         },
         {
           title: 'Contact form and email',
@@ -132,8 +132,8 @@ export function privacy(lang: Lang): Content {
         body: <p>Bei einem Teil der Besuche zeichnet Umami zusätzlich auf, wie die Seite genutzt wird: wie sich die Seite verändert, Mausbewegungen, Tippen, Klicks und Scrollen. Daraus können wir einen Besuch nachspielen und, über viele Besuche zusammengefasst, sehen, wo geklickt und wie weit gescrollt wird. Wir nutzen das, um zu finden, was in der Bedienung hakt. Eingabefelder sind in der Aufzeichnung verdeckt; was du eintippst, erreicht uns also nicht. Eine Aufzeichnung endet spätestens nach wenigen Minuten; nach 30 Tagen wird sie gelöscht. Sendet dein Browser das Signal „Do Not Track“, zeichnen wir nichts auf. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist, Fehler auf der Website zu finden und zu beheben.</p>,
       },
       {
-        title: '„Mein Abend“ in deinem Browser',
-        body: <p>Die Vorstellungen, die du dir merkst, speichert nur dein Browser (Local Storage). Sie werden nicht an uns übertragen. Du kannst sie auf der Seite oder in den Einstellungen deines Browsers löschen. Diese Speicherung ist für die Funktion, die du nutzt, unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).</p>,
+        title: '„Mein Abend“ und deine Städte in deinem Browser',
+        body: <p>Die Vorstellungen, die du dir merkst, und die Städte, deren Events du sehen willst, speichert nur dein Browser (Local Storage). Sie werden nicht an uns übertragen. Du kannst sie auf der Seite ändern oder in den Einstellungen deines Browsers löschen. Diese Speicherung ist für die Funktion, die du nutzt, unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG).</p>,
       },
       {
         title: 'Kontaktformular und E-Mail',
