@@ -18,6 +18,10 @@ const en = {
   toTop: 'Kulturprogramm — to the top',
   language: 'Language',
   myEvening: 'My evening',
+  citiesButton: (which: string) => `Cities: ${which}. Change`,
+  citiesGroup: 'Show events from these cities (choose one or more)',
+  citiesHint: 'Show me events from …',
+  allCities: 'All cities',
   cat: {
     theatre: { label: 'Theatre', tag: 'THEATRE' },
     opera: { label: 'Opera', tag: 'OPERA' },
@@ -198,6 +202,10 @@ const de: Dict = {
   toTop: 'Kulturprogramm – nach oben',
   language: 'Sprache',
   myEvening: 'Mein Abend',
+  citiesButton: which => `Städte: ${which}. Ändern`,
+  citiesGroup: 'Events aus diesen Städten zeigen (Mehrfachauswahl)',
+  citiesHint: 'Zeig mir Events aus …',
+  allCities: 'Alle Städte',
   cat: {
     theatre: { label: 'Theater', tag: 'THEATER' },
     opera: { label: 'Oper', tag: 'OPER' },

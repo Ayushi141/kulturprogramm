@@ -4,12 +4,17 @@ import { Bookmark } from 'lucide-react'
 import { CATEGORIES } from '@/lib/types'
 import { HOME, LANGS } from '@/lib/i18n'
 import { useLang, useT } from './i18n'
+import { CityPicker } from './city-picker'
 
 /**
- * Site header: the wordmark with the categories as a printed stamp,
- * the language switch, and one action, "My evening".
+ * Site header: the wordmark with the categories as a printed stamp, the
+ * visitor's cities (a saved setting), the language switch, and one action, "My evening".
  */
-export function Masthead({ count, showPicks }: { count: number; showPicks: () => void }) {
+export function Masthead({ count, showPicks, cities }: {
+  count: number
+  showPicks: () => void
+  cities: React.ComponentProps<typeof CityPicker>
+}) {
   const t = useT(), lang = useLang()
   return (
     <header>
@@ -22,6 +27,7 @@ export function Masthead({ count, showPicks }: { count: number; showPicks: () =>
           </span>
         </a>
         <div className="x-navtools">
+          <CityPicker {...cities} />
           <nav className="x-lang" aria-label={t.language}>
             {LANGS.map(l => (
               // keep the view (#timeline / #poster) when switching

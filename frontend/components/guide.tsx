@@ -25,6 +25,8 @@ type Now = { day: string; min: number }
 
 const ICONS: Record<Category, typeof Drama> = { theatre: Drama, opera: MicVocal, dance: Footprints, concerts: Music, movies: Clapperboard }
 const STORE = 'kulturprogramm.plans.v1'
+/** The visitor's cities, a JSON array; no entry means all cities. */
+const CITY_STORE = 'kulturprogramm.cities.v1'
 /** Day buttons in the strip; the "later" button covers the rest of the horizon. */
 const STRIP_DAYS = 7
 /** Days ahead that the frontend shows (getProgramme() loads as many). */
@@ -51,6 +53,9 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const [now, setNow] = useState<Now | null>(null) // client only: avoids a server/client clock mismatch
   const [day, setDay] = useState('')
   const [cats, setCats] = useState<Set<Category>>(new Set(CATEGORIES))
+  /** Every city in the programme, in timeline order (getProgramme() sorts the venues by city). */
+  const allCities = useMemo(() => [...new Set(programme.venues.map(v => v.city))], [programme.venues])
+  const [cities, setCities] = useState<Set<string>>(() => new Set(allCities))
   const [win, setWin] = useState<Window>(DEFAULT_WIN) // what the timeline shows; nothing else depends on it
   const [plans, setPlans] = useState<Record<string, string[]>>({})
   const [view, setViewState] = useState<View>('timeline')
@@ -74,6 +79,11 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
       const saved = JSON.parse(localStorage.getItem(STORE) ?? '{}') as Record<string, string[]>
       setPlans(Object.fromEntries(Object.entries(saved).filter(([d]) => d >= n.day)))
     } catch { /* storage unavailable: start empty */ }
+    try {
+      // keep only cities that still have events; if none is left, show all
+      const saved = (JSON.parse(localStorage.getItem(CITY_STORE) ?? 'null') as string[] | null)?.filter(c => allCities.includes(c))
+      if (saved?.length) setCities(new Set(saved))
+    } catch { /* storage unavailable or broken: all cities */ }
     loaded.current = true
     const fromHash = () => { const v = location.hash.slice(1); if (v === 'poster' || v === 'timeline' || v === 'context') setViewState(v) }
     fromHash()
@@ -82,6 +92,14 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
     return () => { clearInterval(t); removeEventListener('hashchange', fromHash) }
   }, [])
   useEffect(() => { if (loaded.current) try { localStorage.setItem(STORE, JSON.stringify(plans)) } catch { /* ignore */ } }, [plans])
+  // all cities is the default, so it is stored as no entry: a city added to the site later shows up
+  useEffect(() => {
+    if (!loaded.current) return
+    try {
+      if (cities.size === allCities.length) localStorage.removeItem(CITY_STORE)
+      else localStorage.setItem(CITY_STORE, JSON.stringify(allCities.filter(c => cities.has(c))))
+    } catch { /* ignore */ }
+  }, [cities, allCities])
   useEffect(() => { if (!detail) dialog.current?.close(); else if (!dialog.current?.open) dialog.current?.showModal() }, [detail])
 
   const setView = (v: View) => { setViewState(v); try { history.replaceState(null, '', '#' + v) } catch { /* ignore */ } }
@@ -90,21 +108,27 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
     if (next.has(c)) next.delete(c); else next.add(c)
     return next.size ? next : cs // at least one category stays on
   })
+  const flipCity = (c: string) => setCities(cs => {
+    const next = new Set(cs)
+    if (next.has(c)) next.delete(c); else next.add(c)
+    return next.size ? next : cs // at least one city stays on
+  })
 
   /* derived state */
   const days = useMemo(() => (now ? Array.from({ length: STRIP_DAYS }, (_, i) => shiftDate(now.day, i)) : []), [now?.day])
   const laterFrom = now ? shiftDate(now.day, STRIP_DAYS) : '', laterTo = now ? shiftDate(now.day, HORIZON_DAYS - 1) : ''
   const isLater = day === LATER
   const nowMin = now && day === now.day ? now.min : null
-  const inCat = (it: Item) => cats.has(it.category)
+  /** What the programme shows: the chosen categories in the chosen cities. Picks always stay visible. */
+  const shown = (it: Item) => cats.has(it.category) && cities.has(it.venue.city)
   /** Picked items of one day, in time order. */
   const planFor = (d: string) => (plans[d] ?? []).map(id => itemById.get(id)).filter((i): i is Item => !!i && i.day === d).sort(byStart)
   /* the "later" range: everything after the strip, up to the horizon */
   const laterItems = useMemo(() => [...byDay].filter(([d]) => d >= laterFrom && d <= laterTo).flatMap(([, its]) => its), [byDay, laterFrom, laterTo])
-  const laterPool = laterItems.filter(inCat)
+  const laterPool = laterItems.filter(shown)
   const laterPicks = Object.keys(plans).filter(d => d >= laterFrom).sort().flatMap(planFor)
   const laterIds = new Set(laterPicks.map(i => i.id))
-  const laterVisible = [...laterPool, ...laterPicks.filter(i => !inCat(i))]
+  const laterVisible = [...laterPool, ...laterPicks.filter(i => !shown(i))]
   const laterWeekly = laterFrom ? Array.from({ length: Math.ceil((HORIZON_DAYS - STRIP_DAYS) / 7) }, (_, w) => {
     const a = shiftDate(laterFrom, w * 7), b = shiftDate(laterFrom, w * 7 + 6)
     return laterPool.filter(i => i.day >= a && i.day <= b).length
@@ -112,16 +136,17 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const dayItems = byDay.get(day) ?? []
   const plan = isLater ? [] : planFor(day)
   const planIds = new Set(plan.map(i => i.id))
-  const pool = dayItems.filter(inCat)
-  const visible = [...pool, ...plan.filter(i => !inCat(i))]
+  const pool = dayItems.filter(shown)
+  const visible = [...pool, ...plan.filter(i => !shown(i))]
   const ahead = visible.filter(i => upcoming(i, nowMin) || planIds.has(i.id))
   const started = visible.length - ahead.length
-  const countOf = (d: string) => (byDay.get(d) ?? []).filter(i => inCat(i) && upcoming(i, d === now?.day ? now.min : null)).length
-  // "In focus" shows whatever day or categories are selected: a performance on the
-  // selected day if there is one, otherwise the next upcoming one
+  const countOf = (d: string) => (byDay.get(d) ?? []).filter(i => shown(i) && upcoming(i, d === now?.day ? now.min : null)).length
+  // "In focus" ignores the selected categories (it is a recommendation), but not the cities:
+  // a city the visitor turned off is one they will not go to. A performance on the selected
+  // day if there is one, otherwise the next upcoming one
   const featured = new Set(programme.featured ?? [])
   const focusAll = featured.size && now ? [...byDay.keys()].filter(d => d >= now.day).sort().flatMap(d => (byDay.get(d) ?? [])
-    .filter(i => featured.has(i.ev.productionId) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
+    .filter(i => featured.has(i.ev.productionId) && cities.has(i.venue.city) && upcoming(i, d === now?.day ? now.min : null)).sort(byStart)) : []
   const focus = focusAll.find(i => i.day === day) ?? focusAll[0]
   /** The reading view follows the day strip: the selected day by start time, or the later range by date and time. */
   const readItems = isLater
@@ -163,7 +188,8 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   return (
     <CardContext value={cardData}>
     <main id="top">
-      <Masthead count={picks.length} showPicks={showPicks} />
+      <Masthead count={picks.length} showPicks={showPicks}
+        cities={{ cities: allCities, selected: cities, onFlip: flipCity, onAll: () => setCities(new Set(allCities)) }} />
       {!now || !day ? <p className="x-wrap x-empty">{t.loading}</p> : <>
         {/* the headline is the answer: which day, how much is on */}
         <section className="x-hero">
@@ -187,7 +213,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
                 </button>
               )}
             </div>
-            <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(inCat)}
+            <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(shown)}
               later={{ key: LATER, until: laterTo, count: laterPool.length, weekly: laterWeekly }} />
             <span className="x-colorbar" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>
           </div>
