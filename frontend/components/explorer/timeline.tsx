@@ -8,6 +8,7 @@ import type { Dict } from '@/lib/i18n'
 import { useT } from '../i18n'
 import { CAT, PALETTE } from '@/lib/colors'
 import { EventCard } from './event-card'
+import { track } from '@/lib/track'
 import { edgeDots, halftone, openOutline, splitPoint, wedge } from './open-end'
 import { fitText, LABEL_FONT, MARK_FONT, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 
@@ -427,7 +428,7 @@ export function Timeline(p: TimelineProps) {
                 onPointerMove={e => { if (e.pointerType === 'mouse' && !pop) setTip({ ...near(e.clientX, e.clientY)!, body: itemSummary(it) }) }}
                 onPointerLeave={() => setTip(null)}
                 onContextMenu={e => e.preventDefault()}
-                onClick={e => { setTip(null); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 380)! }) }}>
+                onClick={e => { setTip(null); if (pop?.id !== it.id) track('bar-open', it, { from: 'timeline' }); setPop(pop?.id === it.id ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 380)! }) }}>
                 {open ? (
                   <g clipPath={`url(#${uid}plot)`}>
                     {planned && <path d={wedge(x0, open.xm, open.xe, y, BAR)} transform="translate(4,4)" fill={RED} />}

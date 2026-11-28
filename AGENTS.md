@@ -50,6 +50,8 @@ kulturprogramm/
   on `localhost:3000`, Umami (visitor statistics) on `localhost:3001` at `stats.kulturprogramm.eu`. The site
   loads the Umami tracker from its own domain: `/k/s.js` and events `/k/e` (`root-layout.tsx`); the recorder
   (replays, heatmaps) `/k/r.js`, sends to `/k/api/…`, not with Do Not Track (`umami-recorder.tsx`).
+  Click events (dashboard: "Events"): `track()` in `lib/track.ts`, the names in `TrackEvent`; a view change
+  (`#poster`, `#context`) is a page view, so it needs no event. A new event: add it there and to the privacy text.
 - Legal pages: `/impressum`, `/datenschutz` (EN `/en/imprint`, `/en/privacy`), texts in `lib/legal.tsx`; update the
   privacy text with any new data processing. The imprint's contact form stores into `messages` (`/api/contact`).
 - Installable (PWA): `frontend/app/manifest.ts`, starts at `/`; icons from `public/icon.svg`, maskable one with the star in the safe zone.

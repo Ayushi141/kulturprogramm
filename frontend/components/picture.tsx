@@ -13,8 +13,8 @@ const SLOP_PX = 8   // moving further before the peek shows means the finger is 
 /** Event image with an abstract placeholder (seeded by the title) when the image is missing or fails.
     With `peek` (the event title), the image opens the whole poster over the page. A tap (or
     Enter) keeps it open until the next tap anywhere or Escape. Holding (finger, mouse button or
-    Space) shows it only while held. */
-export function Picture({ image, category, seed, peek }: { image?: string; category: Category; seed: string; peek?: string }) {
+    Space) shows it only while held. `onPeek` runs each time the poster opens. */
+export function Picture({ image, category, seed, peek, onPeek }: { image?: string; category: Category; seed: string; peek?: string; onPeek?: () => void }) {
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
   // open after a tap: stays until the next tap. `pinnedAt` ignores the tap's own late click.
@@ -37,6 +37,9 @@ export function Picture({ image, category, seed, peek }: { image?: string; categ
     setOpen(true)
     setPinned(true)
   }
+
+  // runs once per opening: a hold that becomes a tap keeps the poster open and does not count again
+  useEffect(() => { if (open) onPeek?.() }, [open])
 
   // Escape closes a pinned poster. Captured first, so a modal card does not close as well.
   useEffect(() => {

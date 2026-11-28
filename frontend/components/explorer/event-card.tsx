@@ -9,6 +9,7 @@ import type { Category, Context } from '@/lib/types'
 import { Picture } from '../picture'
 import { CAT } from '@/lib/colors'
 import { MOUTH, NARRATOR, Narrator } from './mascots'
+import { track } from '@/lib/track'
 
 export type Relation = { text: string; strong: boolean } | null
 
@@ -67,11 +68,15 @@ export function EventCard({ it, onToggle, onClose, openDates = false }: {
   // one drawer at a time; a past performance (from a shared link) opens with its next dates, the grid starting at the first of them;
   // `openDates` opens the dates drawer too
   const [drawer, setDrawer] = useState<'dates' | 'context' | null>(() => (openDates || over(it)) && all.length > 1 ? 'dates' : null)
-  const toggle = (d: 'dates' | 'context') => setDrawer(open => open === d ? null : d)
+  const toggle = (d: 'dates' | 'context') => {
+    if (drawer !== d) track(d === 'dates' ? 'card-dates' : 'card-kontext', shown)
+    setDrawer(open => open === d ? null : d)
+  }
   const anchor = over(it) ? (all.find(d => !over(d))?.day ?? it.day) : it.day
   const [copied, setCopied] = useState(false)
   /** Phones open their share menu; elsewhere the link is copied. */
   const share = async () => {
+    track('card-share', shown)
     const url = location.origin + sharePath(lang, shown.id)
     // draw the link preview now, so it is ready when the chat app asks for it
     fetch(`${sharePath(lang, shown.id)}/preview.jpg`).catch(() => {})
@@ -104,8 +109,8 @@ export function EventCard({ it, onToggle, onClose, openDates = false }: {
   return (
     <div className="x-cardwrap" ref={wrap}>
       <div className="x-card">
-        <button className="x-popclose" aria-label={t.close} onClick={onClose}><X size={15} /></button>
-        <div className="x-popphoto"><Picture image={shown.ev.image} category={shown.category} seed={shown.ev.title} key={it.id} peek={shown.ev.title} /></div>
+        <button className="x-popclose" aria-label={t.close} onClick={() => { track('card-close', shown); onClose() }}><X size={15} /></button>
+        <div className="x-popphoto"><Picture image={shown.ev.image} category={shown.category} seed={shown.ev.title} key={it.id} peek={shown.ev.title} onPeek={() => track('card-preview', shown)} /></div>
         <small>{t.cat[shown.category].tag} / {t.dateline(t.wdl[weekday(shown.day)].toUpperCase(), dayLabel(shown.day))}</small>
         <div className="x-tt">{shown.ev.title}</div>
         <div className="x-tm">{spanLabel(shown, t)}<br />{shown.venue.organizer}<br />{shown.venue.name} · {shown.venue.city}{shown.ev.price && <> · {shown.ev.price}</>}</div>
@@ -129,11 +134,11 @@ export function EventCard({ it, onToggle, onClose, openDates = false }: {
           : rel && <p className={rel.strong ? 'x-rel' : 'x-rel x-rel-muted'}>{rel.text}</p>}
         <div className="x-popbtns">
           {!over(shown) && (
-            <button onClick={() => onToggle(shown.id)}>
+            <button onClick={() => { track(picked ? 'card-remove' : 'card-add', shown); onToggle(shown.id) }}>
               <Bookmark size={15} fill={picked ? 'currentColor' : 'none'} />{later ? (picked ? t.removeShort : t.save) : picked ? t.remove : t.add}
             </button>
           )}
-          {shown.ev.url && <a href={shown.ev.url} target="_blank" rel="noopener noreferrer">{t.tickets}<ArrowUpRight size={15} /></a>}
+          {shown.ev.url && <a href={shown.ev.url} target="_blank" rel="noopener noreferrer" onClick={() => track('card-tickets', shown)}>{t.tickets}<ArrowUpRight size={15} /></a>}
           <button className={copied ? 'x-copied' : undefined} onClick={share} aria-live="polite">
             {copied ? <Check size={15} /> : <Share size={15} />}
             {/* both labels share one grid cell, so the button is as wide as the longer one and does not move */}
