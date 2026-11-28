@@ -30,6 +30,9 @@ export type CardData = {
   /** The context note of the production; undefined when it was not looked up yet. */
   context: (it: Item) => Context | undefined
 }
+/** The two drawers of the event card; one is open at a time. */
+export type Drawer = 'dates' | 'context'
+
 export const CardContext = createContext<CardData | null>(null)
 
 /** Days in the day grid, from the anchor. */
@@ -49,13 +52,13 @@ const MIN_IN_DAYS = 3
  * A date in the dates drawer changes the shown performance in place (`shown`); the card stays
  * where it is and the drawer's grid keeps starting at the day of `it`, the clicked performance.
  */
-export function EventCard({ it, onToggle, onClose, openDates = false }: {
+export function EventCard({ it, onToggle, onClose, open }: {
   it: Item
   /** Adds or removes a performance (the shown one, which can differ from `it`). */
   onToggle: (id: string) => void
   onClose: () => void
-  /** Opens the card with its dates drawer open (the "+N" button in "Mein Abend"). */
-  openDates?: boolean
+  /** The drawer to open with the card: `dates` ("+N" in "Mein Abend"), `context` (the context cards). */
+  open?: Drawer
 }) {
   const t = useT(), lang = useLang()
   const data = useContext(CardContext)
@@ -66,9 +69,10 @@ export function EventCard({ it, onToggle, onClose, openDates = false }: {
   const rel = data?.relation(shown) ?? null, picked = data?.picked(shown) ?? false, later = data?.later(shown) ?? false
   const context = data?.context(shown)
   // one drawer at a time; a past performance (from a shared link) opens with its next dates, the grid starting at the first of them;
-  // `openDates` opens the dates drawer too
-  const [drawer, setDrawer] = useState<'dates' | 'context' | null>(() => (openDates || over(it)) && all.length > 1 ? 'dates' : null)
-  const toggle = (d: 'dates' | 'context') => {
+  // `open` opens a drawer too
+  const [drawer, setDrawer] = useState<Drawer | null>(() =>
+    (open === 'dates' || over(it)) && all.length > 1 ? 'dates' : open === 'context' && context ? 'context' : null)
+  const toggle = (d: Drawer) => {
     if (drawer !== d) track(d === 'dates' ? 'card-dates' : 'card-kontext', shown)
     setDrawer(open => open === d ? null : d)
   }

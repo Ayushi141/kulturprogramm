@@ -17,10 +17,13 @@ export const NARRATOR: Record<Category, NarratorName> = {
 
 export const MOUTH: Record<NarratorName, readonly [number, number]> = { souffleur: [46, 57], opernglas: [16, 28], ticket: [59, 52] }
 
-/** The narrator of a category at `width` px. */
-export function Narrator({ category, width }: { category: Category; width?: number }) {
+/**
+ * The narrator of a category at `width` px. `tight`: the box is cut to the drawing (no room for a
+ * speech bubble above it), so the mascot can be centred like an icon.
+ */
+export function Narrator({ category, width, tight = false }: { category: Category; width?: number; tight?: boolean }) {
   const N = { souffleur: Souffleur, opernglas: Opernglas, ticket: Ticket }[NARRATOR[category]]
-  return <N width={width} />
+  return <N width={width} tight={tight} />
 }
 
 const { ink: INK, paper: PAPER, yellow: YELLOW, redDeep: RED } = PALETTE
@@ -54,7 +57,8 @@ export function Souffleur({ width = 84, tight = false }: { width?: number; tight
   )
 }
 
-export function Ticket({ width = 84 }: { width?: number }) {
+/** `tight` changes nothing: the ticket already fills its box. */
+export function Ticket({ width = 84 }: { width?: number; tight?: boolean }) {
   return (
     <svg width={width} height={(width * 110) / 120} viewBox="0 0 120 110" fill="none" aria-hidden="true">
       <g transform="rotate(-15 60 58)">
@@ -79,7 +83,8 @@ export function Ticket({ width = 84 }: { width?: number }) {
  * top left corner of the left barrel, so the bubble's tail ends there and covers nothing. Barrels and
  * handle are red, not ink, so they stay visible on the dark card (as the Souffleur's shell).
  */
-export function Opernglas({ width = 84 }: { width?: number }) {
+/** `tight` cuts the box to the drawing (x 17–103, y 32–106), as the Souffleur's. */
+export function Opernglas({ width = 84, tight = false }: { width?: number; tight?: boolean }) {
   const lens = (cx: number) => <>
     <circle cx={cx} cy="58" r="19" fill={YELLOW} {...line} />
     <circle cx={cx} cy="58" r="12" fill={PAPER} stroke={INK} strokeWidth={2} />
@@ -87,7 +92,7 @@ export function Opernglas({ width = 84 }: { width?: number }) {
     <circle cx={cx + 4} cy="62" r="3" fill={INK} />
   </>
   return (
-    <svg width={width} height={(width * 110) / 120} viewBox="0 0 120 110" fill="none" aria-hidden="true">
+    <svg width={width} height={tight ? (width * 74) / 86 : (width * 110) / 120} viewBox={tight ? '17 32 86 74' : '0 0 120 110'} fill="none" aria-hidden="true">
       {/* 6 units lower than on the design canvas: the top stays free for the bubble's edge, as on the Souffleur */}
       <g transform="translate(0 6)">
       <path d="M84 70 L99 98" stroke={RED} strokeWidth={7} strokeLinecap="round" />
