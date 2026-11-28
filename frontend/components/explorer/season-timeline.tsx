@@ -6,6 +6,7 @@ import { dayLabel, daysBetween, shiftDate, weekday } from '@/lib/time'
 import { useT } from '../i18n'
 import { CAT, PALETTE } from '@/lib/colors'
 import { EventCard } from './event-card'
+import { track } from '@/lib/track'
 import { fitText, T, TEXT_FONT, TITLE_FONT, TRACK, UI_FONT, width, wrapText } from './svg-text'
 import { BASE_W, MAX_ZOOM, MIN_W, NARROW } from './timeline'
 
@@ -191,7 +192,7 @@ export function SeasonTimeline(p: SeasonTimelineProps) {
                 onPointerEnter={e => { if (e.pointerType === 'mouse' && !pop) setTip({ ...near(e.clientX, e.clientY), body: summary(it) }) }}
                 onPointerLeave={() => setTip(null)}
                 onContextMenu={e => e.preventDefault()}
-                onClick={e => { setTip(null); setPop(sel ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 370) }) }}>
+                onClick={e => { setTip(null); if (!sel) track('bar-open', it, { from: 'season' }); setPop(sel ? null : { id: it.id, ...near(e.clientX, e.clientY, 340, 370) }) }}>
                 {/* click area = exactly this day, so neighbours never steal the click */}
                 <rect x={x - k / 2} y={y - LANE / 2} width={k} height={LANE} fill="transparent" />
                 {planned && <rect x={x - mw / 2 + 2} y={y - MARK_H / 2 + 2} width={mw} height={MARK_H} fill={RED} />}
