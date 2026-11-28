@@ -26,8 +26,8 @@ type Props = {
 }
 
 /**
- * The context cards: a row of small cards above the day strip, one per production with a note (its
- * narrator, title and the note's first sentences). A tap opens the event card with the full note.
+ * The context cards: a row of small cards above the day strip, one per production with a note (title
+ * with its narrator, and the note's first sentences). A tap opens the event card with the full note.
  * The kicker shows the date only when the cards span several days ("later"): the day strip below
  * already says which day it is.
  * The order takes turns between the categories (`alternate`), so the first cards show different ones.
@@ -119,12 +119,10 @@ export function ContextCards({ items, contexts, onOpen }: Props) {
         {entries.map(({ id, it, text }) => (
           <button key={id} className="x-ctxcard" style={{ '--cat': CAT[it.category].color } as React.CSSProperties}
             onClick={() => { track('kontext-card', it); onOpen(it) }}>
-            <Narrator category={it.category} width={40} tight />
-            <span className="x-ctxbody">
-              <small>{t.cat[it.category].tag} · {!oneDay && `${t.wd[weekday(it.day)]} ${dayLabel(it.day)} `}{fmt(it.s)}</small>
-              <span className="x-ctxtitle">{it.ev.title}</span>
-              <span className="x-ctxnote">{text}</span>
-            </span>
+            <small>{t.cat[it.category].tag} · {!oneDay && `${t.wd[weekday(it.day)]} ${dayLabel(it.day)} `}{fmt(it.s)}</small>
+            {/* the narrator right after the title: no column of its own, so the note gets the full width */}
+            <span className="x-ctxtitle"><span>{it.ev.title}</span><Narrator category={it.category} width={30} tight /></span>
+            <span className="x-ctxnote">{text}</span>
           </button>
         ))}
       </div>
