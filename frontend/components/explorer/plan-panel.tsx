@@ -19,8 +19,8 @@ type Props = {
   today: string
   suggestion?: Item
   onToggle: (id: string) => void
-  /** Opens the event card of a performance; `dates`: with its dates drawer open. */
-  onOpen: (it: Item, dates: boolean) => void
+  /** Opens the event card of a performance; `'dates'`: with its dates drawer open. */
+  onOpen: (it: Item, open?: 'dates') => void
 }
 
 export function PlanPanel({ picks, today, suggestion, onToggle, onOpen }: Props) {
@@ -64,11 +64,11 @@ export function PlanPanel({ picks, today, suggestion, onToggle, onOpen }: Props)
                 return [
                   <div className="x-step" key={s.id}>
                     <small>{t.cat[s.category].tag} / {timeRange(s, t)}</small>
-                    <h3><button onClick={() => onOpen(s, false)} aria-label={t.detailsFor(s.ev.title)}>{s.ev.title}</button></h3>
+                    <h3><button onClick={() => onOpen(s)} aria-label={t.detailsFor(s.ev.title)}>{s.ev.title}</button></h3>
                     <p><i style={{ background: CAT[s.category].color }} /><span>{s.venue.name} · {s.venue.city}{s.ev.price ? ' · ' + s.ev.price : ''}</span></p>
                     {others(s) > 0 && (
                       <div className="x-tags">
-                        <button className="x-more" onClick={() => onOpen(s, true)}>{t.moreDates(others(s))} <ArrowRight size={13} /></button>
+                        <button className="x-more" onClick={() => onOpen(s, 'dates')}>{t.moreDates(others(s))} <ArrowRight size={13} /></button>
                       </div>
                     )}
                     <div className="x-popbtns">

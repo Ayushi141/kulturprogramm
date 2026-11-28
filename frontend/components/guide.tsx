@@ -15,7 +15,8 @@ import { PosterView, SeasonPoster } from './explorer/poster-view'
 import { PlanPanel } from './explorer/plan-panel'
 import { ReadView } from './explorer/read-view'
 import { SeasonTimeline } from './explorer/season-timeline'
-import { CardContext, EventCard, type CardData } from './explorer/event-card'
+import { CardContext, EventCard, type CardData, type Drawer } from './explorer/event-card'
+import { ContextCards } from './explorer/context-cards'
 import { HalftoneField } from './explorer/halftone-field'
 import { relation, Timeline } from './explorer/timeline'
 
@@ -59,9 +60,9 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
   const [win, setWin] = useState<Window>(DEFAULT_WIN) // what the timeline shows; nothing else depends on it
   const [plans, setPlans] = useState<Record<string, string[]>>({})
   const [view, setViewState] = useState<View>('timeline')
-  /** The event card in the dialog; `dates`: opened with its dates drawer open. */
-  const [detail, setDetailState] = useState<{ it: Item; dates: boolean } | null>(null)
-  const setDetail = (it: Item | null, dates = false) => setDetailState(it && { it, dates })
+  /** The event card in the dialog; `open`: the drawer it opens with. */
+  const [detail, setDetailState] = useState<{ it: Item; open?: Drawer } | null>(null)
+  const setDetail = (it: Item | null, open?: Drawer) => setDetailState(it && { it, open })
   const dialog = useRef<HTMLDialogElement>(null)
   const loaded = useRef(false)
 
@@ -238,6 +239,8 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
         </div>
 
         <section className="directory" id="guide">
+          {/* the context notes of the selection as cards, first thing under the blue bar; the reading view shows them in full */}
+          {view !== 'context' && <ContextCards items={readItems} contexts={programme.contexts ?? {}} onOpen={it => setDetail(it, 'context')} />}
           {programme.demo && <p className="x-demo">{t.demo}</p>}
           {/* the hint line: what to do here, or in the reading view what it shows and in which order */}
           <p className="x-hint">{view === 'context' ? (isLater ? t.readSortLater : t.readSortDay) : hint}</p>
@@ -267,7 +270,7 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
 
       {/* the event card of the poster view, the reading view, "In focus" and "Mein Abend"; the timelines show the same card in a popover */}
       <dialog ref={dialog} className="x-carddialog" aria-label={detail?.it.ev.title || t.details} onCancel={() => setDetail(null)} onClick={e => { if (e.target === dialog.current) setDetail(null) }}>
-        {detail && <EventCard key={detail.it.id} it={detail.it} openDates={detail.dates} onToggle={id => { onToggle(id); setDetail(null) }} onClose={() => setDetail(null)} />}
+        {detail && <EventCard key={detail.it.id} it={detail.it} open={detail.open} onToggle={id => { onToggle(id); setDetail(null) }} onClose={() => setDetail(null)} />}
       </dialog>
     </main>
     </CardContext>
