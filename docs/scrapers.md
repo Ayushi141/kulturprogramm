@@ -51,7 +51,8 @@ A new source: a new module, then one import and one entry in `sources/__init__.p
   → a category, or `None` to skip) and `DEFAULT` (category without a label; `None` skips). `texts` are
   short texts (title, subtitle, badges; never descriptions), `info` the info and ticket lines. The
   order, the same for every source: a `None` label skips; `CLOSED` (school, Kita, closed) in texts or
-  info skips; a `CONCERT` word in the texts gives `CONCERT`; a `NON_PERFORMANCE` word (Führung,
+  info skips; a `SIDE_FORMAT` word in the texts (Familienkonzert, Kinderoper, Mitsingkonzert,
+  öffentliche Probe) skips; a `CONCERT` word in the texts gives `CONCERT`; a `NON_PERFORMANCE` word (Führung,
   Workshop, Lesung, Gespräch, Matinee, Party) skips; the first label in `LABELS` order with a
   category gives it; else `DEFAULT`. Labels are matched exactly, never as words; pass a free-text
   label in `texts` too when its words matter („Junge Oper, Konzert“). `default=` replaces `DEFAULT`
