@@ -354,7 +354,7 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .ph-s *{fill:color-mix(in oklab,var(--c) 45%,var(--ink));stroke:none}
 
 /* context cards above the day strip (context-cards.tsx): a row with scroll snap that swipes and moves on by itself.
-   Small cards: narrator left, then kicker, one-line title and at most three lines of the note.
+   Small cards: kicker, one-line title with the narrator after it, at most three lines of the note.
    Fixed sizes, as the day cards below them (not the page-wide --zs scale): kicker and label mono 11px,
    title Poster 17px, note IBM Plex Mono 12px, head line mono 12px. */
 .x-ctx{margin:0 0 18px}
@@ -366,13 +366,13 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .x-ctxnav button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 .x-ctxrail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 6px 6px 2px}
 .x-ctxrail::-webkit-scrollbar{display:none}
-.x-ctxcard{flex:0 0 clamp(230px,calc((100% - 4 * 12px) / 5),320px);scroll-snap-align:start;display:flex;align-items:center;gap:10px;
+.x-ctxcard{flex:0 0 clamp(230px,calc((100% - 4 * 12px) / 5),320px);scroll-snap-align:start;display:flex;flex-direction:column;gap:2px;
   padding:8px 10px 9px 8px;text-align:left;color:var(--ink);background:var(--card);border:1.5px solid var(--ink);border-left:5px solid var(--cat);box-shadow:3px 3px var(--ink)}
-.x-ctxcard>svg{flex:none;width:auto;height:26px}  /* cut to its drawing (`tight`), sized by height: all three look the same size */
-.x-ctxbody{display:flex;flex-direction:column;gap:2px;min-width:0}
 .x-ctxcard small{font:700 11px/1.3 var(--mono);letter-spacing:.08em}
-.x-ctxtitle{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:400 17px/1.15 var(--display)}
-.x-ctxcard:hover .x-ctxtitle{text-decoration:underline}
+.x-ctxtitle{display:flex;align-items:center;gap:7px;min-width:0;font:400 17px/1.15 var(--display)}
+.x-ctxtitle>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}  /* a long title is cut; the narrator stays */
+.x-ctxtitle>svg{flex:none;width:auto;height:18px}  /* cut to its drawing (`tight`), sized by height: all three look the same size */
+.x-ctxcard:hover .x-ctxtitle>span{text-decoration:underline}
 .x-ctxnote{font:400 12px/1.4 'IBM Plex Mono',var(--mono);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 @media(max-width:700px){.x-ctxcard{flex-basis:85%}.x-ctxhead p{display:none}}
 
