@@ -5,7 +5,7 @@ import type { Item } from './plan'
  * (`#timeline`, `#poster`, `#context`) need no event: Umami counts them as page views.
  * - `bar-open`: a bar in the timeline or a mark in the season timeline opens the event card (`from`).
  * - `card-*`: a button on the event card.
- * - `kontext-card`: a context card under the blue bar opens the event card (`context-cards.tsx`).
+ * - `kontext-card`: a context card above the day strip opens the event card (`context-cards.tsx`).
  */
 export type TrackEvent =
   | 'bar-open'
