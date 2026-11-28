@@ -300,6 +300,18 @@ class Source(ABC):
         r"für\s+\w*schulen|geschlossene\s+(?:vorstellung|veranstaltung)\w*|nur\s+gruppenbuchung\w*)\b",
         re.IGNORECASE,
     )
+    # Side formats: public, but not for the site's audience (adults who come
+    # for the performance itself). Formats for children, young people and
+    # families; sing-alongs; open rehearsals. Compound words only, never a bare
+    # "Kinder" or "Familie": titles like "Kindertotenlieder" or "Die Familie
+    # Schroffenstein" are real programme.
+    SIDE_FORMAT = re.compile(
+        r"\b(?:familien(?:konzert|vorstellung|oper|stück|programm|ballett|theater)\w*|"
+        r"kinder(?:konzert|oper|ballett|theater|stück|vorstellung)\w*|jugendkonzert\w*|"
+        r"für\s+(?:die\s+ganze\s+)?familien?|für\s+(?:kinder|jugendliche|junge\s+leute)|"
+        r"\w*mitsing\w*|(?:öffentliche|offene)\s+(?:general)?probe\w*)\b",
+        re.IGNORECASE,
+    )
     # "live viewing": a concert shown live in cinemas
     CONCERT = re.compile(
         r"\b(?:\w*konzert\w*|jazz\w*|\w*gala|live[\s-]+viewing)\b",
@@ -368,6 +380,8 @@ class Source(ABC):
         In this order:
         1. A label that LABELS maps to None skips the event.
         2. CLOSED in the texts or the info lines skips it (school, Kita).
+           A SIDE_FORMAT word in the texts skips it (family concert, open
+           rehearsal); it wins over 3, which "Familienkonzert" would match.
         3. A CONCERT word in the texts gives CONCERT. It wins over 4
            ("Benefiz-Matinee" with the subtitle "Konzert").
         4. A NON_PERFORMANCE word in the texts skips it (tours, workshops).
@@ -380,6 +394,8 @@ class Source(ABC):
         # "+ Einführung", "+ Gespräch": an extra before or after a performance
         text = " ".join(re.sub(r"\+[^+]*", " ", t) for t in texts)
         if self.CLOSED.search(text) or any(self.CLOSED.search(line) for line in info):
+            return None
+        if self.SIDE_FORMAT.search(text):
             return None
         if self.CONCERT.search(text):
             return Category.CONCERT
