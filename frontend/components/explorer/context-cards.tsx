@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import type { Context } from '@/lib/types'
 import type { Item } from '@/lib/plan'
 import type { Lang } from '@/lib/i18n'
@@ -15,7 +15,7 @@ const INTERVAL = 6000
 /** A teaser has at least this many characters: it adds sentences until it is this long. */
 const MIN_TEASER = 70
 /** A teaser has at most this many characters; a longer sentence is cut at a word, with "…". */
-const MAX_TEASER = 160
+const MAX_TEASER = 110
 
 type Props = {
   /** The performances to show, in order (the same list as the reading view, see `guide.tsx`). */
@@ -26,8 +26,10 @@ type Props = {
 }
 
 /**
- * The context cards: a row of cards under the blue bar, one per production with a note (title and
- * the note's first sentences). A tap anywhere on a card opens the event card with the full note.
+ * The context cards: a row of small cards above the day strip, one per production with a note (title
+ * with its narrator, and the note's first sentences). A tap opens the event card with the full note.
+ * The kicker shows the date only when the cards span several days ("later"): the day strip below
+ * already says which day it is.
  * The order takes turns between the categories (`alternate`), so the first cards show different ones.
  *
  * The row is a normal horizontal scroll area with scroll snap: swipe, trackpad and the arrow
@@ -54,6 +56,7 @@ export function ContextCards({ items, contexts, onOpen }: Props) {
   }
   const entries = alternate([...firsts].map(([id, it]) => ({ id, it, text: teaser(contexts[id][lang]!, lang) })))
   const key = entries.map(e => e.id).join(' ')
+  const oneDay = entries.every(e => e.it.day === entries[0].it.day)
 
   useEffect(() => {
     const m = matchMedia('(prefers-reduced-motion: reduce)')
@@ -116,13 +119,10 @@ export function ContextCards({ items, contexts, onOpen }: Props) {
         {entries.map(({ id, it, text }) => (
           <button key={id} className="x-ctxcard" style={{ '--cat': CAT[it.category].color } as React.CSSProperties}
             onClick={() => { track('kontext-card', it); onOpen(it) }}>
-            <span className="x-ctxkicker"><small>{t.cat[it.category].tag} · {t.wd[weekday(it.day)]} {dayLabel(it.day)} {fmt(it.s)}</small></span>
-            <span className="x-ctxtitle">{it.ev.title}</span>
+            <small>{t.cat[it.category].tag} · {!oneDay && `${t.wd[weekday(it.day)]} ${dayLabel(it.day)} `}{fmt(it.s)}</small>
+            {/* the narrator right after the title: no column of its own, so the note gets the full width */}
+            <span className="x-ctxtitle"><span>{it.ev.title}</span><Narrator category={it.category} width={30} tight /></span>
             <span className="x-ctxnote">{text}</span>
-            <span className="x-ctxfoot">
-              <span className="x-more">{t.cardsMore} <ArrowRight size={13} /></span>
-              <Narrator category={it.category} width={44} tight />
-            </span>
           </button>
         ))}
       </div>

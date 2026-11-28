@@ -50,6 +50,7 @@ tracker is not loaded (Do Not Track, an ad blocker), `track()` does nothing.
 | `card-tickets` | "Tickets & Details" | – |
 | `card-share` | "Teilen" | – |
 | `card-close` | The ✕ button. Escape and a click outside the card are not counted. | – |
+| `kontext-card` | A context card above the day strip opens the event card. The card opens with its "Kontext" drawer already open, so this click sends no `card-kontext`. | – |
 
 In the dashboard, **Events** shows the fields of each event, for example the titles that
 visitors open most.
@@ -61,6 +62,9 @@ A funnel is a row of steps where each step is a part of the step before it. Comp
 1. Visits (dashboard overview)
 2. `bar-open`
 3. `card-kontext`, `card-tickets`
+
+The context cards are a second way to the notes: to count all notes that visitors read, add
+`kontext-card` and `card-kontext`.
 
 The step where the number drops most is the step to improve. After a change, compare the same
 numbers for a week before and a week after the change: with few visitors, single days vary too much.

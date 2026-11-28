@@ -43,7 +43,7 @@ kulturprogramm/
   speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
-- Context cards (`context-cards.tsx`): first thing under the blue bar (not in the "Kontext" view), one card per
+- Context cards (`context-cards.tsx`): small cards above the day strip (not in the "Kontext" view), one card per
   production of the reading view's list (title + the note's first sentences, `teaser()`), the categories taking turns
   (`alternate()`); a tap opens the event card with the context drawer open. A scroll-snap row: swipe or arrows; after 6 s without input it moves on by one card.
   It stops on hover, focus, its pause button and with "reduced motion". Umami event `kontext-card` (`track()`).
@@ -133,7 +133,8 @@ timeline SVG uses them through `T` in `timeline.tsx`. Use one of these seven, no
 - Secondary text is grey (`--grey`), never smaller or lighter. Colours: only in `lib/colors.ts`
   (palette, `CAT`, `CAT_DARK`); CSS reads them as `var(--ink)`, `var(--cat-opera)`, `var(--cat-dark-opera)`.
 - Fixed sizes: logo, hero headline, view toggle and category buttons (Poster 18px, upper case, 15px
-  on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), hint,
+  on phones), day-card dates (Poster 24px), small day-card and "In focus" lines (mono 11px), context cards
+  (`.x-ctx*`: kicker mono 11px, title Poster 17px, note Plex Mono 12px), hint,
   "Stand" and zoom-hint lines (mono 12px). `globals.css` holds the `@font-face` rules and v0 leftovers; set no fonts there.
 
 ## Tone of voice
