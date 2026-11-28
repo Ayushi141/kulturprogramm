@@ -214,6 +214,8 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
                 </button>
               )}
             </div>
+            {/* the context notes of the selected day as small cards, above the day strip (the reading view shows them in full) */}
+            {view !== 'context' && <ContextCards items={readItems} contexts={programme.contexts ?? {}} onOpen={it => setDetail(it, 'context')} />}
             <DayStrip days={days} selected={day} win={win} onSelect={setDay} countOf={countOf} itemsOf={d => (byDay.get(d) ?? []).filter(shown)}
               later={{ key: LATER, until: laterTo, count: laterPool.length, weekly: laterWeekly }} />
             <span className="x-colorbar" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>
@@ -239,8 +241,6 @@ function GuideBody({ programme, lang, sharedId }: { programme: Programme; lang: 
         </div>
 
         <section className="directory" id="guide">
-          {/* the context notes of the selection as cards, first thing under the blue bar; the reading view shows them in full */}
-          {view !== 'context' && <ContextCards items={readItems} contexts={programme.contexts ?? {}} onOpen={it => setDetail(it, 'context')} />}
           {programme.demo && <p className="x-demo">{t.demo}</p>}
           {/* the hint line: what to do here, or in the reading view what it shows and in which order */}
           <p className="x-hint">{view === 'context' ? (isLater ? t.readSortLater : t.readSortDay) : hint}</p>

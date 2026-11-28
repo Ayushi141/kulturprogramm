@@ -353,25 +353,25 @@ main#top::after{left:50%;width:min(92%,1500px);transform:translateX(-50%);border
 .ph-a{fill:color-mix(in oklab,var(--c) 55%,var(--paper))}.ph-b{fill:var(--paper)}
 .ph-s *{fill:color-mix(in oklab,var(--c) 45%,var(--ink));stroke:none}
 
-/* context cards under the blue bar (context-cards.tsx): a row with scroll snap that swipes and moves on by itself */
-.x-ctx{margin-bottom:22px}
-.x-ctxhead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+/* context cards above the day strip (context-cards.tsx): a row with scroll snap that swipes and moves on by itself.
+   Small cards: narrator left, then kicker, one-line title and at most three lines of the note. */
+.x-ctx{margin:0 0 18px}
+.x-ctxhead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .x-ctxhead b{padding:2px 7px;background:var(--ink);color:var(--yellow)}
 .x-ctxhead p{margin:0;color:var(--grey)}
 .x-ctxnav{display:flex;gap:6px;margin-left:auto}
-.x-ctxnav button{display:grid;place-items:center;width:32px;height:32px;padding:0;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink)}
+.x-ctxnav button{display:grid;place-items:center;width:28px;height:28px;padding:0;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink)}
 .x-ctxnav button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.x-ctxrail{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 6px 8px 2px}
+.x-ctxrail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 6px 6px 2px}
 .x-ctxrail::-webkit-scrollbar{display:none}
-.x-ctxcard{flex:0 0 clamp(260px,calc((100% - 3 * 14px) / 4),400px);scroll-snap-align:start;display:flex;flex-direction:column;gap:6px;
-  padding:12px 14px;text-align:left;color:var(--ink);background:var(--card);border:1.5px solid var(--ink);border-top:6px solid var(--cat);box-shadow:3px 3px var(--ink)}
+.x-ctxcard{flex:0 0 clamp(250px,calc((100% - 3 * 12px) / 4),380px);scroll-snap-align:start;display:flex;align-items:center;gap:12px;
+  padding:9px 12px 10px 10px;text-align:left;color:var(--ink);background:var(--card);border:1.5px solid var(--ink);border-left:5px solid var(--cat);box-shadow:3px 3px var(--ink)}
+.x-ctxcard>svg{flex:none;width:auto;height:calc(26 * var(--zs))}  /* cut to its drawing (`tight`), sized by height: all three look the same size */
+.x-ctxbody{display:flex;flex-direction:column;gap:2px;min-width:0}
+.x-ctxtitle{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .x-ctxcard:hover .x-ctxtitle{text-decoration:underline}
-.x-ctxnote{flex:1}
-.x-ctxfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.x-ctxfoot .x-more{margin-top:0}
-/* the mascot: cut to its drawing (`tight`), sized by height so all three look the same size, centred on the button */
-.x-ctxfoot>svg{flex:none;width:auto;height:calc(30 * var(--zs));margin:0 4px 4px 0}  /* optical inset: the mascots carry their weight at the bottom right */
-@media(max-width:700px){.x-ctxcard{flex-basis:82%}.x-ctxhead p{display:none}}
+.x-ctxnote{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+@media(max-width:700px){.x-ctxcard{flex-basis:85%}.x-ctxhead p{display:none}}
 
 /* ── Type system ─────────────────────────────────────────────────────────────
    The shared text styles. Seven styles, each with one job:
@@ -405,8 +405,10 @@ small,.tag,.featuretop,.saves,.x-lang,.x-city>button,.x-city>button b,.x-planday
 .filters button,.x-citylist button,.visit,.x-readsave,.x-send,.x-planbtns button,.x-popbtns button,.x-popbtns a,.x-ticket
   {font:700 calc(13 * var(--zs))/1.2 var(--sans);letter-spacing:0}
 
-.x-tt,.x-step h3,.x-ctxtitle,.x-readtitle h3,.x-legal h2,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
+.x-tt,.x-step h3,.x-readtitle h3,.x-legal h2,.cardtext h3,.featurecap strong,.x-leg b,.x-narrator b
   {font:400 calc(22 * var(--zs))/1.05 var(--display);letter-spacing:0}
+.x-ctxtitle
+  {font:400 calc(15 * var(--zs))/1.2 var(--display);letter-spacing:0}  /* title-s, as the timeline bars (T in timeline.tsx) */
 .x-gh,.x-plan h2,.dialogbody h2,.x-legal h1
   {font:400 calc(32 * var(--zs))/1 var(--display);letter-spacing:-.02em}
 .x-hero h1{letter-spacing:-.03em}

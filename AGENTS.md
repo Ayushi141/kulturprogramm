@@ -43,7 +43,7 @@ kulturprogramm/
   speaks (`NARRATOR` in `mascots.tsx`: Opernglas for opera, Ticket for films, else Souffleur); without a note a fixed line from `i18n.ts`. Phones: both drawers are sheets at the bottom of the screen.
   "Teilen" shares `/e/<id>` (`components/share-page.tsx`) and warms its preview `/e/<id>/preview.jpg`
   (`lib/og-image.tsx`: JPEG, photos via sharp, last 300 kept in memory).
-- Context cards (`context-cards.tsx`): first thing under the blue bar (not in the "Kontext" view), one card per
+- Context cards (`context-cards.tsx`): small cards above the day strip (not in the "Kontext" view), one card per
   production of the reading view's list (title + the note's first sentences, `teaser()`), the categories taking turns
   (`alternate()`); a tap opens the event card with the context drawer open. A scroll-snap row: swipe or arrows; after 6 s without input it moves on by one card.
   It stops on hover, focus, its pause button and with "reduced motion". Umami event `kontext-card` (`track()`).
